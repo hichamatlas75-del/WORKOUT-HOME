@@ -7,18 +7,30 @@ function renderExerciseMediaHtml(ex) {
   return `
     <div class="exercise-media-card" data-exercise-id="${ex.id}">
       <div class="exercise-media-viewport" id="viewport-ex-${ex.id}">
-        <video 
-          src="${ex.video}" 
+        <video
+          src="${ex.video}"
           poster="${ex.image}"
-          class="exercise-video-reel" 
-          autoplay 
-          muted 
-          loop 
-          playsinline 
-          webkit-playsinline 
+          class="exercise-video-reel"
+          autoplay
+          muted
+          loop
+          playsinline
+          webkit-playsinline
           preload="auto"
-          onerror="this.classList.add('video-fallback'); const img = this.parentElement.querySelector('.fallback-img'); if(img) img.style.display='block';">
+          onerror="(function(v){
+            v.style.display='none';
+            var wrap = v.parentElement.querySelector('.motion-canvas-wrapper');
+            if(wrap){
+              wrap.style.display='block';
+              var c = wrap.querySelector('canvas');
+              if(c && window.motionPlayer) window.motionPlayer.init(c, ${ex.id});
+            }
+          })(this)">
         </video>
+        <div class="motion-canvas-wrapper">
+          <canvas aria-label="Animation de l\'exercice ${ex.name}"></canvas>
+          <span class="offline-video-chip">📵 Animation hors ligne</span>
+        </div>
         <img src="${ex.image}" alt="${ex.name}" class="exercise-fallback-image fallback-img" style="display: none;">
       </div>
     </div>

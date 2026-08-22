@@ -120,7 +120,8 @@ class DashboardManager {
 
   // Détail d'une journée
   showDayDetail(dateStr, isCompleted, count) {
-    const formattedDate = new Date(dateStr).toLocaleDateString('fr-FR', {
+    // Utiliser midi (T12:00:00) pour éviter le décalage UTC sur les fuseaux en avance ou en retard
+    const formattedDate = new Date(dateStr + 'T12:00:00').toLocaleDateString('fr-FR', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',

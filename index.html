@@ -168,6 +168,15 @@
             <div class="stat-value" id="stat-total-time">0</div>
             <span class="stat-unit">minutes d'effort</span>
           </div>
+
+          <div class="stat-card">
+            <div class="stat-header">
+              <span>Ce Mois-ci</span>
+              <span style="color: var(--accent-work);">📅</span>
+            </div>
+            <div class="stat-value" id="stat-month-workouts">0</div>
+            <span class="stat-unit">séances ce mois</span>
+          </div>
         </div>
 
         <!-- Calendrier Heatmap Mensuel Interactif -->
@@ -453,6 +462,13 @@
           <div class="workout-pill" id="live-step-pill" style="color: var(--accent-work);">1 / 6</div>
         </div>
 
+        <button class="icon-btn" id="btn-tv-cast" onclick="openTvMode()" title="Affichage TV / Paysage" aria-label="Ouvrir le mode TV pour caster sur grand écran">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect>
+            <polyline points="17 2 12 7 7 2"></polyline>
+          </svg>
+        </button>
+
         <button class="icon-btn" onclick="window.audioEngine.soundEnabled = !window.audioEngine.soundEnabled; this.classList.toggle('muted', !window.audioEngine.soundEnabled);" title="Son" aria-label="Activer ou désactiver le son">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
@@ -481,6 +497,12 @@
         
         <div class="live-illustration-box" id="live-illustration-box">
           <video src="videos/step-up.mp4" class="exercise-video" autoplay muted loop playsinline></video>
+
+          <!-- PIP : Miniature de l'exercice suivant -->
+          <div class="live-pip-next" id="live-pip-next" style="display:none;" aria-label="Prochain exercice">
+            <img id="live-pip-img" src="" alt="" class="live-pip-img">
+            <span class="live-pip-label">Suivant</span>
+          </div>
         </div>
 
         <div class="live-next-box" id="live-next-info">
@@ -559,6 +581,21 @@
     </div>
 
     <!-- ====================================================================
+         MODALE DE CONFIRMATION (REMPLACE confirm() NATIF)
+         ==================================================================== -->
+    <div id="confirm-modal" class="confirm-modal-backdrop" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+      <div class="confirm-modal-card">
+        <div class="confirm-modal-icon" id="confirm-modal-icon">⚠️</div>
+        <h3 class="confirm-modal-title" id="confirm-modal-title">Confirmation</h3>
+        <p class="confirm-modal-message" id="confirm-modal-message"></p>
+        <div class="confirm-modal-actions">
+          <button class="btn-secondary" id="confirm-modal-cancel" onclick="dismissConfirmModal()">Annuler</button>
+          <button class="btn-danger" id="confirm-modal-confirm">Confirmer</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
          MODALE FEUILLE D'EXERCICE (BOTTOM SHEET DÉTAILS)
          ==================================================================== -->
     <div id="exercise-modal-sheet" class="modal-sheet-backdrop" onclick="if(event.target === this) closeExerciseModal()">
@@ -610,6 +647,106 @@
 
   </div>
 
+  <!-- ====================================================================
+       ÉCRAN DOUBLE AFFICHAGE TV / GRAND ÉCRAN (MODE PAYSAGE / CHROMECAST)
+       ==================================================================== -->
+  <div id="tv-overlay" class="tv-overlay" style="display: none;">
+    <!-- Header TV -->
+    <header class="tv-header">
+      <div class="tv-brand">
+        <div class="tv-logo-badge">17</div>
+        <div class="tv-brand-text">
+          <span class="tv-title">FULL BODY 17</span>
+          <span class="tv-sub">MODE GRAND ÉCRAN</span>
+        </div>
+      </div>
+
+      <div class="tv-header-center">
+        <span class="tv-pill tv-pill-round" id="tv-round-pill">SÉRIE 1 / 3</span>
+        <span class="tv-pill tv-pill-step" id="tv-step-pill">1 / 7</span>
+        <span class="tv-pill tv-pill-state" id="tv-header-state-pill">PRÉPARATION</span>
+      </div>
+
+      <div class="tv-header-right">
+        <span class="tv-streak-tag" id="tv-streak-tag">🔥 Routine Quotidienne</span>
+        <button class="icon-btn tv-fullscreen-btn" onclick="toggleTvFullscreen()" title="Plein écran TV" aria-label="Basculer plein écran">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Corps principal TV (3 Colonnes en Paysage) -->
+    <main class="tv-main-grid">
+      <!-- Colonne Gauche : Chronomètre géant -->
+      <section class="tv-col-timer">
+        <div class="tv-timer-card">
+          <div class="tv-phase-badge" id="tv-phase-badge">EFFORT</div>
+          <div class="tv-digits" id="tv-timer-digits">40</div>
+          <div class="tv-timer-unit">SECONDES</div>
+          <div class="tv-timer-bar-wrapper">
+            <div class="tv-timer-bar-fill" id="tv-timer-bar-fill" style="width: 100%;"></div>
+          </div>
+          <div class="tv-timer-total-info" id="tv-timer-total-info">Phase : 40s</div>
+        </div>
+      </section>
+
+      <!-- Colonne Centre : Vidéo / Visuel Principal HD -->
+      <section class="tv-col-media">
+        <div class="tv-media-header">
+          <div class="tv-ex-number" id="tv-ex-number">01</div>
+          <div class="tv-ex-info">
+            <h1 class="tv-ex-title" id="tv-ex-title">JUMPING JACK</h1>
+            <p class="tv-ex-target" id="tv-ex-target">CARDIO &amp; ACTIVATION GLOBALE</p>
+          </div>
+        </div>
+
+        <div class="tv-video-container" id="tv-video-container">
+          <video id="tv-video" class="tv-video" autoplay muted loop playsinline></video>
+          <img id="tv-img-fallback" class="tv-img-fallback" src="" alt="" style="display:none;">
+          <div class="tv-canvas-wrapper" id="tv-canvas-wrapper" style="display:none;">
+            <canvas id="tv-canvas" class="tv-canvas"></canvas>
+            <span class="offline-video-chip">📵 Animation 60 FPS active</span>
+          </div>
+        </div>
+
+        <div class="tv-cue-box" id="tv-cue-box">
+          <div class="tv-cue-icon">💡</div>
+          <div class="tv-cue-text" id="tv-cue-text">Réception souple sur l'avant des pieds, rythme régulier et continu.</div>
+        </div>
+      </section>
+
+      <!-- Colonne Droite : Prévisualisation du prochain mouvement -->
+      <aside class="tv-col-next">
+        <div class="tv-next-card" id="tv-next-card">
+          <div class="tv-next-tag">À SUIVRE</div>
+          <div class="tv-next-thumb-wrapper">
+            <img id="tv-next-thumb" class="tv-next-thumb" src="" alt="">
+          </div>
+          <div class="tv-next-name" id="tv-next-name">Squat Libre</div>
+          <div class="tv-next-subtitle" id="tv-next-subtitle">Quadriceps &amp; Fessiers</div>
+        </div>
+
+        <div class="tv-breathing-card" id="tv-breathing-card">
+          <div class="tv-breath-label">🫁 RESPIRATION</div>
+          <div class="tv-breath-text" id="tv-breath-text">Inspirez à l'ouverture, expirez lors du resserrement.</div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Pied de page TV : Barre de progression générale -->
+    <footer class="tv-footer">
+      <div class="tv-progress-track">
+        <div class="tv-progress-fill" id="tv-overall-progress-fill" style="width: 0%;"></div>
+      </div>
+      <div class="tv-footer-meta">
+        <span id="tv-elapsed-label">Temps total : 00:00</span>
+        <span id="tv-status-msg">Synchronisé en direct avec le téléphone 📱</span>
+      </div>
+    </footer>
+  </div>
+
   <!-- Scripts Applicatifs (defer pour téléchargement parallèle) -->
   <script src="js/exercises.js" defer></script>
   <script src="js/audio.js" defer></script>
@@ -619,6 +756,7 @@
   <script src="js/motivation.js" defer></script>
   <script src="js/notifications.js" defer></script>
   <script src="js/pwa.js" defer></script>
+  <script src="js/motion-player.js" defer></script>
   <script src="js/app.js" defer></script>
 
   <!-- Script inline pour le bouton de bascule rapide de thème -->

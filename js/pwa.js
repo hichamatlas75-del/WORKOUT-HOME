@@ -60,10 +60,15 @@ class PWAManager {
     const installBtn = document.getElementById('btn-pwa-install');
     if (installBtn) {
       if (isStandalone) {
+        // Déjà installé : cacher le bouton
         installBtn.style.display = 'none';
-      } else {
-        // Toujours afficher le bouton dans les réglages sur mobile
+      } else if (deferredPrompt) {
+        // Android/Chrome : prompt natif disponible
         installBtn.style.display = 'flex';
+      } else {
+        // iOS Safari ou contexte sans prompt natif : masquer par défaut
+        // (le bouton réapparaîtra si beforeinstallprompt se déclenche)
+        installBtn.style.display = 'none';
       }
     }
   }
@@ -80,9 +85,13 @@ class PWAManager {
     // Si le prompt natif n'est pas disponible (iOS Safari ou Chrome sans trigger immédiat)
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     if (isIOS) {
-      alert("📱 Pour installer sur iPhone / iPad :\n\n1. Appuyez sur le bouton 'Partager' (carré avec flèche vers le haut ⬆️ en bas de Safari).\n2. Faites défiler et choisissez 'Sur l'écran d'accueil' ➕.\n3. Cliquez sur 'Ajouter'.");
+      if (typeof showToast === 'function') {
+        showToast('📱 Safari : appuyez sur Partager ⬆️ puis "Sur l\'écran d\'accueil"');
+      }
     } else {
-      alert("📱 Pour installer sur Android / Chrome :\n\n1. Appuyez sur les 3 points verticaux ⋮ en haut à droite du navigateur.\n2. Choisissez 'Installer l'application' ou 'Ajouter à l'écran d'accueil'.");
+      if (typeof showToast === 'function') {
+        showToast('📱 Chrome : menu ⋮ → "Installer l\'application"');
+      }
     }
   }
 }

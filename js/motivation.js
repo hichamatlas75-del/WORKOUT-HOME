@@ -15,8 +15,8 @@ const BADGES_DEFINITIONS = [
     id: 'streak_1',
     icon: '⚡',
     title: '1 Jour Validé',
-    desc: 'Avoir validé au moins une séance quotidienne.',
-    check: (stats) => stats.totalWorkouts >= 1
+    desc: 'Valider la séance du jour et démarrer une série active.',
+    check: (stats) => stats.currentStreak >= 1
   },
   {
     id: 'streak_3',
@@ -122,8 +122,13 @@ class MotivationManager {
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const dpr = window.devicePixelRatio || 1;
+    // Ajuster pour les écrans haute densité (Retina, AMOLED)
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    ctx.scale(dpr, dpr);
 
     const particles = [];
     const colors = ['#10b981', '#06b6d4', '#fbbf24', '#f59e0b', '#ec4899', '#ffffff'];

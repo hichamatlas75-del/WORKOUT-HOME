@@ -3,6 +3,8 @@
  * Liaison de tous les composants, navigation, compte à rebours 17:00 et modales.
  */
 
+let _liveClockInterval = null; // Référence stockée pour pouvoir annuler et relancer proprement
+
 document.addEventListener('DOMContentLoaded', () => {
   // 1. Initialiser le thème (Sombre par défaut ou sauvegardé)
   const savedTheme = window.appStorage.prefs.theme || 'dark';
@@ -35,8 +37,13 @@ document.addEventListener('DOMContentLoaded', () => {
   window.dashboardManager.renderDashboard();
   window.motivationManager.renderBadgesView();
 
-  // 9. Vérifier les paramètres URL (ex: ?action=start)
+  // 9. Vérifier les paramètres URL (ex: ?tv=1 ou ?action=start)
   const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('tv') === '1' || urlParams.get('mode') === 'tv') {
+    initTvMode();
+    return;
+  }
+
   if (urlParams.get('action') === 'start') {
     startWorkoutSession();
   } else if (urlParams.get('tab')) {
@@ -48,6 +55,12 @@ document.addEventListener('DOMContentLoaded', () => {
 // GESTION DU COMPTE À REBOURS 17:00 (ACCUEIL)
 // --------------------------------------------------------------------------
 function startLiveClock() {
+  // Annuler l'intervalle précédent si reInitApp() est appelé plusieurs fois
+  if (_liveClockInterval) {
+    clearInterval(_liveClockInterval);
+    _liveClockInterval = null;
+  }
+
   const updateClock = () => {
     const now = new Date();
     const prefs = window.appStorage.prefs;
@@ -90,7 +103,7 @@ function startLiveClock() {
   };
 
   updateClock();
-  setInterval(updateClock, 30000);
+  _liveClockInterval = setInterval(updateClock, 30000);
 }
 
 // --------------------------------------------------------------------------
@@ -216,9 +229,9 @@ function startWorkoutSession() {
   history.pushState({ workout: true }, '', '');
 
   window.workoutEngine.startWorkout({
-    rounds: parseInt(window.appStorage.prefs.rounds) || 2,
-    workDuration: parseInt(window.appStorage.prefs.workDuration) || 40,
-    restDuration: parseInt(window.appStorage.prefs.restDuration) || 20
+    rounds: parseInt(window.appStorage.prefs.rounds) || 3,
+    workDuration: Math.min(90, Math.max(20, parseInt(window.appStorage.prefs.workDuration) || 40)),
+    restDuration: Math.min(60, Math.max(10, parseInt(window.appStorage.prefs.restDuration) || 20))
   });
 }
 
@@ -259,13 +272,15 @@ function initWorkoutUI() {
       if (exerciseCue) exerciseCue.textContent = "Préparez votre posture";
       if (illustrationBox) illustrationBox.innerHTML = info.currentExercise.illustrationHtml;
       if (nextBox) nextBox.innerHTML = `<span>Premier mouvement :</span> <strong>${info.currentExercise.name}</strong>`;
+      updatePip(null); // pas de PIP pendant la préparation
       syncWorkoutMedia(state, illustrationBox);
     } else if (state === WORKOUT_STATES.WORK) {
       if (timerBadge) timerBadge.textContent = "EFFORT";
       if (exerciseName) exerciseName.textContent = info.currentExercise.name;
       if (exerciseCue) exerciseCue.textContent = info.currentExercise.cue;
       if (illustrationBox) illustrationBox.innerHTML = info.currentExercise.illustrationHtml;
-      if (nextBox) nextBox.innerHTML = `<span>À suivre :</span> <strong>${info.nextExercise.name}</strong>`;
+      if (nextBox) nextBox.innerHTML = `<span>À suivre :</span> <strong>${info.nextExercise ? info.nextExercise.name : '—'}</strong>`;
+      updatePip(info.nextExercise);
       syncWorkoutMedia(state, illustrationBox);
     } else if (state === WORKOUT_STATES.REST) {
       if (timerBadge) timerBadge.textContent = "RÉCUPÉRATION";
@@ -273,6 +288,7 @@ function initWorkoutUI() {
       if (exerciseCue) exerciseCue.textContent = "Inspirez profondément, relâchez les épaules";
       if (illustrationBox) illustrationBox.innerHTML = info.nextExercise.illustrationHtml;
       if (nextBox) nextBox.innerHTML = `<span>Prochain :</span> <strong>${info.nextExercise.name}</strong>`;
+      updatePip(null); // pendant le repos, la vidéo du prochain est déjà l'écran principal
       syncWorkoutMedia(state, illustrationBox);
     } else if (state === WORKOUT_STATES.PAUSED) {
       if (timerBadge) timerBadge.textContent = "EN PAUSE";
@@ -281,7 +297,7 @@ function initWorkoutUI() {
 
     if (btnPause) {
       btnPause.classList.toggle('paused', state === WORKOUT_STATES.PAUSED);
-      btnPause.innerHTML = state === WORKOUT_STATES.PAUSED 
+      btnPause.innerHTML = state === WORKOUT_STATES.PAUSED
         ? `<svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`
         : `<svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
     }
@@ -343,11 +359,16 @@ function prevWorkoutExercise() {
 }
 
 function confirmQuitWorkout() {
-  if (confirm("Voulez-vous vraiment interrompre la séance en cours ?")) {
-    window.workoutEngine.quitWorkout();
-    const overlay = document.getElementById('workout-overlay');
-    if (overlay) overlay.classList.remove('active');
-  }
+  showConfirmModal(
+    'Interrompre la séance ?',
+    'Votre progression de cette séance ne sera pas enregistrée.',
+    '🚪',
+    () => {
+      window.workoutEngine.quitWorkout();
+      const overlay = document.getElementById('workout-overlay');
+      if (overlay) overlay.classList.remove('active');
+    }
+  );
 }
 
 function closeCelebration() {
@@ -398,10 +419,10 @@ function saveSettings() {
 
   const newPrefs = {
     targetTime: timeInput ? timeInput.value : "17:00",
-    rounds: roundsInput ? parseInt(roundsInput.value) : 3,
+    rounds: roundsInput ? Math.min(4, Math.max(2, parseInt(roundsInput.value) || 3)) : 3,
     plankDuration: plankInput ? parseInt(plankInput.value) : 45,
-    workDuration: workInput ? parseInt(workInput.value) : 40,
-    restDuration: restInput ? parseInt(restInput.value) : 20,
+    workDuration: workInput ? Math.min(90, Math.max(20, parseInt(workInput.value) || 40)) : 40,
+    restDuration: restInput ? Math.min(60, Math.max(10, parseInt(restInput.value) || 20)) : 20,
     soundEnabled: soundSwitch ? soundSwitch.checked : true,
     voiceEnabled: voiceSwitch ? voiceSwitch.checked : true,
     reminderActive: reminderSwitch ? reminderSwitch.checked : true,
@@ -450,7 +471,7 @@ function importDataBackup(event) {
     const success = window.appStorage.importJSON(e.target.result);
     if (success) {
       showToast("✅ Données restaurées avec succès !");
-      location.reload();
+      reInitApp();
     } else {
       showToast("❌ Fichier de sauvegarde invalide.", true);
     }
@@ -459,11 +480,83 @@ function importDataBackup(event) {
 }
 
 function confirmResetData() {
-  if (confirm("⚠️ Attention : Voulez-vous vraiment effacer tout votre historique et vos statistiques ? Cette action est irréversible.")) {
-    window.appStorage.clearAllData();
-    showToast("Données réinitialisées.");
-    location.reload();
-  }
+  showConfirmModal(
+    'Effacer toutes les données ?',
+    'Tout l\'historique, les statistiques et les badges seront supprimés définitivement.',
+    '🗑️',
+    () => {
+      window.appStorage.clearAllData();
+      showToast("Données réinitialisées.");
+      reInitApp();
+    }
+  );
+}
+
+// --------------------------------------------------------------------------
+// RE-INITIALISATION SANS RECHARGEMENT DE PAGE
+// --------------------------------------------------------------------------
+function reInitApp() {
+  // Recharger les préférences depuis le stockage
+  window.appStorage.prefs = window.appStorage.loadPreferences();
+  window.appStorage.history = window.appStorage.loadHistory();
+  window.appStorage.badges = window.appStorage.loadBadges();
+
+  // Réappliquer le thème
+  const savedTheme = window.appStorage.prefs.theme || 'dark';
+  const resolvedTheme = savedTheme === 'system'
+    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    : savedTheme;
+  document.documentElement.setAttribute('data-theme', resolvedTheme);
+
+  // Reconstruire l'interface
+  loadSettingsForm();
+  renderHomeExercisesList();
+  startLiveClock();
+  window.dashboardManager.renderDashboard();
+  window.motivationManager.renderBadgesView();
+  switchTab('home');
+}
+
+// --------------------------------------------------------------------------
+// MODALE DE CONFIRMATION PERSONNALISÉE
+// --------------------------------------------------------------------------
+/**
+ * Affiche une modale de confirmation stylisée (sans confirm() natif).
+ * @param {string} title   - Titre de la modale
+ * @param {string} message - Message descriptif
+ * @param {string} icon    - Emoji icône (ex: '⚠️', '🗑️', '🚪')
+ * @param {Function} onConfirm - Callback exécuté si l'utilisateur confirme
+ */
+function showConfirmModal(title, message, icon, onConfirm) {
+  const modal = document.getElementById('confirm-modal');
+  const titleEl = document.getElementById('confirm-modal-title');
+  const messageEl = document.getElementById('confirm-modal-message');
+  const iconEl = document.getElementById('confirm-modal-icon');
+  const confirmBtn = document.getElementById('confirm-modal-confirm');
+
+  if (!modal) return;
+
+  if (titleEl) titleEl.textContent = title;
+  if (messageEl) messageEl.textContent = message;
+  if (iconEl) iconEl.textContent = icon || '⚠️';
+
+  // Remplacer le listener du bouton Confirmer
+  const newConfirmBtn = confirmBtn.cloneNode(true);
+  confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+  newConfirmBtn.addEventListener('click', () => {
+    dismissConfirmModal();
+    onConfirm();
+  });
+
+  modal.style.display = 'flex';
+  // Empêcher le scroll du fond
+  document.body.style.overflow = 'hidden';
+}
+
+function dismissConfirmModal() {
+  const modal = document.getElementById('confirm-modal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
 }
 
 // --------------------------------------------------------------------------
@@ -529,6 +622,242 @@ function syncWorkoutMedia(state, container) {
       });
     }
   }
+}
+
+// --------------------------------------------------------------------------
+// MINIATURE PIP — PROCHAIN EXERCICE
+// --------------------------------------------------------------------------
+/**
+ * Affiche ou masque la petite fenêtre PIP du prochain exercice.
+ * Doit être appelé APRÈS illustrationBox.innerHTML car innerHTML efface le PIP.
+ * @param {Object|null} nextExercise - Objet exercice ou null pour masquer
+ */
+function updatePip(nextExercise) {
+  // Le PIP est injecté dans live-illustration-box — re-chercher après chaque innerHTML
+  const box = document.getElementById('live-illustration-box');
+  if (!box) return;
+
+  let pip = document.getElementById('live-pip-next');
+
+  // Si innerHTML a effacé le PIP, le recréer
+  if (!pip) {
+    pip = document.createElement('div');
+    pip.id = 'live-pip-next';
+    pip.className = 'live-pip-next';
+    pip.setAttribute('aria-label', 'Prochain exercice');
+    pip.innerHTML = `<img id="live-pip-img" class="live-pip-img" src="" alt=""><span class="live-pip-label">Suivant</span>`;
+    box.appendChild(pip);
+  }
+
+  if (!nextExercise) {
+    pip.style.display = 'none';
+    return;
+  }
+
+  const img = pip.querySelector('#live-pip-img');
+  if (img) {
+    img.src = nextExercise.image;
+    img.alt = nextExercise.name;
+  }
+
+  // Relancer l'animation slide-in à chaque changement d'exercice
+  pip.style.animation = 'none';
+  pip.offsetHeight; // force reflow
+  pip.style.animation = '';
+  pip.style.display = 'block';
+}
+
+// --------------------------------------------------------------------------
+// MODE DOUBLE AFFICHAGE TV / GRAND ÉCRAN (PAYSAGE / CHROMECAST)
+// --------------------------------------------------------------------------
+/**
+ * Ouvre une nouvelle fenêtre / onglet optimisé pour l'affichage TV en paysage.
+ */
+function openTvMode() {
+  const tvUrl = window.location.origin + window.location.pathname + '?tv=1';
+  window.open(tvUrl, 'fb17_tv_display', 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no');
+  if (typeof showToast === 'function') {
+    showToast("🖥️ Mode TV ouvert ! Vous pouvez caster cette vue sur votre téléviseur.");
+  }
+}
+
+/**
+ * Bascule le mode plein écran pour l'affichage TV.
+ */
+function toggleTvFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen().catch(() => {});
+  }
+}
+
+/**
+ * Initialise l'interface dédiée TV / Grand Écran (Mode Paysage).
+ */
+function initTvMode() {
+  document.body.classList.add('tv-mode-active');
+  const appContainer = document.querySelector('.app-container');
+  if (appContainer) appContainer.style.display = 'none';
+  const tvOverlay = document.getElementById('tv-overlay');
+  if (tvOverlay) tvOverlay.style.display = 'flex';
+
+  const roundPill = document.getElementById('tv-round-pill');
+  const stepPill = document.getElementById('tv-step-pill');
+  const statePill = document.getElementById('tv-header-state-pill');
+  const streakTag = document.getElementById('tv-streak-tag');
+  const phaseBadge = document.getElementById('tv-phase-badge');
+  const timerDigits = document.getElementById('tv-timer-digits');
+  const timerBarFill = document.getElementById('tv-timer-bar-fill');
+  const timerTotalInfo = document.getElementById('tv-timer-total-info');
+  const exNumber = document.getElementById('tv-ex-number');
+  const exTitle = document.getElementById('tv-ex-title');
+  const exTarget = document.getElementById('tv-ex-target');
+  const tvVideo = document.getElementById('tv-video');
+  const tvImg = document.getElementById('tv-img-fallback');
+  const tvCanvasWrap = document.getElementById('tv-canvas-wrapper');
+  const tvCanvas = document.getElementById('tv-canvas');
+  const cueText = document.getElementById('tv-cue-text');
+  const nextThumb = document.getElementById('tv-next-thumb');
+  const nextName = document.getElementById('tv-next-name');
+  const nextSub = document.getElementById('tv-next-subtitle');
+  const breathText = document.getElementById('tv-breath-text');
+  const overallProgress = document.getElementById('tv-overall-progress-fill');
+  const elapsedLabel = document.getElementById('tv-elapsed-label');
+  const statusMsg = document.getElementById('tv-status-msg');
+
+  // Streak initial
+  const stats = window.appStorage ? window.appStorage.getStats() : { currentStreak: 1 };
+  if (streakTag) streakTag.textContent = `🔥 Série : ${stats.currentStreak || 1} jour${stats.currentStreak > 1 ? 's' : ''}`;
+
+  let lastVideoSrc = null;
+
+  function renderTv(data) {
+    if (!data) return;
+
+    // Mise à jour du thème d'état
+    if (tvOverlay) {
+      tvOverlay.classList.remove('state-work', 'state-rest', 'state-prep', 'state-paused', 'state-completed');
+      if (data.state === 'WORK') tvOverlay.classList.add('state-work');
+      else if (data.state === 'REST') tvOverlay.classList.add('state-rest');
+      else if (data.state === 'PREPARE') tvOverlay.classList.add('state-prep');
+      else if (data.state === 'PAUSED') tvOverlay.classList.add('state-paused');
+      else if (data.state === 'COMPLETED') tvOverlay.classList.add('state-completed');
+    }
+
+    // Pills header
+    if (roundPill) roundPill.textContent = data.roundLabel || `SÉRIE ${data.currentRound || 1} / ${data.totalRounds || 2}`;
+    if (stepPill) stepPill.textContent = data.stepLabel || `${data.exerciseIndex || 1} / ${data.totalExercises || 7}`;
+
+    const stateLabels = {
+      'PREPARE': 'PRÉPARATION',
+      'WORK': 'EFFORT ACTIF',
+      'REST': 'RÉCUPÉRATION',
+      'PAUSED': 'EN PAUSE',
+      'COMPLETED': 'TERMINÉ',
+      'IDLE': 'EN ATTENTE'
+    };
+    if (statePill) statePill.textContent = stateLabels[data.state] || data.state;
+    if (phaseBadge) phaseBadge.textContent = stateLabels[data.state] || data.state;
+
+    // Chronomètre
+    if (timerDigits) timerDigits.textContent = data.timeRemaining != null ? data.timeRemaining : '--';
+    if (timerBarFill && data.progressFraction != null) {
+      timerBarFill.style.width = `${Math.round(data.progressFraction * 100)}%`;
+    }
+    if (timerTotalInfo && data.totalPhaseDuration) {
+      timerTotalInfo.textContent = `Phase : ${data.totalPhaseDuration}s`;
+    }
+
+    // Exercice actif
+    const ex = data.currentExercise;
+    if (ex) {
+      if (exNumber) exNumber.textContent = ex.number || '01';
+      if (exTitle) exTitle.textContent = ex.name || '';
+      if (exTarget) exTarget.textContent = ex.targetPrimary || ex.targetMuscles || '';
+      if (cueText) cueText.textContent = ex.cue || 'Respirez régulièrement, mouvement fluide.';
+      if (breathText) breathText.textContent = ex.breathing || 'Respiration continue et contrôlée.';
+
+      // Vidéo / Image / Canvas fallback
+      if (ex.video && ex.video !== lastVideoSrc) {
+        lastVideoSrc = ex.video;
+        if (tvVideo) {
+          tvVideo.style.display = 'block';
+          if (tvImg) tvImg.style.display = 'none';
+          if (tvCanvasWrap) tvCanvasWrap.style.display = 'none';
+          tvVideo.src = ex.video;
+          tvVideo.play().catch(() => {
+            if (tvVideo) tvVideo.style.display = 'none';
+            if (tvCanvasWrap && tvCanvas && window.motionPlayer) {
+              tvCanvasWrap.style.display = 'block';
+              window.motionPlayer.init(tvCanvas, ex.id || 1);
+            } else if (tvImg) {
+              tvImg.src = ex.image;
+              tvImg.style.display = 'block';
+            }
+          });
+        }
+      }
+
+      if (data.state === 'PAUSED' && tvVideo && !tvVideo.paused) {
+        tvVideo.pause();
+      } else if (data.state !== 'PAUSED' && tvVideo && tvVideo.paused && tvVideo.src) {
+        tvVideo.play().catch(() => {});
+      }
+    }
+
+    // Prochain exercice
+    const next = data.nextExercise;
+    if (next) {
+      if (nextThumb) nextThumb.src = next.image || '';
+      if (nextName) nextName.textContent = next.name || '';
+      if (nextSub) nextSub.textContent = next.targetPrimary || next.subtitle || '';
+    } else {
+      if (nextName) nextName.textContent = 'Dernier exercice !';
+      if (nextSub) nextSub.textContent = 'Fin de séance proche';
+      if (nextThumb) nextThumb.src = 'images/ex_8_stretching.jpg';
+    }
+
+    // Progression globale & Temps écoulé
+    if (overallProgress && data.overallProgressFraction != null) {
+      overallProgress.style.width = `${Math.round(data.overallProgressFraction * 100)}%`;
+    }
+    if (elapsedLabel && data.elapsedSeconds != null) {
+      const mins = Math.floor(data.elapsedSeconds / 60);
+      const secs = data.elapsedSeconds % 60;
+      elapsedLabel.textContent = `Temps total : ${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    // Message d'état de synchronisation
+    const ageMs = Date.now() - (data.updatedAt || 0);
+    if (statusMsg) {
+      if (data.state === 'COMPLETED') {
+        statusMsg.textContent = '🏆 Félicitations ! Séance terminée avec succès.';
+      } else if (ageMs > 12000) {
+        statusMsg.textContent = '⚠️ En attente du signal du téléphone...';
+      } else {
+        statusMsg.textContent = 'Synchronisé en direct avec le téléphone 📱';
+      }
+    }
+  }
+
+  function checkCastState() {
+    try {
+      const raw = localStorage.getItem('fb17_cast_state');
+      if (raw) {
+        const data = JSON.parse(raw);
+        renderTv(data);
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  checkCastState();
+  setInterval(checkCastState, 150);
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'fb17_cast_state') checkCastState();
+  });
 }
 
 
