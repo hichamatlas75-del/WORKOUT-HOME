@@ -1,27 +1,41 @@
 {
   "name": "FULL BODY 17 — Routine Quotidienne",
   "short_name": "FullBody 17",
+  "id": "./",
   "description": "Routine quotidienne Full Body de 15 à 20 minutes à 17h pour adulte actif",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "orientation": "portrait",
   "background_color": "#090d16",
   "theme_color": "#090d16",
-  "lang": "fr-FR",
+  "lang": "fr",
   "categories": ["fitness", "health", "lifestyle"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "icons/icon.svg",

@@ -28,14 +28,20 @@ const ASSETS_TO_CACHE = [
   './images/ex_8_stretching.jpg'
 ];
 
-// Installation du Service Worker et mise en cache des assets essentiels
+// Installation du Service Worker et mise en cache résiliente des ressources
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('[Service Worker] Mise en cache des ressources');
-      return cache.addAll(ASSETS_TO_CACHE).catch((err) => {
-        console.warn('[Service Worker] Échec partiel de mise en cache:', err);
-      });
+      return Promise.allSettled(
+        ASSETS_TO_CACHE.map((url) =>
+          fetch(url)
+            .then((res) => {
+              if (res.ok) return cache.put(url, res);
+            })
+            .catch(() => {})
+        )
+      );
     }).then(() => self.skipWaiting())
   );
 });

@@ -104,9 +104,19 @@ button, .nav-item, .ctrl-btn, .switch, .icon-btn {
   user-select: none;
 }
 
-html, body {
+html {
   width: 100%;
   min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+body {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
   background-color: var(--bg-app);
   color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -114,20 +124,19 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
   overflow-x: hidden;
-  overscroll-behavior-y: none;
-}
-
-body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   display: flex;
   justify-content: center;
   align-items: stretch;
-  background-attachment: fixed;
 }
 
 /* Conteneur principal de l'application (Contraint en desktop / pleine largeur mobile) */
 .app-container {
   width: 100%;
   max-width: 480px;
+  min-height: 100vh;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -306,10 +315,10 @@ body {
    ========================================================================== */
 
 .view-container {
-  flex: 1;
-  padding: 16px 18px 100px 18px;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  flex: 1 0 auto;
+  width: 100%;
+  padding: 16px 18px 110px 18px;
+  touch-action: pan-y;
 }
 
 .view {
