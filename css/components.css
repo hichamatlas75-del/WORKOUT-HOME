@@ -1327,119 +1327,161 @@ input:checked + .slider:before {
 }
 
 /* --------------------------------------------------------------------------
-   ADAPTATION AUTOMATIQUE ET MANUELLE EN MODE PAYSAGE (DOUBLE AFFICHAGE)
+   ADAPTATION PARFAITE EN MODE PAYSAGE (DOUBLE AFFICHAGE SANS BLOCAGE)
    -------------------------------------------------------------------------- */
-@media (orientation: landscape) and (min-width: 480px), .workout-overlay.mode-landscape {
-  .workout-overlay {
+@media (orientation: landscape), .workout-overlay.mode-landscape {
+  .workout-overlay.active {
     display: grid !important;
-    grid-template-columns: minmax(260px, 320px) 1fr !important;
-    grid-template-rows: auto 1fr auto !important;
+    grid-template-columns: minmax(130px, 190px) 1fr !important;
+    grid-template-rows: 34px 1fr auto !important;
     grid-template-areas:
       "topbar topbar"
-      "timer media"
-      "ctrls media" !important;
-    padding: 8px 18px 12px !important;
-    gap: 6px 20px !important;
-    align-items: center !important;
-    justify-content: stretch !important;
+      "timer  media"
+      "ctrls  media" !important;
+    padding: calc(var(--safe-top, 4px) + 2px) 12px calc(var(--safe-bottom, 4px) + 4px) 12px !important;
+    gap: 4px 12px !important;
     height: 100vh !important;
     height: 100dvh !important;
     max-height: 100vh !important;
+    max-height: 100dvh !important;
     overflow: hidden !important;
     box-sizing: border-box !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
   }
 
   .workout-top-bar {
     grid-area: topbar !important;
     margin-bottom: 0 !important;
-    height: 38px !important;
+    height: 34px !important;
     width: 100% !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
   }
 
   .timer-container {
     grid-area: timer !important;
-    width: 160px !important;
-    height: 160px !important;
-    margin: 0 auto !important;
+    width: min(130px, calc(100dvh - 110px)) !important;
+    height: min(130px, calc(100dvh - 110px)) !important;
+    margin: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 
   .timer-digits {
-    font-size: 3.1rem !important;
+    font-size: clamp(1.9rem, 7.5vh, 2.7rem) !important;
   }
 
   .timer-status-badge {
-    font-size: 0.72rem !important;
-    margin-bottom: 2px !important;
+    font-size: 0.65rem !important;
+    margin-bottom: 1px !important;
   }
 
   .timer-subtext {
-    font-size: 0.68rem !important;
+    font-size: 0.62rem !important;
   }
 
   .workout-controls {
     grid-area: ctrls !important;
     margin-top: 0 !important;
-    gap: 14px !important;
+    margin-bottom: 2px !important;
+    gap: 8px !important;
     justify-content: center !important;
+    display: flex !important;
+    align-items: center !important;
   }
 
   .ctrl-btn {
-    width: 46px !important;
-    height: 46px !important;
+    width: 38px !important;
+    height: 38px !important;
+    flex-shrink: 0 !important;
   }
 
   .ctrl-btn-primary {
-    width: 56px !important;
-    height: 56px !important;
+    width: 48px !important;
+    height: 48px !important;
+    flex-shrink: 0 !important;
   }
 
   .live-exercise-card {
     grid-area: media !important;
     height: 100% !important;
-    max-height: calc(100vh - 60px) !important;
-    max-height: calc(100dvh - 60px) !important;
+    max-height: calc(100dvh - 42px) !important;
     margin-bottom: 0 !important;
-    padding: 10px 14px !important;
+    padding: 6px 10px !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-between !important;
     min-height: 0 !important;
+    min-width: 0 !important;
     box-sizing: border-box !important;
+    overflow: hidden !important;
   }
 
   .live-exercise-name {
-    font-size: 1.25rem !important;
-    margin-bottom: 2px !important;
+    font-size: clamp(0.9rem, 3vh, 1.15rem) !important;
+    margin-bottom: 1px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 
   .live-exercise-cue {
-    font-size: 0.78rem !important;
-    padding: 3px 12px !important;
-    margin-bottom: 6px !important;
+    font-size: clamp(0.66rem, 1.9vh, 0.74rem) !important;
+    padding: 2px 8px !important;
+    margin-bottom: 3px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 
   .live-illustration-box {
-    flex: 1 !important;
+    flex: 1 1 0% !important;
     width: 100% !important;
     max-width: 100% !important;
     height: 100% !important;
-    min-height: 140px !important;
+    min-height: 0 !important;
     margin: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+  }
+
+  .live-illustration-box video,
+  .live-illustration-box img,
+  .live-illustration-box canvas {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
+    display: block !important;
   }
 
   .live-pip-next {
-    width: 82px !important;
-    height: 82px !important;
-    bottom: 12px !important;
-    right: 12px !important;
+    width: 65px !important;
+    height: 65px !important;
+    bottom: 6px !important;
+    right: 6px !important;
+  }
+
+  .live-pip-img {
+    height: calc(65px - 16px) !important;
   }
 
   .live-next-box {
-    margin-top: 6px !important;
-    font-size: 0.78rem !important;
-    padding: 4px 14px !important;
+    margin-top: 3px !important;
+    font-size: 0.7rem !important;
+    padding: 2px 8px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 }
+
 
 
 /* ==========================================================================

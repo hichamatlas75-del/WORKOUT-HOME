@@ -688,16 +688,23 @@ function toggleWorkoutOrientation() {
 
   const isLandscape = overlay.classList.toggle('mode-landscape');
 
-  // Si supporté, demande au navigateur de verrouiller l'orientation de l'écran
-  if (screen.orientation && screen.orientation.lock) {
-    if (isLandscape) {
+  if (isLandscape) {
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+    if (screen.orientation && screen.orientation.lock) {
       screen.orientation.lock('landscape').catch(() => {});
-    } else {
+    }
+    showToast("🖥️ Affichage Paysage activé");
+  } else {
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    }
+    if (screen.orientation && screen.orientation.unlock) {
       screen.orientation.unlock().catch(() => {});
     }
+    showToast("📱 Affichage Portrait activé");
   }
-
-  showToast(isLandscape ? "🖥️ Affichage Paysage activé" : "📱 Affichage Portrait activé");
 }
 
 // --------------------------------------------------------------------------
