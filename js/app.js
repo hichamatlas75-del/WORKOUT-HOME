@@ -37,13 +37,8 @@ document.addEventListener('DOMContentLoaded', () => {
   window.dashboardManager.renderDashboard();
   window.motivationManager.renderBadgesView();
 
-  // 9. Vérifier les paramètres URL (ex: ?tv=1 ou ?action=start)
+  // 9. Vérifier les paramètres URL (ex: ?action=start ou ?tab=...)
   const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('tv') === '1' || urlParams.get('mode') === 'tv') {
-    initTvMode();
-    return;
-  }
-
   if (urlParams.get('action') === 'start') {
     startWorkoutSession();
   } else if (urlParams.get('tab')) {
@@ -682,196 +677,27 @@ function updatePip(nextExercise) {
 }
 
 // --------------------------------------------------------------------------
-// MODE DOUBLE AFFICHAGE TV / GRAND ÉCRAN (PAYSAGE / CHROMECAST)
+// DOUBLE AFFICHAGE PORTRAIT ET PAYSAGE (DOUBLE DISPLAY ORIENTATION)
 // --------------------------------------------------------------------------
 /**
- * Ouvre une nouvelle fenêtre / onglet optimisé pour l'affichage TV en paysage.
+ * Bascule manuellement entre affichage Portrait et Paysage sur l'écran d'entraînement.
  */
-function openTvMode() {
-  const tvUrl = window.location.origin + window.location.pathname + '?tv=1';
-  window.open(tvUrl, 'fb17_tv_display', 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no');
-  if (typeof showToast === 'function') {
-    showToast("🖥️ Mode TV ouvert ! Vous pouvez caster cette vue sur votre téléviseur.");
-  }
-}
+function toggleWorkoutOrientation() {
+  const overlay = document.getElementById('workout-overlay');
+  if (!overlay) return;
 
-/**
- * Bascule le mode plein écran pour l'affichage TV.
- */
-function toggleTvFullscreen() {
-  if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen().catch(() => {});
-  } else {
-    document.exitFullscreen().catch(() => {});
-  }
-}
+  const isLandscape = overlay.classList.toggle('mode-landscape');
 
-/**
- * Initialise l'interface dédiée TV / Grand Écran (Mode Paysage).
- */
-function initTvMode() {
-  document.body.classList.add('tv-mode-active');
-  const appContainer = document.querySelector('.app-container');
-  if (appContainer) appContainer.style.display = 'none';
-  const tvOverlay = document.getElementById('tv-overlay');
-  if (tvOverlay) tvOverlay.style.display = 'flex';
-
-  const roundPill = document.getElementById('tv-round-pill');
-  const stepPill = document.getElementById('tv-step-pill');
-  const statePill = document.getElementById('tv-header-state-pill');
-  const streakTag = document.getElementById('tv-streak-tag');
-  const phaseBadge = document.getElementById('tv-phase-badge');
-  const timerDigits = document.getElementById('tv-timer-digits');
-  const timerBarFill = document.getElementById('tv-timer-bar-fill');
-  const timerTotalInfo = document.getElementById('tv-timer-total-info');
-  const exNumber = document.getElementById('tv-ex-number');
-  const exTitle = document.getElementById('tv-ex-title');
-  const exTarget = document.getElementById('tv-ex-target');
-  const tvVideo = document.getElementById('tv-video');
-  const tvImg = document.getElementById('tv-img-fallback');
-  const tvCanvasWrap = document.getElementById('tv-canvas-wrapper');
-  const tvCanvas = document.getElementById('tv-canvas');
-  const cueText = document.getElementById('tv-cue-text');
-  const nextThumb = document.getElementById('tv-next-thumb');
-  const nextName = document.getElementById('tv-next-name');
-  const nextSub = document.getElementById('tv-next-subtitle');
-  const breathText = document.getElementById('tv-breath-text');
-  const overallProgress = document.getElementById('tv-overall-progress-fill');
-  const elapsedLabel = document.getElementById('tv-elapsed-label');
-  const statusMsg = document.getElementById('tv-status-msg');
-
-  // Streak initial
-  const stats = window.appStorage ? window.appStorage.getStats() : { currentStreak: 1 };
-  if (streakTag) streakTag.textContent = `🔥 Série : ${stats.currentStreak || 1} jour${stats.currentStreak > 1 ? 's' : ''}`;
-
-  let lastVideoSrc = null;
-
-  function renderTv(data) {
-    if (!data) return;
-
-    // Mise à jour du thème d'état
-    if (tvOverlay) {
-      tvOverlay.classList.remove('state-work', 'state-rest', 'state-prep', 'state-paused', 'state-completed');
-      if (data.state === 'WORK') tvOverlay.classList.add('state-work');
-      else if (data.state === 'REST') tvOverlay.classList.add('state-rest');
-      else if (data.state === 'PREPARE') tvOverlay.classList.add('state-prep');
-      else if (data.state === 'PAUSED') tvOverlay.classList.add('state-paused');
-      else if (data.state === 'COMPLETED') tvOverlay.classList.add('state-completed');
-    }
-
-    // Pills header
-    if (roundPill) roundPill.textContent = data.roundLabel || `SÉRIE ${data.currentRound || 1} / ${data.totalRounds || 2}`;
-    if (stepPill) stepPill.textContent = data.stepLabel || `${data.exerciseIndex || 1} / ${data.totalExercises || 7}`;
-
-    const stateLabels = {
-      'PREPARE': 'PRÉPARATION',
-      'WORK': 'EFFORT ACTIF',
-      'REST': 'RÉCUPÉRATION',
-      'PAUSED': 'EN PAUSE',
-      'COMPLETED': 'TERMINÉ',
-      'IDLE': 'EN ATTENTE'
-    };
-    if (statePill) statePill.textContent = stateLabels[data.state] || data.state;
-    if (phaseBadge) phaseBadge.textContent = stateLabels[data.state] || data.state;
-
-    // Chronomètre
-    if (timerDigits) timerDigits.textContent = data.timeRemaining != null ? data.timeRemaining : '--';
-    if (timerBarFill && data.progressFraction != null) {
-      timerBarFill.style.width = `${Math.round(data.progressFraction * 100)}%`;
-    }
-    if (timerTotalInfo && data.totalPhaseDuration) {
-      timerTotalInfo.textContent = `Phase : ${data.totalPhaseDuration}s`;
-    }
-
-    // Exercice actif
-    const ex = data.currentExercise;
-    if (ex) {
-      if (exNumber) exNumber.textContent = ex.number || '01';
-      if (exTitle) exTitle.textContent = ex.name || '';
-      if (exTarget) exTarget.textContent = ex.targetPrimary || ex.targetMuscles || '';
-      if (cueText) cueText.textContent = ex.cue || 'Respirez régulièrement, mouvement fluide.';
-      if (breathText) breathText.textContent = ex.breathing || 'Respiration continue et contrôlée.';
-
-      // Vidéo / Image / Canvas fallback
-      if (ex.video && ex.video !== lastVideoSrc) {
-        lastVideoSrc = ex.video;
-        if (tvVideo) {
-          tvVideo.style.display = 'block';
-          if (tvImg) tvImg.style.display = 'none';
-          if (tvCanvasWrap) tvCanvasWrap.style.display = 'none';
-          tvVideo.src = ex.video;
-          tvVideo.play().catch(() => {
-            if (tvVideo) tvVideo.style.display = 'none';
-            if (tvCanvasWrap && tvCanvas && window.motionPlayer) {
-              tvCanvasWrap.style.display = 'block';
-              window.motionPlayer.init(tvCanvas, ex.id || 1);
-            } else if (tvImg) {
-              tvImg.src = ex.image;
-              tvImg.style.display = 'block';
-            }
-          });
-        }
-      }
-
-      if (data.state === 'PAUSED' && tvVideo && !tvVideo.paused) {
-        tvVideo.pause();
-      } else if (data.state !== 'PAUSED' && tvVideo && tvVideo.paused && tvVideo.src) {
-        tvVideo.play().catch(() => {});
-      }
-    }
-
-    // Prochain exercice
-    const next = data.nextExercise;
-    if (next) {
-      if (nextThumb) nextThumb.src = next.image || '';
-      if (nextName) nextName.textContent = next.name || '';
-      if (nextSub) nextSub.textContent = next.targetPrimary || next.subtitle || '';
+  // Si supporté, demande au navigateur de verrouiller l'orientation de l'écran
+  if (screen.orientation && screen.orientation.lock) {
+    if (isLandscape) {
+      screen.orientation.lock('landscape').catch(() => {});
     } else {
-      if (nextName) nextName.textContent = 'Dernier exercice !';
-      if (nextSub) nextSub.textContent = 'Fin de séance proche';
-      if (nextThumb) nextThumb.src = 'images/ex_8_stretching.jpg';
-    }
-
-    // Progression globale & Temps écoulé
-    if (overallProgress && data.overallProgressFraction != null) {
-      overallProgress.style.width = `${Math.round(data.overallProgressFraction * 100)}%`;
-    }
-    if (elapsedLabel && data.elapsedSeconds != null) {
-      const mins = Math.floor(data.elapsedSeconds / 60);
-      const secs = data.elapsedSeconds % 60;
-      elapsedLabel.textContent = `Temps total : ${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-    }
-
-    // Message d'état de synchronisation
-    const ageMs = Date.now() - (data.updatedAt || 0);
-    if (statusMsg) {
-      if (data.state === 'COMPLETED') {
-        statusMsg.textContent = '🏆 Félicitations ! Séance terminée avec succès.';
-      } else if (ageMs > 12000) {
-        statusMsg.textContent = '⚠️ En attente du signal du téléphone...';
-      } else {
-        statusMsg.textContent = 'Synchronisé en direct avec le téléphone 📱';
-      }
+      screen.orientation.unlock().catch(() => {});
     }
   }
 
-  function checkCastState() {
-    try {
-      const raw = localStorage.getItem('fb17_cast_state');
-      if (raw) {
-        const data = JSON.parse(raw);
-        renderTv(data);
-      }
-    } catch (e) {
-      // ignore
-    }
-  }
-
-  checkCastState();
-  setInterval(checkCastState, 150);
-  window.addEventListener('storage', (e) => {
-    if (e.key === 'fb17_cast_state') checkCastState();
-  });
+  showToast(isLandscape ? "🖥️ Affichage Paysage activé" : "📱 Affichage Portrait activé");
 }
 
 // --------------------------------------------------------------------------

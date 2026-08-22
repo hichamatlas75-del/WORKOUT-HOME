@@ -1309,492 +1309,138 @@ input:checked + .slider:before {
 }
 
 /* ==========================================================================
-   13. MODE DOUBLE AFFICHAGE TV / GRAND ÉCRAN (PAYSAGE / CHROMECAST)
+   13. DOUBLE AFFICHAGE INTÉGRÉ PORTRAIT ET PAYSAGE
    ========================================================================== */
 
-body.tv-mode-active {
-  background: #030712 !important;
-  overflow: hidden !important;
+/* Bouton de bascule d'orientation */
+#btn-orientation-toggle {
+  transition: transform var(--transition-fast);
 }
 
-.tv-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 99999;
-  background: radial-gradient(circle at 50% 20%, #0d1527 0%, #030712 100%);
-  color: var(--text-primary);
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  width: 100vw;
-  box-sizing: border-box;
-  overflow: hidden;
-  user-select: none;
+#btn-orientation-toggle:active {
+  transform: rotate(90deg) scale(0.95);
 }
 
-/* Header TV */
-.tv-header {
-  height: 68px;
-  padding: 0 28px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border-subtle);
-  flex-shrink: 0;
-}
-
-.tv-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.tv-logo-badge {
-  width: 38px;
-  height: 38px;
-  background: linear-gradient(135deg, var(--accent-work), #059669);
-  color: #030712;
-  font-weight: 900;
-  font-size: 1.15rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-xs);
-  box-shadow: 0 0 16px var(--accent-work-glow);
-}
-
-.tv-brand-text {
-  display: flex;
-  flex-direction: column;
-}
-
-.tv-title {
-  font-size: 1.1rem;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-}
-
-.tv-sub {
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--text-muted);
-}
-
-.tv-header-center {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.tv-pill {
-  font-size: 0.85rem;
-  font-weight: 800;
-  padding: 6px 16px;
-  border-radius: var(--radius-full);
-  background: var(--bg-card);
-  border: 1px solid var(--border-medium);
-  letter-spacing: 0.04em;
-}
-
-.tv-pill-round {
-  color: var(--text-primary);
-}
-
-.tv-pill-step {
+.workout-overlay.mode-landscape #btn-orientation-toggle {
   color: var(--accent-work);
-  border-color: rgba(16, 185, 129, 0.3);
-  background: var(--accent-work-bg);
+  border-color: var(--accent-work);
 }
 
-.tv-pill-state {
-  color: var(--accent-prep);
-  border-color: rgba(245, 158, 11, 0.3);
-  background: var(--accent-prep-bg);
+/* --------------------------------------------------------------------------
+   ADAPTATION AUTOMATIQUE ET MANUELLE EN MODE PAYSAGE (DOUBLE AFFICHAGE)
+   -------------------------------------------------------------------------- */
+@media (orientation: landscape) and (min-width: 480px), .workout-overlay.mode-landscape {
+  .workout-overlay {
+    display: grid !important;
+    grid-template-columns: minmax(260px, 320px) 1fr !important;
+    grid-template-rows: auto 1fr auto !important;
+    grid-template-areas:
+      "topbar topbar"
+      "timer media"
+      "ctrls media" !important;
+    padding: 8px 18px 12px !important;
+    gap: 6px 20px !important;
+    align-items: center !important;
+    justify-content: stretch !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  .workout-top-bar {
+    grid-area: topbar !important;
+    margin-bottom: 0 !important;
+    height: 38px !important;
+    width: 100% !important;
+  }
+
+  .timer-container {
+    grid-area: timer !important;
+    width: 160px !important;
+    height: 160px !important;
+    margin: 0 auto !important;
+  }
+
+  .timer-digits {
+    font-size: 3.1rem !important;
+  }
+
+  .timer-status-badge {
+    font-size: 0.72rem !important;
+    margin-bottom: 2px !important;
+  }
+
+  .timer-subtext {
+    font-size: 0.68rem !important;
+  }
+
+  .workout-controls {
+    grid-area: ctrls !important;
+    margin-top: 0 !important;
+    gap: 14px !important;
+    justify-content: center !important;
+  }
+
+  .ctrl-btn {
+    width: 46px !important;
+    height: 46px !important;
+  }
+
+  .ctrl-btn-primary {
+    width: 56px !important;
+    height: 56px !important;
+  }
+
+  .live-exercise-card {
+    grid-area: media !important;
+    height: 100% !important;
+    max-height: calc(100vh - 60px) !important;
+    max-height: calc(100dvh - 60px) !important;
+    margin-bottom: 0 !important;
+    padding: 10px 14px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .live-exercise-name {
+    font-size: 1.25rem !important;
+    margin-bottom: 2px !important;
+  }
+
+  .live-exercise-cue {
+    font-size: 0.78rem !important;
+    padding: 3px 12px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .live-illustration-box {
+    flex: 1 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    min-height: 140px !important;
+    margin: 0 !important;
+  }
+
+  .live-pip-next {
+    width: 82px !important;
+    height: 82px !important;
+    bottom: 12px !important;
+    right: 12px !important;
+  }
+
+  .live-next-box {
+    margin-top: 6px !important;
+    font-size: 0.78rem !important;
+    padding: 4px 14px !important;
+  }
 }
 
-.tv-header-right {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.tv-streak-tag {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--accent-gold);
-  background: rgba(251, 191, 36, 0.1);
-  border: 1px solid rgba(251, 191, 36, 0.25);
-  padding: 6px 14px;
-  border-radius: var(--radius-full);
-}
-
-.tv-fullscreen-btn {
-  background: var(--bg-surface-elevated);
-  border: 1px solid var(--border-medium);
-}
-
-/* Grille principale TV (3 Colonnes Paysage) */
-.tv-main-grid {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 290px 1fr 290px;
-  gap: 24px;
-  padding: 20px 28px;
-  min-height: 0;
-  box-sizing: border-box;
-}
-
-/* Colonne Gauche : Chronomètre */
-.tv-col-timer {
-  display: flex;
-  flex-direction: column;
-}
-
-.tv-timer-card {
-  background: rgba(17, 24, 39, 0.85);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  padding: 24px 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  box-sizing: border-box;
-  box-shadow: var(--shadow-md);
-  position: relative;
-  overflow: hidden;
-}
-
-.tv-phase-badge {
-  font-size: 1.1rem;
-  font-weight: 900;
-  letter-spacing: 0.15em;
-  padding: 8px 24px;
-  border-radius: var(--radius-full);
-  margin-bottom: 16px;
-  background: var(--accent-work-bg);
-  color: var(--accent-work);
-  border: 2px solid var(--accent-work);
-  box-shadow: 0 0 20px var(--accent-work-glow);
-  transition: var(--transition-normal);
-}
-
-.tv-digits {
-  font-size: 6.5rem;
-  font-weight: 900;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  color: #ffffff;
-  text-shadow: 0 4px 30px rgba(0, 0, 0, 0.8);
-  margin-bottom: 4px;
-}
-
-.tv-timer-unit {
-  font-size: 0.8rem;
-  font-weight: 800;
-  letter-spacing: 0.2em;
-  color: var(--text-muted);
-  margin-bottom: 24px;
-}
-
-.tv-timer-bar-wrapper {
-  width: 100%;
-  height: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-full);
-  overflow: hidden;
-  margin-bottom: 12px;
-}
-
-.tv-timer-bar-fill {
-  height: 100%;
-  width: 100%;
-  background: var(--accent-work);
-  border-radius: var(--radius-full);
-  box-shadow: 0 0 12px var(--accent-work);
-  transition: width 0.15s linear, background-color 0.3s ease;
-}
-
-.tv-timer-total-info {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--text-secondary);
-}
-
-/* Colonne Centre : Vidéo / Visuel Principal */
-.tv-col-media {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  gap: 12px;
-}
-
-.tv-media-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.tv-ex-number {
-  font-size: 1.5rem;
-  font-weight: 900;
-  color: var(--accent-work);
-  background: var(--accent-work-bg);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  padding: 4px 14px;
-  border-radius: var(--radius-xs);
-}
-
-.tv-ex-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.tv-ex-title {
-  font-size: 1.6rem;
-  font-weight: 900;
-  margin: 0;
-  letter-spacing: 0.02em;
-  color: #ffffff;
-}
-
-.tv-ex-target {
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--text-secondary);
-  margin: 2px 0 0;
-  text-transform: uppercase;
-}
-
-.tv-video-container {
-  flex: 1;
-  background: #000000;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-medium);
-  overflow: hidden;
-  position: relative;
-  box-shadow: var(--shadow-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 0;
-}
-
-.tv-video {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-}
-
-.tv-img-fallback {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-}
-
-.tv-canvas-wrapper {
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
-.tv-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.tv-cue-box {
-  background: rgba(17, 24, 39, 0.8);
-  border: 1px solid var(--border-subtle);
-  border-left: 4px solid var(--accent-work);
-  border-radius: var(--radius-xs);
-  padding: 10px 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-}
-
-.tv-cue-icon {
-  font-size: 1.2rem;
-}
-
-.tv-cue-text {
-  font-size: 0.92rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  line-height: 1.35;
-}
-
-/* Colonne Droite : Suivant & Respiration */
-.tv-col-next {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.tv-next-card {
-  background: rgba(17, 24, 39, 0.85);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  box-shadow: var(--shadow-md);
-}
-
-.tv-next-tag {
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  color: var(--accent-work);
-  margin-bottom: 10px;
-}
-
-.tv-next-thumb-wrapper {
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  border-radius: var(--radius-xs);
-  overflow: hidden;
-  background: #000;
-  margin-bottom: 10px;
-  border: 1px solid var(--border-subtle);
-}
-
-.tv-next-thumb {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.tv-next-name {
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: var(--text-primary);
-  margin-bottom: 4px;
-}
-
-.tv-next-subtitle {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-.tv-breathing-card {
-  background: rgba(17, 24, 39, 0.75);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 16px;
-  flex: 1;
-}
-
-.tv-breath-label {
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  color: var(--accent-rest);
-  margin-bottom: 8px;
-}
-
-.tv-breath-text {
-  font-size: 0.88rem;
-  color: var(--text-secondary);
-  line-height: 1.45;
-  font-weight: 500;
-}
-
-/* Pied de page TV */
-.tv-footer {
-  height: 48px;
-  padding: 0 28px;
-  background: rgba(15, 23, 42, 0.9);
-  border-top: 1px solid var(--border-subtle);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.tv-progress-track {
-  width: 100%;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-full);
-  overflow: hidden;
-  margin-bottom: 6px;
-}
-
-.tv-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent-work), var(--accent-rest));
-  border-radius: var(--radius-full);
-  box-shadow: 0 0 8px var(--accent-work);
-  transition: width 0.25s ease;
-}
-
-.tv-footer-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--text-muted);
-}
-
-/* Variations d'états TV (Couleurs dynamiques) */
-.tv-overlay.state-rest .tv-phase-badge {
-  background: var(--accent-rest-bg);
-  color: var(--accent-rest);
-  border-color: var(--accent-rest);
-  box-shadow: 0 0 20px var(--accent-rest-glow);
-}
-
-.tv-overlay.state-rest .tv-timer-bar-fill {
-  background: var(--accent-rest);
-  box-shadow: 0 0 12px var(--accent-rest);
-}
-
-.tv-overlay.state-rest .tv-cue-box {
-  border-left-color: var(--accent-rest);
-}
-
-.tv-overlay.state-prep .tv-phase-badge {
-  background: var(--accent-prep-bg);
-  color: var(--accent-prep);
-  border-color: var(--accent-prep);
-  box-shadow: 0 0 20px var(--accent-prep-glow);
-}
-
-.tv-overlay.state-prep .tv-timer-bar-fill {
-  background: var(--accent-prep);
-  box-shadow: 0 0 12px var(--accent-prep);
-}
-
-.tv-overlay.state-paused .tv-phase-badge {
-  background: rgba(239, 68, 68, 0.15);
-  color: var(--accent-danger);
-  border-color: var(--accent-danger);
-  box-shadow: 0 0 20px rgba(239, 68, 68, 0.35);
-}
-
-/* Responsiveness TV */
-@media (max-height: 550px) {
-  .tv-header { height: 50px; padding: 0 16px; }
-  .tv-main-grid { padding: 8px 16px; gap: 12px; }
-  .tv-digits { font-size: 4rem; }
-  .tv-footer { height: 36px; padding: 0 16px; }
-  .tv-ex-title { font-size: 1.2rem; }
-}
 
 /* ==========================================================================
 /* ==========================================================================

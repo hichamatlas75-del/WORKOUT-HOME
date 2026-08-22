@@ -77,8 +77,6 @@ class WorkoutEngine {
       if (newState === WORKOUT_STATES.PREPARE) overlay.classList.add('state-prep');
     }
 
-    this.broadcastCastState();
-
     if (this.onStateChange) {
       this.onStateChange(this.state, this.getCurrentInfo());
     }
@@ -252,7 +250,6 @@ class WorkoutEngine {
       // Recalculer l'heure de fin après la pause et relancer la boucle
       this.phaseEndTime = Date.now() + this.timeRemaining * 1000;
       this.startTimerLoop();
-      this.broadcastCastState();
       if (this.onStateChange) this.onStateChange(this.state, this.getCurrentInfo());
     } else if (this.state === WORKOUT_STATES.WORK || this.state === WORKOUT_STATES.REST || this.state === WORKOUT_STATES.PREPARE) {
       this.previousState = this.state;
@@ -262,7 +259,6 @@ class WorkoutEngine {
         clearInterval(this.timerInterval);
         this.timerInterval = null;
       }
-      this.broadcastCastState();
       if (this.onStateChange) this.onStateChange(this.state, this.getCurrentInfo());
     }
   }
@@ -272,7 +268,6 @@ class WorkoutEngine {
     this.state = WORKOUT_STATES.COMPLETED;
     if (this.timerInterval) clearInterval(this.timerInterval);
     this.releaseWakeLock();
-    this.broadcastCastState();
 
     const actualDurationSec = Math.round(this.elapsedSeconds);
 
@@ -302,59 +297,6 @@ class WorkoutEngine {
     if (this.timerInterval) clearInterval(this.timerInterval);
     this.releaseWakeLock();
     this.state = WORKOUT_STATES.IDLE;
-    this.broadcastCastState();
-  }
-
-  // Diffuser l'état en direct dans localStorage pour l'affichage TV / Grand Écran
-  broadcastCastState() {
-    try {
-      const info = this.getCurrentInfo();
-      // Calcul durée totale estimée de la séance
-      const mainCount = this.getMainCircuitCount();
-      const plankDur = parseInt(window.appStorage.prefs.plankDuration) || 45;
-      const roundDur = ((mainCount - 1) * (this.workDuration + this.restDuration)) + (plankDur + this.restDuration);
-      const estTotal = 5 + (this.totalRounds * roundDur) + 40;
-      const overallFraction = estTotal > 0 ? Math.min(1, Math.max(0, this.elapsedSeconds / estTotal)) : 0;
-
-      const castData = {
-        state: this.state,
-        currentRound: info.currentRound,
-        totalRounds: info.totalRounds,
-        isCoolDown: info.isCoolDown,
-        roundLabel: info.roundLabel,
-        stepLabel: info.stepLabel,
-        exerciseIndex: info.exerciseIndex,
-        totalExercises: info.totalExercises,
-        timeRemaining: Math.ceil(this.timeRemaining),
-        totalPhaseDuration: this.totalPhaseDuration || 40,
-        progressFraction: info.progressFraction,
-        elapsedSeconds: Math.round(this.elapsedSeconds),
-        overallProgressFraction: overallFraction,
-        currentExercise: info.currentExercise ? {
-          id: info.currentExercise.id,
-          number: info.currentExercise.number,
-          name: info.currentExercise.name,
-          subtitle: info.currentExercise.subtitle,
-          targetPrimary: info.currentExercise.targetPrimary,
-          targetMuscles: info.currentExercise.targetMuscles,
-          cue: info.currentExercise.cue,
-          breathing: info.currentExercise.breathing,
-          image: info.currentExercise.image,
-          video: info.currentExercise.video
-        } : null,
-        nextExercise: info.nextExercise ? {
-          id: info.nextExercise.id,
-          name: info.nextExercise.name,
-          subtitle: info.nextExercise.subtitle,
-          targetPrimary: info.nextExercise.targetPrimary,
-          image: info.nextExercise.image
-        } : null,
-        updatedAt: Date.now()
-      };
-      localStorage.setItem('fb17_cast_state', JSON.stringify(castData));
-    } catch (e) {
-      // Ignorer si localStorage indisponible
-    }
   }
 
   // Données de l'état actuel pour l'interface
