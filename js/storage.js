@@ -6,7 +6,8 @@
 const STORAGE_KEYS = {
   PREFS: 'fb17_preferences',
   HISTORY: 'fb17_workout_history',
-  BADGES: 'fb17_unlocked_badges'
+  BADGES: 'fb17_unlocked_badges',
+  WEIGHT: 'fb17_weight_history'
 };
 
 const DEFAULT_PREFERENCES = {
@@ -15,6 +16,9 @@ const DEFAULT_PREFERENCES = {
   restDuration: 20,
   plankDuration: 45, // 30, 45, 60, 120 (2 min)
   targetTime: "17:00",
+  targetWeight: null, // Poids cible en kg
+  initialWeight: null, // Poids de départ en kg
+  heightCm: null, // Taille en cm pour calcul IMC
   soundEnabled: true,
   voiceEnabled: true,
   theme: "dark",
@@ -26,6 +30,7 @@ class AppStorage {
     this.prefs = this.loadPreferences();
     this.history = this.loadHistory();
     this.badges = this.loadBadges();
+    this.weightHistory = this.loadWeightHistory();
   }
 
   // --- Préférences ---
@@ -206,15 +211,153 @@ class AppStorage {
     return map;
   }
 
+  // --- Suivi du Poids (Module Prise / Perte de Poids) ---
+  loadWeightHistory() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.WEIGHT);
+      const parsed = stored ? JSON.parse(stored) : [];
+      // Tri chronologique croissant par date
+      return parsed.sort((a, b) => new Date(a.date) - new Date(b.date));
+    } catch (e) {
+      console.warn('Erreur lecture historique poids:', e);
+      return [];
+    }
+  }
+
+  addWeightEntry({ weight, date, note = '' }) {
+    const numWeight = parseFloat(weight);
+    if (isNaN(numWeight) || numWeight < 20 || numWeight > 300) {
+      console.error('Poids invalide :', weight);
+      return null;
+    }
+
+    const entryDate = date || this.formatDateISO(new Date());
+
+    // Vérifier si une pesée existe déjà pour cette date -> mettre à jour
+    const existingIndex = this.weightHistory.findIndex(w => w.date === entryDate);
+
+    const entry = {
+      id: 'w_' + (existingIndex >= 0 ? this.weightHistory[existingIndex].id.replace('w_', '') : Date.now()),
+      date: entryDate,
+      weight: Math.round(numWeight * 10) / 10,
+      note: (note || '').trim().slice(0, 100),
+      timestamp: Date.now()
+    };
+
+    if (existingIndex >= 0) {
+      this.weightHistory[existingIndex] = entry;
+    } else {
+      this.weightHistory.push(entry);
+    }
+
+    // Garder le tri chronologique
+    this.weightHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    try {
+      localStorage.setItem(STORAGE_KEYS.WEIGHT, JSON.stringify(this.weightHistory));
+    } catch (e) {
+      console.error('Erreur sauvegarde poids:', e);
+    }
+
+    return entry;
+  }
+
+  deleteWeightEntry(id) {
+    this.weightHistory = this.weightHistory.filter(w => w.id !== id);
+    try {
+      localStorage.setItem(STORAGE_KEYS.WEIGHT, JSON.stringify(this.weightHistory));
+    } catch (e) {
+      console.error('Erreur suppression poids:', e);
+    }
+  }
+
+  getWeightStats() {
+    if (this.weightHistory.length === 0) {
+      const initW = parseFloat(this.prefs.initialWeight) || null;
+      const targetW = parseFloat(this.prefs.targetWeight) || null;
+      return {
+        hasData: false,
+        currentWeight: initW,
+        startWeight: initW,
+        targetWeight: targetW,
+        delta: 0,
+        deltaFormatted: '0.0 kg',
+        minWeight: initW,
+        maxWeight: initW,
+        entriesCount: 0,
+        lastDate: null,
+        bmi: this.calculateBMI(initW),
+        targetDiff: (initW && targetW) ? Math.round((initW - targetW) * 10) / 10 : null
+      };
+    }
+
+    const first = this.weightHistory[0];
+    const latest = this.weightHistory[this.weightHistory.length - 1];
+    const startWeight = parseFloat(this.prefs.initialWeight) || first.weight;
+    const targetWeight = parseFloat(this.prefs.targetWeight) || null;
+    const delta = Math.round((latest.weight - startWeight) * 10) / 10;
+    const deltaFormatted = (delta > 0 ? `+${delta.toFixed(1)}` : `${delta.toFixed(1)}`) + ' kg';
+
+    const weights = this.weightHistory.map(w => w.weight);
+    const minWeight = Math.min(...weights);
+    const maxWeight = Math.max(...weights);
+
+    const targetDiff = targetWeight ? Math.round((latest.weight - targetWeight) * 10) / 10 : null;
+
+    return {
+      hasData: true,
+      currentWeight: latest.weight,
+      startWeight: startWeight,
+      targetWeight: targetWeight,
+      delta: delta,
+      deltaFormatted: deltaFormatted,
+      minWeight: minWeight,
+      maxWeight: maxWeight,
+      entriesCount: this.weightHistory.length,
+      lastDate: latest.date,
+      bmi: this.calculateBMI(latest.weight),
+      targetDiff: targetDiff
+    };
+  }
+
+  calculateBMI(weightKg) {
+    const heightCm = parseFloat(this.prefs.heightCm);
+    if (!weightKg || !heightCm || heightCm < 100 || heightCm > 250) {
+      return null;
+    }
+    const heightM = heightCm / 100;
+    const bmiVal = Math.round((weightKg / (heightM * heightM)) * 10) / 10;
+
+    let category = 'Normal';
+    let colorVar = '--accent-work';
+    if (bmiVal < 18.5) {
+      category = 'Maigreur';
+      colorVar = '--accent-rest';
+    } else if (bmiVal >= 25 && bmiVal < 30) {
+      category = 'Surpoids';
+      colorVar = '--accent-prep';
+    } else if (bmiVal >= 30) {
+      category = 'Obésité';
+      colorVar = '--accent-danger';
+    }
+
+    return {
+      value: bmiVal,
+      category: category,
+      colorVar: colorVar
+    };
+  }
+
   // --- Exportation & Importation de données ---
   exportJSON() {
     const backup = {
       app: 'FULL_BODY_17',
-      version: '1.0.0',
+      version: '1.8.0',
       exportedAt: new Date().toISOString(),
       prefs: this.prefs,
       history: this.history,
-      badges: this.badges
+      badges: this.badges,
+      weightHistory: this.weightHistory
     };
     return JSON.stringify(backup, null, 2);
   }
@@ -246,10 +389,23 @@ class AppStorage {
           && session.durationSeconds <= 36000; // Max 10h
       });
 
+      // Validation de l'historique du poids
+      let validWeightHistory = [];
+      if (Array.isArray(data.weightHistory)) {
+        validWeightHistory = data.weightHistory.filter(entry => {
+          return entry
+            && typeof entry.date === 'string'
+            && typeof entry.weight === 'number'
+            && entry.weight >= 20
+            && entry.weight <= 300;
+        });
+      }
+
       if (data.prefs && typeof data.prefs === 'object') {
         this.prefs = { ...DEFAULT_PREFERENCES, ...data.prefs };
       }
       this.history = validHistory;
+      this.weightHistory = validWeightHistory;
       if (Array.isArray(data.badges)) {
         this.badges = data.badges.filter(b => typeof b === 'string');
       }
@@ -257,6 +413,7 @@ class AppStorage {
       localStorage.setItem(STORAGE_KEYS.PREFS, JSON.stringify(this.prefs));
       localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(this.history));
       localStorage.setItem(STORAGE_KEYS.BADGES, JSON.stringify(this.badges));
+      localStorage.setItem(STORAGE_KEYS.WEIGHT, JSON.stringify(this.weightHistory));
       return true;
     } catch (e) {
       console.error('Erreur importation JSON:', e);
@@ -268,9 +425,11 @@ class AppStorage {
     localStorage.removeItem(STORAGE_KEYS.PREFS);
     localStorage.removeItem(STORAGE_KEYS.HISTORY);
     localStorage.removeItem(STORAGE_KEYS.BADGES);
+    localStorage.removeItem(STORAGE_KEYS.WEIGHT);
     this.prefs = { ...DEFAULT_PREFERENCES };
     this.history = [];
     this.badges = [];
+    this.weightHistory = [];
   }
 }
 

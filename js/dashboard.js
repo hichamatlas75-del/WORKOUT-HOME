@@ -13,6 +13,7 @@ class DashboardManager {
     this.renderMetrics();
     this.renderCalendar();
     this.renderProgressionPlan();
+    this.renderWeightTracker();
   }
 
   // Cartes d'indicateurs de performance
@@ -158,6 +159,177 @@ class DashboardManager {
         </div>
       </div>
     `).join('');
+  }
+
+  // Rendu du module de Suivi du Poids & Évolution
+  renderWeightTracker() {
+    const stats = window.appStorage.getWeightStats();
+    const history = window.appStorage.weightHistory || [];
+
+    const elCurrent = document.getElementById('weight-current-val');
+    const elDelta = document.getElementById('weight-delta-val');
+    const elTarget = document.getElementById('weight-target-val');
+    const elBmi = document.getElementById('weight-bmi-val');
+    const elBmiCategory = document.getElementById('weight-bmi-category');
+    const chartContainer = document.getElementById('weight-chart-container');
+    const historyList = document.getElementById('weight-history-list');
+
+    if (elCurrent) {
+      elCurrent.textContent = stats.currentWeight ? `${stats.currentWeight} kg` : '-- kg';
+    }
+
+    if (elDelta) {
+      if (stats.hasData && stats.delta !== 0) {
+        elDelta.textContent = stats.deltaFormatted;
+        elDelta.style.color = stats.delta < 0 ? 'var(--accent-work)' : 'var(--accent-rest)';
+      } else {
+        elDelta.textContent = '0.0 kg';
+        elDelta.style.color = 'var(--text-secondary)';
+      }
+    }
+
+    if (elTarget) {
+      if (stats.targetWeight) {
+        const diffStr = stats.targetDiff !== null ? ` (${stats.targetDiff > 0 ? '+' : ''}${stats.targetDiff} kg)` : '';
+        elTarget.textContent = `${stats.targetWeight} kg${diffStr}`;
+      } else {
+        elTarget.textContent = 'Non défini';
+      }
+    }
+
+    if (elBmi && elBmiCategory) {
+      if (stats.bmi) {
+        elBmi.textContent = `${stats.bmi.value}`;
+        elBmiCategory.textContent = stats.bmi.category;
+        elBmiCategory.style.color = `var(${stats.bmi.colorVar})`;
+      } else {
+        elBmi.textContent = '--';
+        elBmiCategory.textContent = 'Renseignez taille';
+        elBmiCategory.style.color = 'var(--text-muted)';
+      }
+    }
+
+    // Graphique SVG interactif
+    if (chartContainer) {
+      if (history.length >= 2) {
+        chartContainer.innerHTML = this.generateWeightChartSvg(history, stats.targetWeight);
+      } else if (history.length === 1) {
+        chartContainer.innerHTML = `
+          <div class="weight-chart-placeholder">
+            <span>⚖️ 1ère pesée enregistrée (<strong>${history[0].weight} kg</strong>). Ajoutez une 2ème pesée pour afficher la courbe d'évolution.</span>
+          </div>
+        `;
+      } else {
+        chartContainer.innerHTML = `
+          <div class="weight-chart-placeholder">
+            <span>📈 Aucune pesée enregistrée. Cliquez sur <strong>+ Pesée</strong> pour démarrer votre suivi.</span>
+          </div>
+        `;
+      }
+    }
+
+    // Liste des dernières pesées
+    if (historyList) {
+      if (history.length === 0) {
+        historyList.innerHTML = '<div style="text-align: center; font-size: 0.8rem; color: var(--text-muted); padding: 12px;">Aucun relevé de poids pour le moment.</div>';
+      } else {
+        const recentEntries = [...history].reverse().slice(0, 5);
+        historyList.innerHTML = recentEntries.map((entry, idx) => {
+          const dateObj = new Date(entry.date + 'T12:00:00');
+          const formattedDate = dateObj.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+          const prevEntry = recentEntries[idx + 1];
+          let diffBadge = '';
+          if (prevEntry) {
+            const diff = Math.round((entry.weight - prevEntry.weight) * 10) / 10;
+            if (diff !== 0) {
+              const diffText = (diff > 0 ? '+' : '') + diff.toFixed(1) + ' kg';
+              const diffColor = diff < 0 ? 'var(--accent-work)' : 'var(--accent-rest)';
+              diffBadge = `<span style="font-size: 0.75rem; font-weight: 800; color: ${diffColor}; margin-left: 6px;">(${diffText})</span>`;
+            }
+          }
+
+          return `
+            <div class="weight-log-item">
+              <div class="weight-log-left">
+                <span class="weight-log-date">📅 ${formattedDate}</span>
+                <span class="weight-log-weight">${entry.weight} kg ${diffBadge}</span>
+                ${entry.note ? `<span class="weight-log-note">« ${entry.note} »</span>` : ''}
+              </div>
+              <button class="weight-log-del-btn" onclick="deleteWeightLog('${entry.id}')" title="Supprimer cette pesée" aria-label="Supprimer">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+              </button>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+  }
+
+  generateWeightChartSvg(history, targetWeight) {
+    const width = 320;
+    const height = 120;
+    const padding = { top: 15, right: 15, bottom: 25, left: 35 };
+
+    const weights = history.map(h => h.weight);
+    if (targetWeight) weights.push(targetWeight);
+
+    const minW = Math.floor(Math.min(...weights) - 0.5);
+    const maxW = Math.ceil(Math.max(...weights) + 0.5);
+    const range = (maxW - minW) || 1;
+
+    const plotWidth = width - padding.left - padding.right;
+    const plotHeight = height - padding.top - padding.bottom;
+
+    const getX = (idx) => padding.left + (idx / (history.length - 1)) * plotWidth;
+    const getY = (val) => padding.top + plotHeight - ((val - minW) / range) * plotHeight;
+
+    const points = history.map((h, i) => `${getX(i).toFixed(1)},${getY(h.weight).toFixed(1)}`).join(' ');
+    const areaPoints = `${padding.left},${padding.top + plotHeight} ` + points + ` ${padding.left + plotWidth},${padding.top + plotHeight}`;
+
+    let targetLine = '';
+    if (targetWeight && targetWeight >= minW && targetWeight <= maxW) {
+      const targetY = getY(targetWeight).toFixed(1);
+      targetLine = `
+        <line x1="${padding.left}" y1="${targetY}" x2="${padding.left + plotWidth}" y2="${targetY}" stroke="var(--accent-gold)" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.8"/>
+        <text x="${padding.left + plotWidth}" y="${targetY - 3}" fill="var(--accent-gold)" font-size="9" text-anchor="end" font-weight="700">Cible : ${targetWeight} kg</text>
+      `;
+    }
+
+    const circles = history.map((h, i) => `
+      <circle cx="${getX(i).toFixed(1)}" cy="${getY(h.weight).toFixed(1)}" r="4" fill="var(--bg-card)" stroke="var(--accent-work)" stroke-width="2.5"/>
+      <text x="${getX(i).toFixed(1)}" y="${getY(h.weight) - 7}" fill="var(--text-primary)" font-size="9" font-weight="800" text-anchor="middle">${h.weight}</text>
+    `).join('');
+
+    const firstDate = new Date(history[0].date + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    const lastDate = new Date(history[history.length - 1].date + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+
+    return `
+      <svg class="weight-svg-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" width="100%" height="${height}">
+        <defs>
+          <linearGradient id="weightGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--accent-work)" stop-opacity="0.35"/>
+            <stop offset="100%" stop-color="var(--accent-work)" stop-opacity="0.0"/>
+          </linearGradient>
+        </defs>
+        <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left + plotWidth}" y2="${padding.top}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+        <line x1="${padding.left}" y1="${padding.top + plotHeight/2}" x2="${padding.left + plotWidth}" y2="${padding.top + plotHeight/2}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+        <line x1="${padding.left}" y1="${padding.top + plotHeight}" x2="${padding.left + plotWidth}" y2="${padding.top + plotHeight}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+
+        <text x="${padding.left - 6}" y="${padding.top + 4}" fill="var(--text-muted)" font-size="9" text-anchor="end">${maxW}</text>
+        <text x="${padding.left - 6}" y="${padding.top + plotHeight + 3}" fill="var(--text-muted)" font-size="9" text-anchor="end">${minW}</text>
+
+        ${targetLine}
+
+        <polygon points="${areaPoints}" fill="url(#weightGrad)"/>
+        <polyline points="${points}" fill="none" stroke="var(--accent-work)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        ${circles}
+
+        <text x="${padding.left}" y="${height - 6}" fill="var(--text-muted)" font-size="9">${firstDate}</text>
+        <text x="${padding.left + plotWidth}" y="${height - 6}" fill="var(--text-muted)" font-size="9" text-anchor="end">${lastDate}</text>
+      </svg>
+    `;
   }
 }
 

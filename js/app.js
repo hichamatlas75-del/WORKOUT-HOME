@@ -392,6 +392,9 @@ function loadSettingsForm() {
   const soundSwitch = document.getElementById('setting-sound');
   const voiceSwitch = document.getElementById('setting-voice');
   const reminderSwitch = document.getElementById('setting-reminder');
+  const initWeightInput = document.getElementById('setting-initial-weight');
+  const targetWeightInput = document.getElementById('setting-target-weight');
+  const heightInput = document.getElementById('setting-height-cm');
 
   if (timeInput) timeInput.value = prefs.targetTime || "17:00";
   if (roundsInput) roundsInput.value = prefs.rounds || 3;
@@ -401,6 +404,9 @@ function loadSettingsForm() {
   if (soundSwitch) soundSwitch.checked = prefs.soundEnabled !== false;
   if (voiceSwitch) voiceSwitch.checked = prefs.voiceEnabled !== false;
   if (reminderSwitch) reminderSwitch.checked = prefs.reminderActive !== false;
+  if (initWeightInput) initWeightInput.value = prefs.initialWeight || "";
+  if (targetWeightInput) targetWeightInput.value = prefs.targetWeight || "";
+  if (heightInput) heightInput.value = prefs.heightCm || "";
 
   window.audioEngine.soundEnabled = prefs.soundEnabled !== false;
   window.audioEngine.voiceEnabled = prefs.voiceEnabled !== false;
@@ -416,6 +422,9 @@ function saveSettings() {
   const voiceSwitch = document.getElementById('setting-voice');
   const reminderSwitch = document.getElementById('setting-reminder');
   const themeSelect = document.getElementById('setting-theme');
+  const initWeightInput = document.getElementById('setting-initial-weight');
+  const targetWeightInput = document.getElementById('setting-target-weight');
+  const heightInput = document.getElementById('setting-height-cm');
 
   const newPrefs = {
     targetTime: timeInput ? timeInput.value : "17:00",
@@ -426,7 +435,10 @@ function saveSettings() {
     soundEnabled: soundSwitch ? soundSwitch.checked : true,
     voiceEnabled: voiceSwitch ? voiceSwitch.checked : true,
     reminderActive: reminderSwitch ? reminderSwitch.checked : true,
-    theme: themeSelect ? themeSelect.value : "dark"
+    theme: themeSelect ? themeSelect.value : "dark",
+    initialWeight: initWeightInput && initWeightInput.value ? parseFloat(initWeightInput.value) : null,
+    targetWeight: targetWeightInput && targetWeightInput.value ? parseFloat(targetWeightInput.value) : null,
+    heightCm: heightInput && heightInput.value ? parseInt(heightInput.value) : null
   };
 
   window.appStorage.savePreferences(newPrefs);
@@ -437,11 +449,12 @@ function saveSettings() {
   window.audioEngine.soundEnabled = newPrefs.soundEnabled;
   window.audioEngine.voiceEnabled = newPrefs.voiceEnabled;
 
-  // Mise à jour de l'affichage de l'accueil
+  // Mise à jour de l'affichage de l'accueil et du tableau de bord
   const targetDisplay = document.getElementById('hero-target-display');
   if (targetDisplay) targetDisplay.textContent = newPrefs.targetTime;
 
   renderHomeExercisesList();
+  if (window.dashboardManager) window.dashboardManager.renderDashboard();
 
   showToast("✅ Réglages enregistrés avec succès !");
 }
@@ -482,7 +495,7 @@ function importDataBackup(event) {
 function confirmResetData() {
   showConfirmModal(
     'Effacer toutes les données ?',
-    'Tout l\'historique, les statistiques et les badges seront supprimés définitivement.',
+    'Tout l\'historique des séances, statistiques, pesées et badges seront supprimés définitivement.',
     '🗑️',
     () => {
       window.appStorage.clearAllData();
@@ -500,6 +513,7 @@ function reInitApp() {
   window.appStorage.prefs = window.appStorage.loadPreferences();
   window.appStorage.history = window.appStorage.loadHistory();
   window.appStorage.badges = window.appStorage.loadBadges();
+  window.appStorage.weightHistory = window.appStorage.loadWeightHistory();
 
   // Réappliquer le thème
   const savedTheme = window.appStorage.prefs.theme || 'dark';
@@ -859,5 +873,115 @@ function initTvMode() {
     if (e.key === 'fb17_cast_state') checkCastState();
   });
 }
+
+// --------------------------------------------------------------------------
+// MODULE SUIVI DU POIDS (MODALE & GESTION DES PESÉES)
+// --------------------------------------------------------------------------
+/**
+ * Ouvre la modale d'enregistrement de pesée.
+ */
+function openWeightModal() {
+  const modal = document.getElementById('weight-modal');
+  const inputVal = document.getElementById('weight-input-val');
+  const inputDate = document.getElementById('weight-input-date');
+  const inputNote = document.getElementById('weight-input-note');
+
+  if (!modal) return;
+
+  // Date du jour par défaut
+  if (inputDate) {
+    inputDate.value = window.appStorage.formatDateISO(new Date());
+  }
+
+  // Poids par défaut : dernière pesée enregistrée ou poids de départ
+  if (inputVal) {
+    const stats = window.appStorage.getWeightStats();
+    if (stats.currentWeight) {
+      inputVal.value = stats.currentWeight.toFixed(1);
+    } else {
+      inputVal.value = "70.0";
+    }
+  }
+
+  if (inputNote) {
+    inputNote.value = "";
+  }
+
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+/**
+ * Ferme la modale de pesée.
+ */
+function closeWeightModal() {
+  const modal = document.getElementById('weight-modal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+/**
+ * Ajuste le poids dans le champ de saisie (+/- 0.1 ou 0.5 kg).
+ */
+function adjustWeightInput(delta) {
+  const input = document.getElementById('weight-input-val');
+  if (!input) return;
+  const current = parseFloat(input.value) || 70.0;
+  const next = Math.min(300, Math.max(20, Math.round((current + delta) * 10) / 10));
+  input.value = next.toFixed(1);
+}
+
+/**
+ * Enregistre la pesée saisie.
+ */
+function saveWeightEntry() {
+  const inputVal = document.getElementById('weight-input-val');
+  const inputDate = document.getElementById('weight-input-date');
+  const inputNote = document.getElementById('weight-input-note');
+
+  if (!inputVal || !inputVal.value) {
+    showToast("⚠️ Veuillez renseigner votre poids.", true);
+    return;
+  }
+
+  const weight = parseFloat(inputVal.value);
+  if (isNaN(weight) || weight < 20 || weight > 300) {
+    showToast("⚠️ Poids invalide (entre 20 et 300 kg).", true);
+    return;
+  }
+
+  const date = inputDate && inputDate.value ? inputDate.value : window.appStorage.formatDateISO(new Date());
+  const note = inputNote ? inputNote.value : '';
+
+  const entry = window.appStorage.addWeightEntry({ weight, date, note });
+  if (entry) {
+    closeWeightModal();
+    if (window.dashboardManager) {
+      window.dashboardManager.renderWeightTracker();
+    }
+    showToast(`⚖️ Pesée de ${entry.weight} kg enregistrée !`);
+  } else {
+    showToast("❌ Erreur lors de l'enregistrement.", true);
+  }
+}
+
+/**
+ * Supprime une pesée spécifique.
+ */
+function deleteWeightLog(id) {
+  showConfirmModal(
+    'Supprimer cette pesée ?',
+    'Cette mesure sera définitivement retirée de votre historique.',
+    '🗑️',
+    () => {
+      window.appStorage.deleteWeightEntry(id);
+      if (window.dashboardManager) {
+        window.dashboardManager.renderWeightTracker();
+      }
+      showToast("Pesée supprimée.");
+    }
+  );
+}
+
 
 

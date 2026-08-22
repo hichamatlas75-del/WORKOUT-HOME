@@ -42,7 +42,7 @@
         <div class="brand-info">
           <div class="brand-title-wrap">
             <span class="brand-title">FULL BODY 17</span>
-            <span class="version-tag">v1.8.0</span>
+            <span class="version-tag">v1.9.0</span>
           </div>
           <span class="brand-subtitle">Routine Quotidienne</span>
         </div>
@@ -196,6 +196,60 @@
 
           <div class="cal-days-grid" id="calendar-days-grid">
             <!-- Rempli dynamiquement -->
+          </div>
+        </div>
+
+        <!-- Module Suivi du Poids & Évolution -->
+        <div class="weight-card">
+          <div class="weight-card-header">
+            <div class="weight-card-title-wrap">
+              <span class="weight-card-icon">⚖️</span>
+              <div>
+                <h3 class="weight-card-title">Suivi du Poids &amp; Évolution</h3>
+                <p class="weight-card-sub">Objectif forme, santé &amp; transformation</p>
+              </div>
+            </div>
+            <button class="btn-primary weight-add-btn" onclick="openWeightModal()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              + Pesée
+            </button>
+          </div>
+
+          <!-- KPI Poids -->
+          <div class="weight-kpi-grid">
+            <div class="weight-kpi-item">
+              <span class="weight-kpi-label">Poids Actuel</span>
+              <span class="weight-kpi-value" id="weight-current-val">-- kg</span>
+            </div>
+            <div class="weight-kpi-item">
+              <span class="weight-kpi-label">Évolution</span>
+              <span class="weight-kpi-value" id="weight-delta-val">0.0 kg</span>
+            </div>
+            <div class="weight-kpi-item">
+              <span class="weight-kpi-label">Poids Cible</span>
+              <span class="weight-kpi-value" id="weight-target-val">Non défini</span>
+            </div>
+            <div class="weight-kpi-item">
+              <span class="weight-kpi-label">Indice IMC</span>
+              <span class="weight-kpi-value" id="weight-bmi-val">--</span>
+              <span class="weight-kpi-sub" id="weight-bmi-category">Taille requise</span>
+            </div>
+          </div>
+
+          <!-- Graphique Courbe SVG -->
+          <div class="weight-chart-box" id="weight-chart-container">
+            <!-- Rendu dynamiquement -->
+          </div>
+
+          <!-- Historique des pesées récentes -->
+          <div class="weight-history-section">
+            <div class="weight-history-title">Derniers relevés enregistrés</div>
+            <div class="weight-history-list" id="weight-history-list">
+              <!-- Rendu dynamiquement -->
+            </div>
           </div>
         </div>
 
@@ -357,6 +411,40 @@
           </div>
         </div>
 
+        <!-- Profil Physique & Objectifs Poids -->
+        <div class="settings-group">
+          <div class="section-header" style="margin-bottom: 8px;">
+            <h3 class="section-title" style="font-size: 0.95rem;">⚖️ Profil &amp; Objectif Poids</h3>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Poids de départ (kg)</span>
+              <span class="setting-desc">Poids initial de référence</span>
+            </div>
+            <label for="setting-initial-weight" class="sr-only">Poids de départ</label>
+            <input type="number" id="setting-initial-weight" class="styled-input" style="width: 85px;" step="0.1" min="30" max="250" placeholder="75.0">
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Poids cible visé (kg)</span>
+              <span class="setting-desc">Objectif de transformation</span>
+            </div>
+            <label for="setting-target-weight" class="sr-only">Poids cible</label>
+            <input type="number" id="setting-target-weight" class="styled-input" style="width: 85px;" step="0.1" min="30" max="250" placeholder="70.0">
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Taille (cm)</span>
+              <span class="setting-desc">Pour calcul automatique de l'IMC</span>
+            </div>
+            <label for="setting-height-cm" class="sr-only">Taille en centimètres</label>
+            <input type="number" id="setting-height-cm" class="styled-input" style="width: 85px;" min="100" max="230" placeholder="175">
+          </div>
+        </div>
+
         <!-- Bouton Sauvegarder Réglages -->
         <button class="btn-primary" style="margin-bottom: 18px;" onclick="saveSettings()">
           Enregistrer les modifications
@@ -412,11 +500,11 @@
             <div class="brand-icon" style="width: 28px; height: 28px; font-size: 0.85rem; border-radius: 8px;">17</div>
             <div>
               <div style="font-weight: 800; font-size: 0.88rem; color: var(--text-primary);">FULL BODY 17</div>
-              <div style="font-size: 0.72rem; color: var(--accent-work); font-weight: 700;">Version 1.8.0 • PWA Progressive</div>
+              <div style="font-size: 0.72rem; color: var(--accent-work); font-weight: 700;">Version 1.9.0 • Module Suivi du Poids</div>
             </div>
           </div>
           <p style="font-size: 0.76rem; color: var(--text-secondary); margin-top: 8px; line-height: 1.4;">
-            Double Affichage TV Paysage • Moteur Animation 60 FPS • Mode Hors-Ligne Résilient
+            Suivi du Poids &amp; IMC • Double Affichage TV Paysage • Moteur Animation 60 FPS • Mode Hors-Ligne Résilient
           </p>
         </div>
 
@@ -613,6 +701,45 @@
     </div>
 
     <!-- ====================================================================
+         MODALE D'ENREGISTREMENT DE PESÉE (SUIVI POIDS)
+         ==================================================================== -->
+    <div id="weight-modal" class="confirm-modal-backdrop" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="weight-modal-title" onclick="if(event.target === this) closeWeightModal()">
+      <div class="confirm-modal-card weight-modal-card">
+        <div class="confirm-modal-icon">⚖️</div>
+        <h3 class="confirm-modal-title" id="weight-modal-title">Enregistrer une Pesée</h3>
+        <p class="confirm-modal-message" style="margin-bottom: 16px;">Indiquez votre poids du jour pour mesurer votre progression.</p>
+        
+        <div class="weight-input-container">
+          <div class="weight-stepper">
+            <button type="button" class="weight-step-btn" onclick="adjustWeightInput(-0.5)" aria-label="Moins 0.5 kg">-0.5</button>
+            <button type="button" class="weight-step-btn" onclick="adjustWeightInput(-0.1)" aria-label="Moins 0.1 kg">-0.1</button>
+            <div class="weight-number-wrap">
+              <input type="number" id="weight-input-val" class="styled-input weight-number-input" step="0.1" min="20" max="300" placeholder="70.0">
+              <span class="weight-unit-badge">kg</span>
+            </div>
+            <button type="button" class="weight-step-btn" onclick="adjustWeightInput(0.1)" aria-label="Plus 0.1 kg">+0.1</button>
+            <button type="button" class="weight-step-btn" onclick="adjustWeightInput(0.5)" aria-label="Plus 0.5 kg">+0.5</button>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 14px; text-align: left;">
+          <label for="weight-input-date" style="font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 4px;">Date de la pesée</label>
+          <input type="date" id="weight-input-date" class="styled-input" style="width: 100%;">
+        </div>
+
+        <div style="margin-bottom: 20px; text-align: left;">
+          <label for="weight-input-note" style="font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 4px;">Note / Contexte (optionnel)</label>
+          <input type="text" id="weight-input-note" class="styled-input" placeholder="Ex : Au réveil à jeun..." maxlength="60" style="width: 100%;">
+        </div>
+
+        <div class="confirm-modal-actions">
+          <button class="btn-secondary" onclick="closeWeightModal()">Annuler</button>
+          <button class="btn-primary" onclick="saveWeightEntry()">Enregistrer</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
          MODALE FEUILLE D'EXERCICE (BOTTOM SHEET DÉTAILS)
          ==================================================================== -->
     <div id="exercise-modal-sheet" class="modal-sheet-backdrop" onclick="if(event.target === this) closeExerciseModal()">
@@ -675,7 +802,7 @@
         <div class="tv-brand-text">
           <div style="display: flex; align-items: center; gap: 8px;">
             <span class="tv-title">FULL BODY 17</span>
-            <span class="version-tag">v1.8.0</span>
+            <span class="version-tag">v1.9.0</span>
           </div>
           <span class="tv-sub">MODE GRAND ÉCRAN</span>
         </div>
