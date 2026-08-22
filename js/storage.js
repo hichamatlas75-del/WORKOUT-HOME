@@ -1,0 +1,277 @@
+/**
+ * FULL BODY 17 — GESTIONNAIRE DU STOCKAGE LOCAL (LOCALSTORAGE)
+ * Sauvegarde de l'historique des séances, calcul des séries (streaks) et réglages.
+ */
+
+const STORAGE_KEYS = {
+  PREFS: 'fb17_preferences',
+  HISTORY: 'fb17_workout_history',
+  BADGES: 'fb17_unlocked_badges'
+};
+
+const DEFAULT_PREFERENCES = {
+  rounds: 3,
+  workDuration: 40,
+  restDuration: 20,
+  plankDuration: 45, // 30, 45, 60, 120 (2 min)
+  targetTime: "17:00",
+  soundEnabled: true,
+  voiceEnabled: true,
+  theme: "dark",
+  reminderActive: true
+};
+
+class AppStorage {
+  constructor() {
+    this.prefs = this.loadPreferences();
+    this.history = this.loadHistory();
+    this.badges = this.loadBadges();
+  }
+
+  // --- Préférences ---
+  loadPreferences() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.PREFS);
+      return stored ? { ...DEFAULT_PREFERENCES, ...JSON.parse(stored) } : { ...DEFAULT_PREFERENCES };
+    } catch (e) {
+      console.warn('Erreur lecture prefs:', e);
+      return { ...DEFAULT_PREFERENCES };
+    }
+  }
+
+  savePreferences(newPrefs) {
+    this.prefs = { ...this.prefs, ...newPrefs };
+    try {
+      localStorage.setItem(STORAGE_KEYS.PREFS, JSON.stringify(this.prefs));
+    } catch (e) {
+      console.error('Erreur sauvegarde prefs:', e);
+    }
+  }
+
+  // --- Historique des séances ---
+  loadHistory() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.HISTORY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      console.warn('Erreur lecture historique:', e);
+      return [];
+    }
+  }
+
+  addWorkoutSession(sessionData) {
+    const now = new Date();
+    const session = {
+      id: 'ws_' + Date.now(),
+      date: sessionData.date || this.formatDateISO(now),
+      timestamp: Date.now(),
+      durationSeconds: sessionData.durationSeconds || 960,
+      rounds: sessionData.rounds || 2,
+      completed: sessionData.completed !== undefined ? sessionData.completed : true,
+      exercisesCount: sessionData.exercisesCount || 8,
+      caloriesEstimated: Math.round(((sessionData.durationSeconds || 960) / 60) * 8.5)
+    };
+
+    this.history.unshift(session);
+    try {
+      localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(this.history));
+    } catch (e) {
+      console.error('Erreur enregistrement séance:', e);
+    }
+    return session;
+  }
+
+  // --- Badges ---
+  loadBadges() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.BADGES);
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  unlockBadge(badgeId) {
+    if (!this.badges.includes(badgeId)) {
+      this.badges.push(badgeId);
+      try {
+        localStorage.setItem(STORAGE_KEYS.BADGES, JSON.stringify(this.badges));
+      } catch (e) {
+        console.error('Erreur unlock badge:', e);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  // --- Utilitaires de dates & formatage ---
+  formatDateISO(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  // --- Calculs Statistiques Clés ---
+  getTotalWorkouts() {
+    return this.history.filter(s => s.completed).length;
+  }
+
+  getTotalTrainingMinutes() {
+    const totalSecs = this.history
+      .filter(s => s.completed)
+      .reduce((sum, s) => sum + (s.durationSeconds || 0), 0);
+    return Math.round(totalSecs / 60);
+  }
+
+  getWorkoutsThisMonth() {
+    const now = new Date();
+    const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return this.history.filter(s => s.completed && s.date.startsWith(currentMonthPrefix)).length;
+  }
+
+  // Calcul rigoureux du Streak (jours consécutifs)
+  getStreakStats() {
+    const completedSessions = this.history.filter(s => s.completed);
+    if (completedSessions.length === 0) {
+      return { currentStreak: 0, bestStreak: 0, doneToday: false };
+    }
+
+    // Récupérer la liste des jours uniques d'entraînement triés par ordre décroissant
+    const uniqueDays = Array.from(new Set(completedSessions.map(s => s.date))).sort().reverse();
+    
+    const today = this.formatDateISO(new Date());
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterday = this.formatDateISO(yesterdayDate);
+
+    const doneToday = uniqueDays.includes(today);
+
+    // Calcul du streak en cours
+    let currentStreak = 0;
+    let checkDate = new Date();
+
+    // Si pas fait aujourd'hui, vérifier si le streak était actif hier
+    if (!doneToday) {
+      checkDate.setDate(checkDate.getDate() - 1);
+    }
+
+    while (true) {
+      const dateStr = this.formatDateISO(checkDate);
+      if (uniqueDays.includes(dateStr)) {
+        currentStreak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+
+    // Calcul du meilleur streak historique
+    let bestStreak = 0;
+    if (uniqueDays.length > 0) {
+      let tempStreak = 1;
+      bestStreak = 1;
+
+      for (let i = 0; i < uniqueDays.length - 1; i++) {
+        const d1 = new Date(uniqueDays[i]);
+        const d2 = new Date(uniqueDays[i + 1]);
+        const diffDays = Math.round((d1 - d2) / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 1) {
+          tempStreak++;
+          if (tempStreak > bestStreak) bestStreak = tempStreak;
+        } else {
+          tempStreak = 1;
+        }
+      }
+    }
+
+    if (currentStreak > bestStreak) bestStreak = currentStreak;
+
+    return {
+      currentStreak,
+      bestStreak,
+      doneToday
+    };
+  }
+
+  // Dictionnaire Date -> Nombre de séances pour le calendrier
+  getWorkoutsByDateMap() {
+    const map = {};
+    this.history.forEach(s => {
+      if (s.completed) {
+        map[s.date] = (map[s.date] || 0) + 1;
+      }
+    });
+    return map;
+  }
+
+  // --- Exportation & Importation de données ---
+  exportJSON() {
+    const backup = {
+      app: 'FULL_BODY_17',
+      version: '1.0.0',
+      exportedAt: new Date().toISOString(),
+      prefs: this.prefs,
+      history: this.history,
+      badges: this.badges
+    };
+    return JSON.stringify(backup, null, 2);
+  }
+
+  importJSON(jsonString) {
+    try {
+      const data = JSON.parse(jsonString);
+      // Validation de la structure du fichier de sauvegarde
+      if (!data || typeof data !== 'object' || !data.app || !data.history) {
+        console.error('Import invalide : structure du fichier incorrecte.');
+        return false;
+      }
+      if (data.app !== 'FULL_BODY_17') {
+        console.error('Import invalide : ce fichier ne provient pas de Full Body 17.');
+        return false;
+      }
+      if (!Array.isArray(data.history)) {
+        console.error('Import invalide : historique manquant ou corrompu.');
+        return false;
+      }
+
+      // Validation de chaque session de l'historique
+      const validHistory = data.history.filter(session => {
+        return session
+          && typeof session.id === 'string'
+          && typeof session.date === 'string'
+          && typeof session.durationSeconds === 'number'
+          && session.durationSeconds >= 0
+          && session.durationSeconds <= 36000; // Max 10h
+      });
+
+      if (data.prefs && typeof data.prefs === 'object') {
+        this.prefs = { ...DEFAULT_PREFERENCES, ...data.prefs };
+      }
+      this.history = validHistory;
+      if (Array.isArray(data.badges)) {
+        this.badges = data.badges.filter(b => typeof b === 'string');
+      }
+
+      localStorage.setItem(STORAGE_KEYS.PREFS, JSON.stringify(this.prefs));
+      localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(this.history));
+      localStorage.setItem(STORAGE_KEYS.BADGES, JSON.stringify(this.badges));
+      return true;
+    } catch (e) {
+      console.error('Erreur importation JSON:', e);
+      return false;
+    }
+  }
+
+  clearAllData() {
+    localStorage.removeItem(STORAGE_KEYS.PREFS);
+    localStorage.removeItem(STORAGE_KEYS.HISTORY);
+    localStorage.removeItem(STORAGE_KEYS.BADGES);
+    this.prefs = { ...DEFAULT_PREFERENCES };
+    this.history = [];
+    this.badges = [];
+  }
+}
+
+window.appStorage = new AppStorage();

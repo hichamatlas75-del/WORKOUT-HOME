@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>FULL BODY 17 — Routine Quotidienne 15-20 min</title>
+  
+  <!-- PWA & Métadonnées Mobiles -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#090d16">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FullBody 17">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' data: blob: https:; font-src 'self';">
+
+  <!-- Prévention du flash de thème (FOUC) -->
+  <script>
+    document.documentElement.dataset.theme =
+      JSON.parse(localStorage.getItem('fb17_preferences') || '{}').theme || 'dark';
+  </script>
+
+  <!-- Feuilles de style -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/components.css">
+  <style>
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+
+    <!-- ====================================================================
+         HEADER PRINCIPAL
+         ==================================================================== -->
+    <header class="app-header">
+      <div class="brand-badge">
+        <div class="brand-icon">17</div>
+        <div class="brand-info">
+          <span class="brand-title">FULL BODY 17</span>
+          <span class="brand-subtitle">Routine Quotidienne</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" id="btn-quick-theme" onclick="toggleQuickTheme()" title="Changer de thème" aria-label="Changer de thème">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ====================================================================
+         CONTENEUR PRINCIPAL DES VUES
+         ==================================================================== -->
+    <main class="view-container">
+
+      <!-- ------------------------------------------------------------------
+           VUE 1 : ACCUEIL
+           ------------------------------------------------------------------ -->
+      <section id="view-home" class="view active">
+        
+        <!-- Carte Hero avec Heure Cible 17:00 -->
+        <div class="hero-card">
+          <div class="hero-status-row">
+            <div class="status-pill" id="home-streak-pill">
+              <span class="pulse-dot"></span> Prêt pour la séance
+            </div>
+            <div class="status-pill" style="background: rgba(255,255,255,0.06); color: var(--text-secondary); border-color: var(--border-subtle);">
+              18-22 min
+            </div>
+          </div>
+
+          <div class="hero-time-container">
+            <div class="hero-target-time" id="hero-target-display">17:00</div>
+            <div class="hero-time-label" id="hero-countdown-label">Rendez-vous quotidien</div>
+          </div>
+
+          <div class="hero-specs-grid">
+            <div class="spec-item">
+              <span class="spec-value">8</span>
+              <span class="spec-label">Exercices</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-value">40s / 20s</span>
+              <span class="spec-label">Effort / Repos</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-value">3 Séries</span>
+              <span class="spec-label">Progression</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bouton Géant Tactile COMMENCER -->
+        <button class="btn-primary" onclick="startWorkoutSession()">
+          <svg viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+          COMMENCER LA SÉANCE
+        </button>
+
+        <!-- Liste de la Routine du jour -->
+        <div class="section-header" style="margin-top: 28px;">
+          <h2 class="section-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-work)" stroke-width="2.5">
+              <path d="M9 11l3 3L22 4"/>
+              <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+            </svg>
+            Programme du Jour
+          </h2>
+          <span class="section-subtitle">7 exercices (3 séries) + Étirements (1 série finale)</span>
+        </div>
+
+        <div class="exercise-list" id="home-exercise-list">
+          <!-- Rempli dynamiquement par js/app.js -->
+        </div>
+
+      </section>
+
+      <!-- ------------------------------------------------------------------
+           VUE 2 : TABLEAU DE BORD & STATISTIQUES
+           ------------------------------------------------------------------ -->
+      <section id="view-dashboard" class="view">
+        
+        <div class="section-header">
+          <h2 class="section-title">Tableau de Bord</h2>
+          <span class="section-subtitle">Vos progrès quotidiens</span>
+        </div>
+
+        <!-- Grille des Métriques -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-header">
+              <span>Séances</span>
+              <span style="color: var(--accent-work);">🏆</span>
+            </div>
+            <div class="stat-value" id="stat-total-workouts">0</div>
+            <span class="stat-unit">séances réalisées</span>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-header">
+              <span>Série Active</span>
+              <span style="color: var(--accent-prep);">🔥</span>
+            </div>
+            <div class="stat-value" id="stat-current-streak">0</div>
+            <span class="stat-unit">jours consécutifs</span>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-header">
+              <span>Meilleure Série</span>
+              <span style="color: var(--accent-gold);">⚡</span>
+            </div>
+            <div class="stat-value" id="stat-best-streak">0</div>
+            <span class="stat-unit">record de jours</span>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-header">
+              <span>Temps Total</span>
+              <span style="color: var(--accent-rest);">⏱️</span>
+            </div>
+            <div class="stat-value" id="stat-total-time">0</div>
+            <span class="stat-unit">minutes d'effort</span>
+          </div>
+        </div>
+
+        <!-- Calendrier Heatmap Mensuel Interactif -->
+        <div class="calendar-card">
+          <div class="calendar-header">
+            <button class="cal-nav-btn" onclick="window.dashboardManager.prevMonth()">‹</button>
+            <h3 class="month-title" id="calendar-month-title">Août 2026</h3>
+            <button class="cal-nav-btn" onclick="window.dashboardManager.nextMonth()">›</button>
+          </div>
+
+          <div class="cal-weekdays">
+            <span>Lun</span><span>Mar</span><span>Mer</span><span>Jeu</span><span>Ven</span><span>Sam</span><span>Dim</span>
+          </div>
+
+          <div class="cal-days-grid" id="calendar-days-grid">
+            <!-- Rempli dynamiquement -->
+          </div>
+        </div>
+
+        <!-- Programmation sur 8 Semaines -->
+        <div class="progression-plan-card">
+          <div class="section-header" style="margin-bottom: 4px;">
+            <h3 class="section-title" style="font-size: 1rem;">Programmation 8 Semaines</h3>
+          </div>
+          <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 10px;">
+            Progression douce et durable adaptée pour adulte de 51 ans.
+          </p>
+          <div class="plan-steps" id="progression-plan-list">
+            <!-- Rempli dynamiquement -->
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ------------------------------------------------------------------
+           VUE 3 : SYSTÈME DE MOTIVATION & BADGES
+           ------------------------------------------------------------------ -->
+      <section id="view-badges" class="view">
+        <div class="section-header">
+          <h2 class="section-title">Badges & Motivation</h2>
+          <span class="section-subtitle">Système sobre & valorisant</span>
+        </div>
+
+        <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 16px;">
+          Chaque séance accomplie renforce vos habitudes de santé. Débloquez vos succès au fil des jours.
+        </p>
+
+        <div class="badges-grid" id="badges-grid-container">
+          <!-- Rempli dynamiquement -->
+        </div>
+      </section>
+
+      <!-- ------------------------------------------------------------------
+           VUE 4 : RÉGLAGES & PWA
+           ------------------------------------------------------------------ -->
+      <section id="view-settings" class="view">
+        <div class="section-header">
+          <h2 class="section-title">Réglages</h2>
+          <span class="section-subtitle">Personnalisation & PWA</span>
+        </div>
+
+        <div class="settings-group">
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Heure de rendez-vous</span>
+              <span class="setting-desc">Heure programmée pour votre routine</span>
+            </div>
+            <label for="setting-target-time" class="sr-only">Heure de rendez-vous</label>
+            <input type="time" id="setting-target-time" class="styled-input" value="17:00">
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Rappel quotidien</span>
+              <span class="setting-desc">Notification locale à l'heure fixée</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="setting-reminder" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Tester la notification</span>
+              <span class="setting-desc">Vérifier l'autorisation du navigateur</span>
+            </div>
+            <button class="btn-secondary" style="width: auto; padding: 6px 12px; font-size: 0.8rem;" onclick="window.notificationManager.sendTestNotification()">
+              Tester
+            </button>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Nombre de séries</span>
+              <span class="setting-desc">3 séries (recommandé) ou 2 séries (reprise)</span>
+            </div>
+            <label for="setting-rounds" class="sr-only">Nombre de séries</label>
+            <select id="setting-rounds" class="styled-input">
+              <option value="3" selected>3 séries (Standard)</option>
+              <option value="2">2 séries (Reprise)</option>
+              <option value="4">4 séries (Intense)</option>
+            </select>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Gainage Planche</span>
+              <span class="setting-desc">Objectif de tenue en planche</span>
+            </div>
+            <label for="setting-plank-duration" class="sr-only">Durée de gainage</label>
+            <select id="setting-plank-duration" class="styled-input">
+              <option value="30">30 s (Débutant)</option>
+              <option value="45" selected>45 s (Standard)</option>
+              <option value="60">60 s (Intermédiaire)</option>
+              <option value="120">2 min / 120 s (Défi)</option>
+            </select>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Temps d'effort</span>
+              <span class="setting-desc">Durée par exercice en secondes</span>
+            </div>
+            <label for="setting-work-duration" class="sr-only">Temps d'effort</label>
+            <input type="number" id="setting-work-duration" class="styled-input" style="width: 70px;" value="40" min="20" max="90">
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Temps de récupération</span>
+              <span class="setting-desc">Durée de repos entre exercices</span>
+            </div>
+            <label for="setting-rest-duration" class="sr-only">Temps de récupération</label>
+            <input type="number" id="setting-rest-duration" class="styled-input" style="width: 70px;" value="20" min="10" max="60">
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Signaux sonores</span>
+              <span class="setting-desc">Bips discrets à 3, 2, 1 secondes</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="setting-sound" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Coach vocal français</span>
+              <span class="setting-desc">Annonce du nom des exercices</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="setting-voice" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Thème visuel</span>
+              <span class="setting-desc">Mode sombre ou clair</span>
+            </div>
+            <label for="setting-theme" class="sr-only">Thème visuel</label>
+            <select id="setting-theme" class="styled-input">
+              <option value="dark">Mode Sombre</option>
+              <option value="light">Mode Clair</option>
+              <option value="system">Automatique (Système)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Bouton Sauvegarder Réglages -->
+        <button class="btn-primary" style="margin-bottom: 18px;" onclick="saveSettings()">
+          Enregistrer les modifications
+        </button>
+
+        <!-- Bouton Installation PWA -->
+        <button id="btn-pwa-install" class="btn-secondary" style="margin-bottom: 18px; display: none;" onclick="window.pwaManager.promptInstall()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Installer l'application sur cet appareil
+        </button>
+
+        <!-- Exportation / Sauvegarde -->
+        <div class="settings-group">
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Sauvegarde des données</span>
+              <span class="setting-desc">Exporter votre historique en fichier JSON</span>
+            </div>
+            <button class="btn-secondary" style="width: auto; padding: 6px 12px; font-size: 0.8rem;" onclick="exportDataBackup()">
+              Exporter
+            </button>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Restaurer une sauvegarde</span>
+              <span class="setting-desc">Importer un fichier JSON</span>
+            </div>
+            <label class="btn-secondary" style="width: auto; padding: 6px 12px; font-size: 0.8rem; cursor: pointer;">
+              Importer
+              <input type="file" accept=".json" style="display: none;" onchange="importDataBackup(event)">
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title" style="color: var(--accent-danger);">Réinitialisation</span>
+              <span class="setting-desc">Effacer tout l'historique</span>
+            </div>
+            <button class="btn-secondary" style="width: auto; padding: 6px 12px; font-size: 0.8rem; color: var(--accent-danger); border-color: rgba(239, 68, 68, 0.3);" onclick="confirmResetData()">
+              Effacer
+            </button>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- ====================================================================
+         NAVIGATION INFÉRIEURE TACTILE (BOTTOM NAV)
+         ==================================================================== -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-tab="home" aria-label="Accueil">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        Accueil
+      </button>
+
+      <button class="nav-item" data-tab="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 20V10M12 20V4M6 20v-6"/>
+        </svg>
+        Progrès
+      </button>
+
+      <button class="nav-item" data-tab="badges">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="8" r="7"/>
+          <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
+        </svg>
+        Badges
+      </button>
+
+      <button class="nav-item" data-tab="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+        Réglages
+      </button>
+    </nav>
+
+    <!-- ====================================================================
+         ÉCRAN DE SÉANCE EN DIRECT (WORKOUT PLAYER FULLSCREEN OVERLAY)
+         ==================================================================== -->
+    <div id="workout-overlay" class="workout-overlay state-work">
+      
+      <!-- Barre Supérieure -->
+      <div class="workout-top-bar">
+        <button class="icon-btn" onclick="confirmQuitWorkout()" title="Quitter la séance" aria-label="Quitter la séance">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+
+        <div class="workout-progress-pills">
+          <div class="workout-pill" id="live-round-pill">Tour 1 / 2</div>
+          <div class="workout-pill" id="live-step-pill" style="color: var(--accent-work);">1 / 6</div>
+        </div>
+
+        <button class="icon-btn" onclick="window.audioEngine.soundEnabled = !window.audioEngine.soundEnabled; this.classList.toggle('muted', !window.audioEngine.soundEnabled);" title="Son" aria-label="Activer ou désactiver le son">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Chronomètre Circulaire Géant SVG -->
+      <div class="timer-container">
+        <svg class="timer-svg" viewBox="0 0 240 240">
+          <circle class="timer-bg-circle" cx="120" cy="120" r="110"/>
+          <circle class="timer-progress-circle" id="timer-progress-bar" cx="120" cy="120" r="110"/>
+        </svg>
+        <div class="timer-overlay-content">
+          <span class="timer-status-badge" id="live-timer-badge">EFFORT</span>
+          <span class="timer-digits" id="live-timer-digits">40</span>
+          <span class="timer-subtext">secondes</span>
+        </div>
+      </div>
+
+      <!-- Carte de l'Exercice en cours -->
+      <div class="live-exercise-card">
+        <div class="live-exercise-name" id="live-ex-name">STEP-UP</div>
+        <div class="live-exercise-cue" id="live-ex-cue">Respirez normalement, mouvement contrôlé</div>
+        
+        <div class="live-illustration-box" id="live-illustration-box">
+          <video src="videos/step-up.mp4" class="exercise-video" autoplay muted loop playsinline></video>
+        </div>
+
+        <div class="live-next-box" id="live-next-info">
+          <span>À suivre :</span> <strong>Squat Libre</strong>
+        </div>
+      </div>
+
+      <!-- Barre de Contrôles Tactiles -->
+      <div class="workout-controls">
+        <button class="ctrl-btn" onclick="prevWorkoutExercise()" title="Exercice précédent" aria-label="Exercice précédent">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polygon points="19 20 9 12 19 4 19 20"/>
+            <line x1="5" y1="19" x2="5" y2="5"/>
+          </svg>
+        </button>
+
+        <button class="ctrl-btn ctrl-btn-primary" id="btn-live-pause" onclick="toggleWorkoutPause()" title="Pause / Reprendre" aria-label="Pause ou reprendre la séance">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+          </svg>
+        </button>
+
+        <button class="ctrl-btn" onclick="skipWorkoutExercise()" title="Exercice suivant" aria-label="Exercice suivant">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polygon points="5 4 15 12 5 20 5 4"/>
+            <line x1="19" y1="5" x2="19" y2="19"/>
+          </svg>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- ====================================================================
+         ÉCRAN DE CÉLÉBRATION (SÉANCE TERMINÉE & CONFETTIS)
+         ==================================================================== -->
+    <div id="celebration-modal" class="celebration-modal">
+      <canvas id="confetti-canvas"></canvas>
+      
+      <div class="celebration-card">
+        <div class="trophy-icon-box">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/>
+          </svg>
+        </div>
+
+        <h2 class="celebration-title">Séance Terminée !</h2>
+        <p class="celebration-subtitle">Félicitations pour votre régularité quotidienne</p>
+
+        <div class="celebration-stats-grid">
+          <div class="spec-item">
+            <span class="spec-value" id="celeb-time">15 min</span>
+            <span class="spec-label">Durée</span>
+          </div>
+          <div class="spec-item">
+            <span class="spec-value" id="celeb-rounds">2 tours</span>
+            <span class="spec-label">Volume</span>
+          </div>
+          <div class="spec-item">
+            <span class="spec-value" id="celeb-calories">~130 kcal</span>
+            <span class="spec-label">Énergie</span>
+          </div>
+        </div>
+
+        <div class="status-pill" id="celeb-streak" style="margin-bottom: 14px; width: 100%; justify-content: center; font-size: 0.85rem; padding: 8px;">
+          🔥 Série : 1 jour
+        </div>
+
+        <div id="celeb-badge-notice" style="display: none; font-size: 0.8rem; color: var(--accent-gold); font-weight: 700; margin-bottom: 16px;">
+          🌟 Nouveau badge débloqué !
+        </div>
+
+        <button class="btn-primary" onclick="closeCelebration()">
+          Enregistrer & Voir mes progrès
+        </button>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         MODALE FEUILLE D'EXERCICE (BOTTOM SHEET DÉTAILS)
+         ==================================================================== -->
+    <div id="exercise-modal-sheet" class="modal-sheet-backdrop" onclick="if(event.target === this) closeExerciseModal()">
+      <div class="modal-sheet">
+        <div class="sheet-handle"></div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+          <div>
+            <h3 id="modal-ex-title" style="font-size: 1.3rem; font-weight: 900;">STEP-UP</h3>
+            <span id="modal-ex-num" style="font-size: 0.8rem; color: var(--accent-work); font-weight: 700;">Exercice 01/06 • 40 sec</span>
+          </div>
+          <button class="icon-btn" onclick="closeExerciseModal()">✕</button>
+        </div>
+
+        <div id="modal-ex-svg-box" class="live-illustration-box" style="margin: 12px auto; max-width: 320px; height: 210px; border-radius: var(--radius-md);">
+          <!-- Media Video Reel / 3D / Photo -->
+        </div>
+
+        <div style="background: var(--bg-card); border-radius: var(--radius-md); padding: 14px; margin-bottom: 12px;">
+          <h4 style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); font-weight: 800; margin-bottom: 4px;">Muscles ciblés</h4>
+          <p id="modal-ex-muscles" style="font-size: 0.85rem; color: var(--text-primary); font-weight: 600;"></p>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+          <h4 style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); font-weight: 800; margin-bottom: 4px;">Description du mouvement</h4>
+          <p id="modal-ex-desc" style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4;"></p>
+        </div>
+
+        <div style="background: var(--accent-work-bg); border-left: 3px solid var(--accent-work); border-radius: var(--radius-xs); padding: 10px 12px; margin-bottom: 12px;">
+          <h4 style="font-size: 0.75rem; text-transform: uppercase; color: var(--accent-work); font-weight: 800; margin-bottom: 2px;">Conseil de posture</h4>
+          <p id="modal-ex-cue" style="font-size: 0.82rem; color: var(--text-primary); font-weight: 600;"></p>
+        </div>
+
+        <div style="background: var(--accent-rest-bg); border-left: 3px solid var(--accent-rest); border-radius: var(--radius-xs); padding: 10px 12px; margin-bottom: 12px;">
+          <h4 style="font-size: 0.75rem; text-transform: uppercase; color: var(--accent-rest); font-weight: 800; margin-bottom: 2px;">Respiration</h4>
+          <p id="modal-ex-breathing" style="font-size: 0.82rem; color: var(--text-primary); font-weight: 600;"></p>
+        </div>
+
+        <div style="background: var(--bg-card); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 20px;">
+          <h4 style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 800; margin-bottom: 2px;">Adaptation (Débutant / Avancé)</h4>
+          <p id="modal-ex-adapt" style="font-size: 0.8rem; color: var(--text-secondary);"></p>
+        </div>
+
+        <button class="btn-primary" onclick="closeExerciseModal()">
+          Compris
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Scripts Applicatifs (defer pour téléchargement parallèle) -->
+  <script src="js/exercises.js" defer></script>
+  <script src="js/audio.js" defer></script>
+  <script src="js/storage.js" defer></script>
+  <script src="js/workout.js" defer></script>
+  <script src="js/dashboard.js" defer></script>
+  <script src="js/motivation.js" defer></script>
+  <script src="js/notifications.js" defer></script>
+  <script src="js/pwa.js" defer></script>
+  <script src="js/app.js" defer></script>
+
+  <!-- Script inline pour le bouton de bascule rapide de thème -->
+  <script>
+    function toggleQuickTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const nextTheme = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', nextTheme);
+      window.appStorage.savePreferences({ theme: nextTheme });
+      const select = document.getElementById('setting-theme');
+      if (select) select.value = nextTheme;
+    }
+  </script>
+</body>
+</html>

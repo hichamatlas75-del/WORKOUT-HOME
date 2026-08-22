@@ -1,0 +1,49 @@
+{
+  "name": "FULL BODY 17 — Routine Quotidienne",
+  "short_name": "FullBody 17",
+  "description": "Routine quotidienne Full Body de 15 à 20 minutes à 17h pour adulte actif",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#090d16",
+  "theme_color": "#090d16",
+  "lang": "fr-FR",
+  "categories": ["fitness", "health", "lifestyle"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Démarrer la séance",
+      "short_name": "Séance 17h",
+      "description": "Lancer directement la routine Full Body",
+      "url": "./index.html?action=start",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Tableau de bord",
+      "short_name": "Progrès",
+      "description": "Voir mes séries et statistiques",
+      "url": "./index.html?tab=dashboard",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
