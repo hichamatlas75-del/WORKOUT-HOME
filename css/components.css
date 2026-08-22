@@ -1797,6 +1797,7 @@ body.tv-mode-active {
 }
 
 /* ==========================================================================
+/* ==========================================================================
    14. MODULE SUIVI DU POIDS & ÉVOLUTION (DASHBOARD & MODALE)
    ========================================================================== */
 
@@ -1804,138 +1805,161 @@ body.tv-mode-active {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  padding: 20px;
-  margin-bottom: 20px;
+  padding: 16px;
+  margin-bottom: 16px;
   box-shadow: var(--shadow-sm);
+  box-sizing: border-box;
 }
 
 .weight-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
-  gap: 12px;
+  margin-bottom: 14px;
+  gap: 8px;
+  flex-wrap: nowrap;
 }
 
 .weight-card-title-wrap {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
 }
 
 .weight-card-icon {
-  font-size: 1.4rem;
+  font-size: 1.25rem;
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .weight-card-title {
-  font-size: 1.05rem;
+  font-size: 0.92rem;
   font-weight: 800;
   color: var(--text-primary);
   margin: 0;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .weight-card-sub {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: var(--text-muted);
   margin: 2px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .weight-add-btn {
-  width: auto;
-  padding: 8px 14px;
-  font-size: 0.8rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border-radius: var(--radius-full);
+  width: auto !important;
+  min-width: unset !important;
+  padding: 6px 12px !important;
+  font-size: 0.78rem !important;
+  font-weight: 800 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  border-radius: var(--radius-full) !important;
+  flex-shrink: 0 !important;
+  box-shadow: 0 2px 8px var(--accent-work-glow) !important;
 }
 
-/* KPI Grille Poids */
+/* KPI Grille Poids (Mobile 2x2 & Desktop 4x1) */
 .weight-kpi-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  margin-bottom: 16px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
-@media (min-width: 480px) {
+@media (min-width: 520px) {
   .weight-kpi-grid {
     grid-template-columns: repeat(4, 1fr);
   }
 }
 
 .weight-kpi-item {
-  background: rgba(17, 24, 39, 0.7);
+  background: var(--bg-surface-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  padding: 10px 12px;
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .weight-kpi-label {
-  font-size: 0.68rem;
-  font-weight: 700;
+  font-size: 0.62rem;
+  font-weight: 800;
   letter-spacing: 0.05em;
   color: var(--text-muted);
   text-transform: uppercase;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .weight-kpi-value {
-  font-size: 1.15rem;
+  font-size: 1.08rem;
   font-weight: 900;
   color: var(--text-primary);
   line-height: 1.2;
 }
 
 .weight-kpi-sub {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 700;
   margin-top: 2px;
 }
 
 /* Graphique Poids SVG */
 .weight-chart-box {
-  background: rgba(15, 23, 42, 0.7);
+  background: var(--bg-surface-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 12px 10px 8px;
-  margin-bottom: 16px;
+  border-radius: var(--radius-sm);
+  padding: 10px 6px 6px;
+  margin-bottom: 12px;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .weight-svg-chart {
   display: block;
   width: 100%;
+  height: auto;
+}
+
+.weight-svg-chart text {
+  font-family: inherit;
 }
 
 .weight-chart-placeholder {
-  min-height: 90px;
+  min-height: 75px;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 16px;
-  font-size: 0.8rem;
+  padding: 10px 14px;
+  font-size: 0.78rem;
   color: var(--text-secondary);
-  line-height: 1.45;
+  line-height: 1.4;
 }
 
 /* Historique des Pesées */
 .weight-history-section {
   border-top: 1px solid var(--border-subtle);
-  padding-top: 12px;
+  padding-top: 10px;
 }
 
 .weight-history-title {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 800;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 8px;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
 }
 
 .weight-history-list {
@@ -1948,40 +1972,42 @@ body.tv-mode-active {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(17, 24, 39, 0.5);
+  background: var(--bg-surface-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xs);
-  padding: 8px 12px;
+  padding: 7px 10px;
   transition: var(--transition-fast);
+  gap: 8px;
 }
 
 .weight-log-item:hover {
-  background: rgba(30, 41, 59, 0.7);
+  background: var(--bg-card-hover);
 }
 
 .weight-log-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 .weight-log-date {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: var(--text-secondary);
 }
 
 .weight-log-weight {
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   font-weight: 800;
   color: var(--text-primary);
-  display: flex;
+  display: inline-flex;
   align-items: center;
 }
 
 .weight-log-note {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--text-muted);
   font-style: italic;
 }
@@ -1996,17 +2022,20 @@ body.tv-mode-active {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   transition: var(--transition-fast);
 }
 
 .weight-log-del-btn:hover {
   color: var(--accent-danger);
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(239, 68, 68, 0.12);
 }
 
 /* Modale Poids & Stepper */
 .weight-modal-card {
   max-width: 360px;
+  width: 90%;
+  box-sizing: border-box;
 }
 
 .weight-input-container {
@@ -2016,7 +2045,7 @@ body.tv-mode-active {
 .weight-stepper {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   justify-content: center;
 }
 
@@ -2024,12 +2053,12 @@ body.tv-mode-active {
   background: var(--bg-surface-elevated);
   border: 1px solid var(--border-medium);
   color: var(--text-primary);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 800;
-  padding: 8px 6px;
+  padding: 8px 5px;
   border-radius: var(--radius-xs);
   cursor: pointer;
-  min-width: 38px;
+  min-width: 36px;
   transition: var(--transition-fast);
 }
 
@@ -2046,11 +2075,12 @@ body.tv-mode-active {
 }
 
 .weight-number-input {
-  font-size: 1.3rem !important;
+  font-size: 1.25rem !important;
   font-weight: 900 !important;
   text-align: center !important;
   padding-right: 28px !important;
   height: 44px;
+  box-sizing: border-box;
 }
 
 .weight-unit-badge {
@@ -2063,4 +2093,5 @@ body.tv-mode-active {
   color: var(--text-muted);
   pointer-events: none;
 }
+
 

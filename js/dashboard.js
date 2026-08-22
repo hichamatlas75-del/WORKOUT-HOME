@@ -269,8 +269,8 @@ class DashboardManager {
 
   generateWeightChartSvg(history, targetWeight) {
     const width = 320;
-    const height = 120;
-    const padding = { top: 15, right: 15, bottom: 25, left: 35 };
+    const height = 110;
+    const padding = { top: 18, right: 18, bottom: 20, left: 32 };
 
     const weights = history.map(h => h.weight);
     if (targetWeight) weights.push(targetWeight);
@@ -292,14 +292,14 @@ class DashboardManager {
     if (targetWeight && targetWeight >= minW && targetWeight <= maxW) {
       const targetY = getY(targetWeight).toFixed(1);
       targetLine = `
-        <line x1="${padding.left}" y1="${targetY}" x2="${padding.left + plotWidth}" y2="${targetY}" stroke="var(--accent-gold)" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.8"/>
-        <text x="${padding.left + plotWidth}" y="${targetY - 3}" fill="var(--accent-gold)" font-size="9" text-anchor="end" font-weight="700">Cible : ${targetWeight} kg</text>
+        <line x1="${padding.left}" y1="${targetY}" x2="${padding.left + plotWidth}" y2="${targetY}" stroke="var(--accent-gold)" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.85"/>
+        <text x="${padding.left + plotWidth}" y="${targetY - 3}" fill="var(--accent-gold)" font-size="8.5" text-anchor="end" font-weight="700">Cible : ${targetWeight} kg</text>
       `;
     }
 
     const circles = history.map((h, i) => `
-      <circle cx="${getX(i).toFixed(1)}" cy="${getY(h.weight).toFixed(1)}" r="4" fill="var(--bg-card)" stroke="var(--accent-work)" stroke-width="2.5"/>
-      <text x="${getX(i).toFixed(1)}" y="${getY(h.weight) - 7}" fill="var(--text-primary)" font-size="9" font-weight="800" text-anchor="middle">${h.weight}</text>
+      <circle cx="${getX(i).toFixed(1)}" cy="${getY(h.weight).toFixed(1)}" r="4" fill="var(--bg-surface)" stroke="var(--accent-work)" stroke-width="2.5"/>
+      <text x="${getX(i).toFixed(1)}" y="${getY(h.weight) - 6}" fill="var(--text-primary)" font-size="8.5" font-weight="800" text-anchor="middle">${h.weight}</text>
     `).join('');
 
     const firstDate = new Date(history[0].date + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
@@ -309,25 +309,30 @@ class DashboardManager {
       <svg class="weight-svg-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" width="100%" height="${height}">
         <defs>
           <linearGradient id="weightGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="var(--accent-work)" stop-opacity="0.35"/>
-            <stop offset="100%" stop-color="var(--accent-work)" stop-opacity="0.0"/>
+            <stop offset="0%" stop-color="var(--accent-work)" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="var(--accent-work)" stop-opacity="0.01"/>
           </linearGradient>
         </defs>
-        <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left + plotWidth}" y2="${padding.top}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
-        <line x1="${padding.left}" y1="${padding.top + plotHeight/2}" x2="${padding.left + plotWidth}" y2="${padding.top + plotHeight/2}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
-        <line x1="${padding.left}" y1="${padding.top + plotHeight}" x2="${padding.left + plotWidth}" y2="${padding.top + plotHeight}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+        <!-- Lignes de repères -->
+        <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left + plotWidth}" y2="${padding.top}" stroke="var(--border-subtle)" stroke-width="1"/>
+        <line x1="${padding.left}" y1="${padding.top + plotHeight/2}" x2="${padding.left + plotWidth}" y2="${padding.top + plotHeight/2}" stroke="var(--border-subtle)" stroke-width="1"/>
+        <line x1="${padding.left}" y1="${padding.top + plotHeight}" x2="${padding.left + plotWidth}" y2="${padding.top + plotHeight}" stroke="var(--border-subtle)" stroke-width="1"/>
 
-        <text x="${padding.left - 6}" y="${padding.top + 4}" fill="var(--text-muted)" font-size="9" text-anchor="end">${maxW}</text>
-        <text x="${padding.left - 6}" y="${padding.top + plotHeight + 3}" fill="var(--text-muted)" font-size="9" text-anchor="end">${minW}</text>
+        <!-- Échelle Y -->
+        <text x="${padding.left - 6}" y="${padding.top + 3}" fill="var(--text-muted)" font-size="8.5" text-anchor="end">${maxW}</text>
+        <text x="${padding.left - 6}" y="${padding.top + plotHeight + 3}" fill="var(--text-muted)" font-size="8.5" text-anchor="end">${minW}</text>
 
+        <!-- Ligne Objectif -->
         ${targetLine}
 
+        <!-- Courbe & Zone -->
         <polygon points="${areaPoints}" fill="url(#weightGrad)"/>
         <polyline points="${points}" fill="none" stroke="var(--accent-work)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
         ${circles}
 
-        <text x="${padding.left}" y="${height - 6}" fill="var(--text-muted)" font-size="9">${firstDate}</text>
-        <text x="${padding.left + plotWidth}" y="${height - 6}" fill="var(--text-muted)" font-size="9" text-anchor="end">${lastDate}</text>
+        <!-- Dates X -->
+        <text x="${padding.left}" y="${height - 4}" fill="var(--text-muted)" font-size="8.5">${firstDate}</text>
+        <text x="${padding.left + plotWidth}" y="${height - 4}" fill="var(--text-muted)" font-size="8.5" text-anchor="end">${lastDate}</text>
       </svg>
     `;
   }
