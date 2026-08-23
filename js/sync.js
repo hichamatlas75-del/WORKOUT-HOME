@@ -428,10 +428,15 @@ class ProfileSyncManager {
   async showDiagnosticModal() {
     const modalEl = document.getElementById('diagnostic-modal');
     const contentEl = document.getElementById('diagnostic-report-content');
-    if (!modalEl || !contentEl) return;
+    const inlinePanel = document.getElementById('diagnostic-inline-panel');
+    const inlineContent = document.getElementById('diagnostic-inline-content');
 
-    modalEl.style.display = 'flex';
-    contentEl.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--accent-work);">⏳ Analyse de la connexion Firebase en cours...</div>';
+    if (modalEl) modalEl.style.display = 'flex';
+    if (inlinePanel) inlinePanel.style.display = 'block';
+
+    const loadingHtml = '<div style="text-align:center; padding: 14px; color: var(--accent-work); font-size: 0.8rem;">⏳ Analyse de la connexion Firebase en cours...</div>';
+    if (contentEl) contentEl.innerHTML = loadingHtml;
+    if (inlineContent) inlineContent.innerHTML = loadingHtml;
 
     const report = await this.runDiagnostic();
     let html = '';
@@ -440,40 +445,42 @@ class ProfileSyncManager {
       const icon = item.ok ? '🟢' : '🔴';
       const color = item.ok ? 'var(--accent-work)' : 'var(--accent-danger)';
       html += `
-        <div style="margin-bottom: 12px; padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.03); border-left: 3px solid ${color};">
-          <div style="font-weight: 700; font-size: 0.85rem; color: ${color}; margin-bottom: 4px;">
+        <div style="margin-bottom: 10px; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,0.03); border-left: 3px solid ${color};">
+          <div style="font-weight: 700; font-size: 0.8rem; color: ${color}; margin-bottom: 3px;">
             ${icon} ${item.step}
           </div>
-          <pre style="margin: 0; font-size: 0.72rem; color: var(--text-secondary); white-space: pre-wrap; word-break: break-word; font-family: monospace;">${JSON.stringify(item.details, null, 2)}</pre>
+          <pre style="margin: 0; font-size: 0.68rem; color: var(--text-secondary); white-space: pre-wrap; word-break: break-word; font-family: monospace;">${JSON.stringify(item.details, null, 2)}</pre>
         </div>
       `;
     });
 
-    contentEl.innerHTML = html;
+    if (contentEl) contentEl.innerHTML = html;
+    if (inlineContent) inlineContent.innerHTML = html;
     window._lastDiagnosticReport = JSON.stringify(report, null, 2);
   }
 }
 
 window.syncManager = new ProfileSyncManager();
 
-function openSyncDiagnostic() {
+window.openSyncDiagnostic = function() {
   if (window.syncManager) {
     window.syncManager.showDiagnosticModal();
   }
-}
+};
 
-function copyDiagnosticReport() {
+window.copyDiagnosticReport = function() {
   if (window._lastDiagnosticReport) {
     navigator.clipboard.writeText(window._lastDiagnosticReport).then(() => {
       if (typeof showToast === 'function') showToast("📋 Rapport de diagnostic copié !");
     }).catch(() => {
-      if (typeof showToast === 'function') showToast("Sélectionnez et copiez le texte à l'écran.");
+      if (typeof showToast === 'function') showToast("Rapport disponible dans la console.");
     });
   }
-}
+};
 
-function closeSyncDiagnostic() {
+window.closeSyncDiagnostic = function() {
   const modalEl = document.getElementById('diagnostic-modal');
   if (modalEl) modalEl.style.display = 'none';
-}
+};
+
 
