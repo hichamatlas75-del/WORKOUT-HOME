@@ -1010,6 +1010,52 @@ function updateProfileDrawerData() {
 async function saveAndSyncFromDrawer() {
   const inputUser = document.getElementById('drawer-input-user');
   const inputPin = document.getElementById('drawer-input-pin');
+  const btnSync = document.getElementById('drawer-btn-sync');
+
+  const userId = inputUser ? inputUser.value.trim().toLowerCase() : '';
+  const pin = inputPin ? inputPin.value.trim() : '';
+
+  if (!userId || !pin) {
+    if (typeof showToast === 'function') showToast("⚠️ Renseignez votre Nom de Profil et Mot de passe.", true);
+    return;
+  }
+
+  if (pin.length < 3) {
+    if (typeof showToast === 'function') showToast("⚠️ Le mot de passe doit comporter au moins 3 caractères.", true);
+    return;
+  }
+
+  if (btnSync) {
+    btnSync.disabled = true;
+    btnSync.innerHTML = '⏳ Synchronisation...';
+  }
+
+  try {
+    window.appStorage.savePreferences({
+      syncUserId: userId,
+      syncUserPin: pin,
+      syncAutoEnabled: true
+    });
+
+    // Mettre à jour aussi les champs dans Réglages
+    const setUserId = document.getElementById('sync-user-id');
+    const setUserPin = document.getElementById('sync-user-pin');
+    if (setUserId) setUserId.value = userId;
+    if (setUserPin) setUserPin.value = pin;
+
+    await window.syncManager.sync();
+    updateProfileDrawerData();
+  } finally {
+    if (btnSync) {
+      btnSync.disabled = false;
+      btnSync.innerHTML = '⚡ Se Connecter / Synchro';
+    }
+  }
+}
+
+async function pullFromDrawer() {
+  const inputUser = document.getElementById('drawer-input-user');
+  const inputPin = document.getElementById('drawer-input-pin');
 
   const userId = inputUser ? inputUser.value.trim().toLowerCase() : '';
   const pin = inputPin ? inputPin.value.trim() : '';
@@ -1025,19 +1071,6 @@ async function saveAndSyncFromDrawer() {
     syncAutoEnabled: true
   });
 
-  // Mettre à jour aussi les champs dans Réglages
-  const setUserId = document.getElementById('sync-user-id');
-  const setUserPin = document.getElementById('sync-user-pin');
-  if (setUserId) setUserId.value = userId;
-  if (setUserPin) setUserPin.value = pin;
-
-  updateProfileDrawerData();
-  await window.syncManager.sync();
-  updateProfileDrawerData();
-}
-
-async function pullFromDrawer() {
-  await saveAndSyncFromDrawer();
   await window.syncManager.pullFromCloud();
   updateProfileDrawerData();
 }
@@ -1046,6 +1079,7 @@ window.openProfileDrawer = openProfileDrawer;
 window.closeProfileDrawer = closeProfileDrawer;
 window.selectAvatar = selectAvatar;
 window.updateAvatarDisplay = updateAvatarDisplay;
+window.updateProfileDrawerData = updateProfileDrawerData;
 window.saveAndSyncFromDrawer = saveAndSyncFromDrawer;
 window.pullFromDrawer = pullFromDrawer;
 

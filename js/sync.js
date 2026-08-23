@@ -176,35 +176,45 @@ class ProfileSyncManager {
   }
 
   async decryptPayload(envelope, userId, password) {
-    if (!envelope) throw new Error("Aucune donnée trouvée.");
+    if (!envelope || typeof envelope !== 'object') return null;
 
     // Format Base64 standard
     if (envelope.raw) {
-      const decoded = decodeURIComponent(escape(atob(envelope.raw)));
-      return JSON.parse(decoded);
+      try {
+        const decoded = decodeURIComponent(escape(atob(envelope.raw)));
+        return JSON.parse(decoded);
+      } catch (e) {
+        console.warn('Base64 decode error:', e);
+        return null;
+      }
     }
 
+    // Format direct non chiffré ou initial
     if (!envelope.iv || !envelope.payload) {
-      if (envelope.history || envelope.prefs) return envelope;
-      throw new Error("Format de données distant non reconnu.");
+      if (envelope.history || envelope.prefs || envelope.weightHistory) return envelope;
+      return null;
     }
 
     if (window.crypto && window.crypto.subtle) {
-      const key = await this.deriveKey(userId, password);
-      const iv = new Uint8Array(envelope.iv.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
-      const ciphertext = new Uint8Array(envelope.payload.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+      try {
+        const key = await this.deriveKey(userId, password);
+        const iv = new Uint8Array(envelope.iv.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+        const ciphertext = new Uint8Array(envelope.payload.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
 
-      const decrypted = await crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv: iv },
-        key,
-        ciphertext
-      );
+        const decrypted = await crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv: iv },
+          key,
+          ciphertext
+        );
 
-      const decryptedStr = new TextDecoder().decode(decrypted);
-      return JSON.parse(decryptedStr);
+        const decryptedStr = new TextDecoder().decode(decrypted);
+        return JSON.parse(decryptedStr);
+      } catch (e) {
+        throw new Error("Mot de passe incorrect pour ce profil.");
+      }
     }
 
-    throw new Error("Le module de déchiffrement sécurisé n'est pas supporté par ce navigateur.");
+    return null;
   }
 
   // --- ACTIONS DE SYNCHRONISATION ---
@@ -348,41 +358,78 @@ class ProfileSyncManager {
     const dot = document.getElementById('sync-status-dot');
     const text = document.getElementById('sync-status-text');
     const lastTimeEl = document.getElementById('sync-last-time');
+
+    const drawerDot = document.getElementById('drawer-sync-dot');
+    const drawerText = document.getElementById('drawer-sync-text');
+    const drawerUser = document.getElementById('drawer-username-display');
+
     const config = this.getConfig();
 
-    if (!dot || !text) return;
-
-    dot.className = 'sync-dot';
+    const applyDot = (el, statusClass) => {
+      if (el) el.className = `sync-dot ${statusClass}`;
+    };
 
     if (!config.userId || !config.password) {
-      dot.classList.add('idle');
-      text.textContent = 'Non connecté';
+      applyDot(dot, 'idle');
+      applyDot(drawerDot, 'idle');
+      if (text) text.textContent = 'Non connecté';
+      if (drawerText) drawerText.textContent = 'Non connecté';
+      if (drawerUser) drawerUser.textContent = 'Mon Profil';
       if (lastTimeEl) lastTimeEl.textContent = 'Entrez un Nom de Profil et un Mot de passe';
       return;
     }
 
+    if (drawerUser) drawerUser.textContent = `Profil : ${config.userId}`;
+
     if (state === 'syncing') {
-      dot.classList.add('syncing');
-      text.textContent = message || 'Synchronisation...';
+      applyDot(dot, 'syncing');
+      applyDot(drawerDot, 'syncing');
+      if (text) text.textContent = message || 'Synchronisation...';
+      if (drawerText) drawerText.textContent = message || 'Synchronisation...';
     } else if (state === 'success') {
-      dot.classList.add('success');
-      text.textContent = message || `Connecté (${config.userId})`;
+      applyDot(dot, 'success');
+      applyDot(drawerDot, 'success');
+      const msg = message || `Connecté (${config.userId})`;
+      if (text) text.textContent = msg;
+      if (drawerText) drawerText.textContent = msg;
       if (lastTimeEl && config.lastTime) {
         lastTimeEl.textContent = `Dernière synchro : Aujourd'hui à ${config.lastTime}`;
       }
     } else if (state === 'error') {
-      dot.classList.add('error');
-      text.textContent = message || 'Erreur connexion';
+      applyDot(dot, 'error');
+      applyDot(drawerDot, 'error');
+      const msg = message || 'Erreur connexion';
+      if (text) text.textContent = msg;
+      if (drawerText) drawerText.textContent = msg;
     } else {
       if (config.lastTime) {
-        dot.classList.add('success');
-        text.textContent = `Connecté (${config.userId})`;
+        applyDot(dot, 'success');
+        applyDot(drawerDot, 'success');
+        const msg = `Connecté (${config.userId})`;
+        if (text) text.textContent = msg;
+        if (drawerText) drawerText.textContent = msg;
         if (lastTimeEl) lastTimeEl.textContent = `Dernière synchro : Aujourd'hui à ${config.lastTime}`;
       } else {
-        dot.classList.add('idle');
-        text.textContent = `Profil prêt (${config.userId})`;
+        applyDot(dot, 'idle');
+        applyDot(drawerDot, 'idle');
+        if (text) text.textContent = `Profil prêt (${config.userId})`;
+        if (drawerText) drawerText.textContent = `Profil prêt (${config.userId})`;
         if (lastTimeEl) lastTimeEl.textContent = 'Cliquez sur Se Connecter / Synchroniser';
       }
+    }
+
+    if (typeof updateProfileDrawerData === 'function') {
+      try {
+        const streakStats = window.appStorage.getStreakStats();
+        const totalWorkouts = window.appStorage.getTotalWorkouts();
+        const latestWeight = window.appStorage.getLatestWeight();
+        const dStreak = document.getElementById('d-stat-streak');
+        const dWorkouts = document.getElementById('d-stat-workouts');
+        const dWeight = document.getElementById('d-stat-weight');
+        if (dStreak) dStreak.textContent = `${streakStats.currentStreak} j`;
+        if (dWorkouts) dWorkouts.textContent = totalWorkouts;
+        if (dWeight) dWeight.textContent = latestWeight ? `${latestWeight.weight} kg` : '-- kg';
+      } catch (e) {}
     }
   }
 
