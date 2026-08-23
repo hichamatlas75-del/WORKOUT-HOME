@@ -12,31 +12,35 @@ class ProfileSyncManager {
 
   getConfig() {
     const prefs = window.appStorage ? window.appStorage.prefs : {};
-    
-    // Nettoyer toute ancienne URL invalide issue des versions précédentes
-    let customUrl = (prefs.firebaseUrl || '').trim();
-    if (customUrl && (!customUrl.includes('firebasedatabase.app') && !customUrl.includes('firebaseio.com'))) {
-      customUrl = '';
-      if (window.appStorage) window.appStorage.savePreferences({ firebaseUrl: '' });
-    }
-
-    const activeUrl = (customUrl || DEFAULT_FIREBASE_RTDB).replace(/\/+$/, '');
-
     return {
-      url: activeUrl,
-      userId: (prefs.syncUserId || '').trim().toLowerCase(),
+      url: DEFAULT_FIREBASE_RTDB,
+      userId: (prefs.syncUserId || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_'),
       password: (prefs.syncUserPin || '').trim(),
       autoEnabled: prefs.syncAutoEnabled !== false,
       lastTime: prefs.syncLastTime || null
     };
   }
 
-  // Hachage sécurisé de l'identifiant pour la clé Firebase
+  // Hachage sécurisé et résilient pour la clé Firebase
   async hashUserId(userId) {
-    const enc = new TextEncoder();
-    const hashBuf = await crypto.subtle.digest('SHA-256', enc.encode('fb17_usr_' + userId));
-    const hashArr = Array.from(new Uint8Array(hashBuf));
-    return 'u_' + hashArr.map(b => b.toString(16).padStart(2, '0')).slice(0, 20).join('');
+    if (window.crypto && window.crypto.subtle) {
+      try {
+        const enc = new TextEncoder();
+        const hashBuf = await crypto.subtle.digest('SHA-256', enc.encode('fb17_usr_' + userId));
+        const hashArr = Array.from(new Uint8Array(hashBuf));
+        return 'u_' + hashArr.map(b => b.toString(16).padStart(2, '0')).slice(0, 20).join('');
+      } catch (e) {
+        console.warn('Fallback hash:', e);
+      }
+    }
+    // Fallback synchrone
+    let hash = 0;
+    const str = 'fb17_usr_' + userId;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return 'u_' + Math.abs(hash).toString(16).padStart(8, '0') + '_' + userId.slice(0, 10);
   }
 
   async getEndpointUrl() {
@@ -73,49 +77,76 @@ class ProfileSyncManager {
   }
 
   async encryptPayload(dataObj, userId, password) {
-    const key = await this.deriveKey(userId, password);
-    const iv = crypto.getRandomValues(new Uint8Array(12));
     const jsonStr = JSON.stringify(dataObj);
-    const encodedData = new TextEncoder().encode(jsonStr);
 
-    const ciphertext = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv: iv },
-      key,
-      encodedData
-    );
+    if (window.crypto && window.crypto.subtle) {
+      try {
+        const key = await this.deriveKey(userId, password);
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const encodedData = new TextEncoder().encode(jsonStr);
 
-    const ivHex = Array.from(iv).map(b => b.toString(16).padStart(2, '0')).join('');
-    const payloadHex = Array.from(new Uint8Array(ciphertext)).map(b => b.toString(16).padStart(2, '0')).join('');
+        const ciphertext = await crypto.subtle.encrypt(
+          { name: 'AES-GCM', iv: iv },
+          key,
+          encodedData
+        );
 
+        const ivHex = Array.from(iv).map(b => b.toString(16).padStart(2, '0')).join('');
+        const payloadHex = Array.from(new Uint8Array(ciphertext)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+        return {
+          v: 3,
+          app: 'FULL_BODY_17',
+          profile: userId,
+          iv: ivHex,
+          payload: payloadHex,
+          updatedAt: Date.now()
+        };
+      } catch (err) {
+        console.warn('[Crypto Encrypt Fallback]:', err);
+      }
+    }
+
+    // Fallback Base64 direct
     return {
-      v: 3,
+      v: 2,
       app: 'FULL_BODY_17',
       profile: userId,
-      iv: ivHex,
-      payload: payloadHex,
+      raw: btoa(unescape(encodeURIComponent(jsonStr))),
       updatedAt: Date.now()
     };
   }
 
   async decryptPayload(envelope, userId, password) {
     if (!envelope) throw new Error("Aucune donnée trouvée.");
-    if (!envelope.iv || !envelope.payload) {
-      if (envelope.history || envelope.prefs) return envelope;
-      throw new Error("Format de données invalide.");
+
+    // Format Base64 standard
+    if (envelope.raw) {
+      const decoded = decodeURIComponent(escape(atob(envelope.raw)));
+      return JSON.parse(decoded);
     }
 
-    const key = await this.deriveKey(userId, password);
-    const iv = new Uint8Array(envelope.iv.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
-    const ciphertext = new Uint8Array(envelope.payload.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+    if (!envelope.iv || !envelope.payload) {
+      if (envelope.history || envelope.prefs) return envelope;
+      throw new Error("Format de données distant non reconnu.");
+    }
 
-    const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: iv },
-      key,
-      ciphertext
-    );
+    if (window.crypto && window.crypto.subtle) {
+      const key = await this.deriveKey(userId, password);
+      const iv = new Uint8Array(envelope.iv.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+      const ciphertext = new Uint8Array(envelope.payload.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
 
-    const decryptedStr = new TextDecoder().decode(decrypted);
-    return JSON.parse(decryptedStr);
+      const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: iv },
+        key,
+        ciphertext
+      );
+
+      const decryptedStr = new TextDecoder().decode(decrypted);
+      return JSON.parse(decryptedStr);
+    }
+
+    throw new Error("Le module de déchiffrement sécurisé n'est pas supporté par ce navigateur.");
   }
 
   // --- ACTIONS DE SYNCHRONISATION ---
@@ -151,7 +182,6 @@ class ProfileSyncManager {
       try {
         const getResp = await fetch(endpoint, {
           method: 'GET',
-          headers: { 'Accept': 'application/json' },
           cache: 'no-store'
         });
 
@@ -235,7 +265,6 @@ class ProfileSyncManager {
       const endpoint = await this.getEndpointUrl();
       const getResp = await fetch(endpoint, {
         method: 'GET',
-        headers: { 'Accept': 'application/json' },
         cache: 'no-store'
       });
 

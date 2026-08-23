@@ -479,7 +479,7 @@ function saveSettings() {
 
   if (window.syncManager) {
     window.syncManager.updateStatusUI();
-    if (newPrefs.firebaseUrl && newPrefs.syncUserId && newPrefs.syncAutoEnabled) {
+    if (newPrefs.syncUserId && newPrefs.syncUserPin && newPrefs.syncAutoEnabled) {
       window.syncManager.sync({ silent: true });
     }
   }
