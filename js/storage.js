@@ -352,7 +352,7 @@ class AppStorage {
   exportJSON() {
     const backup = {
       app: 'FULL_BODY_17',
-      version: '1.8.0',
+      version: '2.0.0',
       exportedAt: new Date().toISOString(),
       prefs: this.prefs,
       history: this.history,

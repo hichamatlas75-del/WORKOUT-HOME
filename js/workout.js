@@ -114,10 +114,12 @@ class WorkoutEngine {
         }
       }
 
-      // Diffusion d'état toutes les secondes pour l'écran TV
+      // Diffusion d'état toutes les secondes pour l'écran TV (si supporté)
       if (ceilSec !== this._lastBroadcastSec) {
         this._lastBroadcastSec = ceilSec;
-        this.broadcastCastState();
+        if (typeof this.broadcastCastState === 'function') {
+          this.broadcastCastState();
+        }
       }
 
       // Fin de la phase actuelle
