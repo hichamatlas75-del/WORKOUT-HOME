@@ -45,9 +45,9 @@ document.addEventListener('DOMContentLoaded', () => {
     switchTab(urlParams.get('tab'));
   }
 
-  // 10. Synchronisation Cloud automatique au démarrage (si configurée)
-  if (window.syncManager && window.appStorage.prefs.syncUserId && window.appStorage.prefs.syncAutoEnabled) {
-    window.syncManager.sync({ silent: true });
+  // 10. Synchronisation automatique par lien ou scan QR Code
+  if (window.syncManager) {
+    window.syncManager.checkUrlForSync();
   }
 });
 

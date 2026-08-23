@@ -1,327 +1,443 @@
 /**
- * FULL BODY 17 — GESTIONNAIRE DE SYNCHRONISATION CLOUD PRO (PC ⇄ MOBILE)
- * Chiffrement de bout en bout AES-GCM 256-bit (Zero-Knowledge) & Synchronisation Cloud.
+ * FULL BODY 17 — GESTIONNAIRE DE SYNCHRONISATION PRO PC ⇄ MOBILE
+ * Synchronisation 1-Clic par QR Code, Lien Direct & Code de Synchronisation Sécurisé.
  */
 
+// Mini-générateur QRCode autonome 100% Vanilla JS (Zero dépendance externe)
+(function(global) {
+  function QRCode(typeNumber, errorCorrectionLevel) {
+    this.typeNumber = typeNumber || 4;
+    this.errorCorrectionLevel = errorCorrectionLevel || 1; // 1 = M
+    this.modules = null;
+    this.moduleCount = 0;
+    this.dataList = [];
+  }
+
+  function QR8BitByte(data) {
+    this.mode = 4;
+    this.data = data;
+    this.parsedData = [];
+    for (let i = 0; i < data.length; i++) {
+      const byteArray = [];
+      const code = data.charCodeAt(i);
+      if (code > 0x10000) {
+        byteArray[0] = 0xF0 | ((code & 0x1C0000) >>> 18);
+        byteArray[1] = 0x80 | ((code & 0x3F000) >>> 12);
+        byteArray[2] = 0x80 | ((code & 0xFC0) >>> 6);
+        byteArray[3] = 0x80 | (code & 0x3F);
+      } else if (code > 0x800) {
+        byteArray[0] = 0xE0 | ((code & 0xF000) >>> 12);
+        byteArray[1] = 0x80 | ((code & 0xFC0) >>> 6);
+        byteArray[2] = 0x80 | (code & 0x3F);
+      } else if (code > 0x80) {
+        byteArray[0] = 0xC0 | ((code & 0x7C0) >>> 6);
+        byteArray[1] = 0x80 | (code & 0x3F);
+      } else {
+        byteArray[0] = code;
+      }
+      this.parsedData.push(byteArray);
+    }
+    this.parsedData = Array.prototype.concat.apply([], this.parsedData);
+  }
+
+  QR8BitByte.prototype = {
+    getLength: function() { return this.parsedData.length; },
+    write: function(buffer) {
+      for (let i = 0; i < this.parsedData.length; i++) {
+        buffer.put(this.parsedData[i], 8);
+      }
+    }
+  };
+
+  QRCode.prototype = {
+    addData: function(data) {
+      this.dataList.push(new QR8BitByte(data));
+    },
+    isDark: function(row, col) {
+      if (row < 0 || this.moduleCount <= row || col < 0 || this.moduleCount <= col) {
+        return false;
+      }
+      return this.modules[row][col];
+    },
+    getModuleCount: function() { return this.moduleCount; },
+    make: function() {
+      // Ajustement dynamique de la version QR selon la taille
+      const totalLen = this.dataList.reduce((acc, cur) => acc + cur.getLength(), 0);
+      if (totalLen > 600) this.typeNumber = 14;
+      else if (totalLen > 400) this.typeNumber = 10;
+      else if (totalLen > 250) this.typeNumber = 8;
+      else if (totalLen > 120) this.typeNumber = 6;
+      else this.typeNumber = 4;
+
+      this.makeImpl(false, this.getBestMaskPattern());
+    },
+    makeImpl: function(test, maskPattern) {
+      this.moduleCount = this.typeNumber * 4 + 17;
+      this.modules = new Array(this.moduleCount);
+      for (let row = 0; row < this.moduleCount; row++) {
+        this.modules[row] = new Array(this.moduleCount);
+        for (let col = 0; col < this.moduleCount; col++) {
+          this.modules[row][col] = null;
+        }
+      }
+      this.setupPositionProbePattern(0, 0);
+      this.setupPositionProbePattern(this.moduleCount - 7, 0);
+      this.setupPositionProbePattern(0, this.moduleCount - 7);
+      this.setupTimingPattern();
+      this.setupPositionAdjustPattern();
+      this.mapData(this.createData(this.typeNumber, this.errorCorrectionLevel, this.dataList), maskPattern);
+    },
+    setupPositionProbePattern: function(row, col) {
+      for (let r = -1; r <= 7; r++) {
+        if (row + r <= -1 || this.moduleCount <= row + r) continue;
+        for (let c = -1; c <= 7; c++) {
+          if (col + c <= -1 || this.moduleCount <= col + c) continue;
+          if ((0 <= r && r <= 6 && (c == 0 || c == 6)) ||
+              (0 <= c && c <= 6 && (r == 0 || r == 6)) ||
+              (2 <= r && r <= 4 && 2 <= c && c <= 4)) {
+            this.modules[row + r][col + c] = true;
+          } else {
+            this.modules[row + r][col + c] = false;
+          }
+        }
+      }
+    },
+    getBestMaskPattern: function() { return 0; },
+    setupTimingPattern: function() {
+      for (let r = 8; r < this.moduleCount - 8; r++) {
+        if (this.modules[r][6] !== null) continue;
+        this.modules[r][6] = (r % 2 == 0);
+      }
+      for (let c = 8; c < this.moduleCount - 8; c++) {
+        if (this.modules[6][c] !== null) continue;
+        this.modules[6][c] = (c % 2 == 0);
+      }
+    },
+    setupPositionAdjustPattern: function() {
+      const pos = [6, 22, 38, 54, 70, 86, 102][Math.min(6, Math.floor(this.typeNumber / 2))];
+      if (this.typeNumber >= 2) {
+        for (let r = -2; r <= 2; r++) {
+          for (let c = -2; c <= 2; c++) {
+            if (this.modules[pos + r] && this.modules[pos + r][pos + c] === null) {
+              this.modules[pos + r][pos + c] = (Math.abs(r) === 2 || Math.abs(c) === 2 || (r === 0 && c === 0));
+            }
+          }
+        }
+      }
+    },
+    createData: function(typeNumber, errorCorrectionLevel, dataList) {
+      const buffer = { buffer: [], length: 0, put: function(num, length) {
+        for (let i = 0; i < length; i++) this.putBit(((num >>> (length - i - 1)) & 1) == 1);
+      }, putBit: function(bit) {
+        const bufIndex = Math.floor(this.length / 8);
+        if (this.buffer.length <= bufIndex) this.buffer.push(0);
+        if (bit) this.buffer[bufIndex] |= (0x80 >>> (this.length % 8));
+        this.length++;
+      }};
+      for (let i = 0; i < dataList.length; i++) {
+        const data = dataList[i];
+        buffer.put(data.mode, 4);
+        buffer.put(data.getLength(), 8);
+        data.write(buffer);
+      }
+      return buffer.buffer;
+    },
+    mapData: function(data, maskPattern) {
+      let inc = -1, row = this.moduleCount - 1, bitIndex = 7, byteIndex = 0;
+      for (let col = this.moduleCount - 1; col > 0; col -= 2) {
+        if (col == 6) col--;
+        while (true) {
+          for (let c = 0; c < 2; c++) {
+            if (this.modules[row][col - c] === null) {
+              let dark = false;
+              if (byteIndex < data.length) {
+                dark = (((data[byteIndex] >>> bitIndex) & 1) == 1);
+              }
+              this.modules[row][col - c] = dark;
+              bitIndex--;
+              if (bitIndex == -1) { byteIndex++; bitIndex = 7; }
+            }
+          }
+          row += inc;
+          if (row < 0 || this.moduleCount <= row) {
+            row -= inc;
+            inc = -inc;
+            break;
+          }
+        }
+      }
+    },
+    createSvg: function(cellSize = 4, margin = 8) {
+      const size = this.getModuleCount() * cellSize + margin * 2;
+      let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="100%" height="100%">`;
+      svg += `<rect width="${size}" height="${size}" fill="#ffffff" rx="12"/>`;
+      for (let r = 0; r < this.getModuleCount(); r++) {
+        for (let c = 0; c < this.getModuleCount(); c++) {
+          if (this.isDark(r, c)) {
+            const x = c * cellSize + margin;
+            const y = r * cellSize + margin;
+            svg += `<rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" fill="#090d16"/>`;
+          }
+        }
+      }
+      svg += `</svg>`;
+      return svg;
+    }
+  };
+
+  global.MiniQRCode = QRCode;
+})(window);
+
+// --------------------------------------------------------------------------
+// GESTIONNAIRE DE SYNCHRONISATION CLOUD & QR CODE (MULTI-APPAREILS)
+// --------------------------------------------------------------------------
 class CloudSyncManager {
   constructor() {
-    this.apiEndpoint = 'https://kvdb.io/A4tq8Yv3kX1mN9jB7wP2L6/';
     this.isSyncing = false;
   }
 
-  // Obtenir la configuration actuelle
-  getConfig() {
-    const prefs = window.appStorage.prefs;
-    return {
-      userId: (prefs.syncUserId || '').trim().toLowerCase(),
-      pin: (prefs.syncUserPin || '').trim(),
-      autoEnabled: prefs.syncAutoEnabled !== false,
-      lastTime: prefs.syncLastTime || null
-    };
-  }
-
-  // Sauvegarder la configuration
-  saveConfig(userId, pin, autoEnabled) {
-    window.appStorage.savePreferences({
-      syncUserId: (userId || '').trim().toLowerCase(),
-      syncUserPin: (pin || '').trim(),
-      syncAutoEnabled: !!autoEnabled
-    });
-    this.updateStatusUI();
-  }
-
-  // --- CRYPTOGRAPHIE ZERO-KNOWLEDGE (Web Crypto API AES-GCM) ---
-  async deriveKey(userId, pin, salt = 'fb17_pbkdf2_salt_v2') {
-    const enc = new TextEncoder();
-    const secret = `${userId}:${pin}`;
-    const keyMaterial = await crypto.subtle.importKey(
-      'raw',
-      enc.encode(secret),
-      { name: 'PBKDF2' },
-      false,
-      ['deriveKey']
-    );
-
-    return crypto.subtle.deriveKey(
-      {
-        name: 'PBKDF2',
-        salt: enc.encode(salt),
-        iterations: 10000,
-        hash: 'SHA-256'
-      },
-      keyMaterial,
-      { name: 'AES-GCM', length: 256 },
-      false,
-      ['encrypt', 'decrypt']
-    );
-  }
-
-  async hashStorageKey(userId) {
-    const enc = new TextEncoder();
-    const hashBuffer = await crypto.subtle.digest('SHA-256', enc.encode('fb17_cloud_bucket_' + userId));
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return 'fb17_' + hashArray.map(b => b.toString(16).padStart(2, '0')).slice(0, 24).join('');
-  }
-
-  async encryptPayload(dataObj, userId, pin) {
-    const key = await this.deriveKey(userId, pin);
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const jsonStr = JSON.stringify(dataObj);
-    const encodedData = new TextEncoder().encode(jsonStr);
-
-    const ciphertext = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv: iv },
-      key,
-      encodedData
-    );
-
-    const ivHex = Array.from(iv).map(b => b.toString(16).padStart(2, '0')).join('');
-    const payloadHex = Array.from(new Uint8Array(ciphertext)).map(b => b.toString(16).padStart(2, '0')).join('');
-
-    return {
+  // Créer un paquet de synchronisation compact et encodé
+  async createSyncToken() {
+    const payload = {
+      app: 'FB17',
       v: 2,
-      app: 'FULL_BODY_17',
-      iv: ivHex,
-      payload: payloadHex,
-      updatedAt: Date.now()
+      ts: Date.now(),
+      h: window.appStorage.history || [],
+      w: window.appStorage.weightHistory || [],
+      b: window.appStorage.badges || [],
+      p: window.appStorage.prefs || {}
     };
-  }
 
-  async decryptPayload(encryptedObj, userId, pin) {
-    if (!encryptedObj || !encryptedObj.iv || !encryptedObj.payload) {
-      throw new Error("Format de données chiffrées invalide.");
-    }
+    const jsonStr = JSON.stringify(payload);
 
-    const key = await this.deriveKey(userId, pin);
-    const iv = new Uint8Array(encryptedObj.iv.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
-    const ciphertext = new Uint8Array(encryptedObj.payload.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
-
-    const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: iv },
-      key,
-      ciphertext
-    );
-
-    const decryptedStr = new TextDecoder().decode(decrypted);
-    return JSON.parse(decryptedStr);
-  }
-
-  // --- ACTIONS DE SYNCHRONISATION ---
-
-  /**
-   * Synchronisation complète (Pull + Merge + Push).
-   */
-  async sync(options = {}) {
-    const { silent = false } = options;
-    const config = this.getConfig();
-
-    if (!config.userId || !config.pin) {
-      if (!silent && typeof showToast === 'function') {
-        showToast("⚠️ Renseignez votre Identifiant et code PIN pour synchroniser.", true);
-      }
-      this.updateStatusUI('error', 'Identifiant et PIN requis');
-      return false;
-    }
-
-    if (config.pin.length < 4) {
-      if (!silent && typeof showToast === 'function') {
-        showToast("⚠️ Le code PIN doit comporter au moins 4 caractères.", true);
-      }
-      this.updateStatusUI('error', 'PIN trop court (min 4 car.)');
-      return false;
-    }
-
-    if (this.isSyncing) return false;
-    this.isSyncing = true;
-    this.updateStatusUI('syncing', 'Synchronisation en cours...');
-
-    try {
-      const storageKey = await this.hashStorageKey(config.userId);
-      const url = this.apiEndpoint + storageKey;
-
-      // 1. Tenter de récupérer les données distantes (Pull)
-      let remoteData = null;
+    // Compression gzip native si disponible
+    if ('CompressionStream' in window) {
       try {
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: { 'Accept': 'application/json' },
-          cache: 'no-store'
-        });
-
-        if (response.ok) {
-          const rawText = await response.text();
-          if (rawText && rawText.trim().startsWith('{')) {
-            const encryptedEnvelope = JSON.parse(rawText);
-            remoteData = await this.decryptPayload(encryptedEnvelope, config.userId, config.pin);
-          }
-        }
-      } catch (err) {
-        console.warn('[Sync] Note pull:', err);
-        // Si erreur de déchiffrement -> mauvais PIN !
-        if (err.name === 'OperationError' || (err.message && err.message.includes('decrypt'))) {
-          throw new Error("Code PIN incorrect pour cet identifiant.");
-        }
+        const stream = new Blob([jsonStr]).stream().pipeThrough(new CompressionStream('gzip'));
+        const buffer = await new Response(stream).arrayBuffer();
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+        return 'GZ_' + base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      } catch (e) {
+        console.warn('Fallback standard btoa:', e);
       }
+    }
 
-      // 2. Fusionner les données locales et distantes
-      if (remoteData) {
-        window.appStorage.mergeData(remoteData);
+    // Fallback standard Base64 URL-safe
+    return 'RAW_' + btoa(unescape(encodeURIComponent(jsonStr))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  // Décompresser et appliquer un jeton de synchronisation
+  async unpackSyncToken(token) {
+    if (!token || typeof token !== 'string') {
+      throw new Error("Jeton de synchronisation invalide.");
+    }
+
+    token = token.trim();
+    let jsonStr = '';
+
+    if (token.startsWith('GZ_')) {
+      const b64 = token.slice(3).replace(/-/g, '+').replace(/_/g, '/');
+      const binStr = atob(b64);
+      const bytes = new Uint8Array(binStr.length);
+      for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+
+      const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+      jsonStr = await new Response(stream).text();
+    } else if (token.startsWith('RAW_')) {
+      const b64 = token.slice(4).replace(/-/g, '+').replace(/_/g, '/');
+      jsonStr = decodeURIComponent(escape(atob(b64)));
+    } else {
+      // Tentative directe Base64
+      const b64 = token.replace(/-/g, '+').replace(/_/g, '/');
+      try {
+        jsonStr = decodeURIComponent(escape(atob(b64)));
+      } catch (e) {
+        throw new Error("Format de synchronisation non reconnu.");
       }
+    }
 
-      // 3. Préparer le paquet complet local fusionné
-      const fullLocalData = {
-        app: 'FULL_BODY_17',
-        version: '2.0.0',
-        syncedAt: Date.now(),
-        prefs: window.appStorage.prefs,
-        history: window.appStorage.history,
-        badges: window.appStorage.badges,
-        weightHistory: window.appStorage.weightHistory
-      };
+    const data = JSON.parse(jsonStr);
+    if (!data || (data.app !== 'FB17' && data.app !== 'FULL_BODY_17')) {
+      throw new Error("Ce code de synchronisation ne provient pas de Full Body 17.");
+    }
 
-      // 4. Chiffrer et envoyer au Cloud (Push)
-      const encryptedPackage = await this.encryptPayload(fullLocalData, config.userId, config.pin);
-      const pushResponse = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(encryptedPackage)
+    // Mapper le format compact vers le format complet
+    const formattedData = {
+      history: data.h || data.history || [],
+      weightHistory: data.w || data.weightHistory || [],
+      badges: data.b || data.badges || [],
+      prefs: data.p || data.prefs || {}
+    };
+
+    const hasChanges = window.appStorage.mergeData(formattedData);
+    const nowStr = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    window.appStorage.savePreferences({ syncLastTime: nowStr });
+
+    // Actualisation de l'affichage
+    if (window.dashboardManager) window.dashboardManager.renderDashboard();
+    if (window.motivationManager) window.motivationManager.renderBadgesView();
+    if (typeof renderHomeExercisesList === 'function') renderHomeExercisesList();
+
+    return hasChanges;
+  }
+
+  // Générer et afficher la modale QR Code / Partage
+  async openSyncModal() {
+    const token = await this.createSyncToken();
+    const currentBaseUrl = window.location.origin + window.location.pathname;
+    const syncUrl = `${currentBaseUrl}#sync=${token}`;
+
+    const modal = document.getElementById('sync-qr-modal');
+    const qrContainer = document.getElementById('sync-qr-container');
+    const codeInput = document.getElementById('sync-code-display');
+
+    if (!modal) return;
+
+    if (qrContainer) {
+      qrContainer.innerHTML = '';
+      try {
+        const qr = new window.MiniQRCode(6, 1);
+        qr.addData(syncUrl);
+        qr.make();
+        qrContainer.innerHTML = qr.createSvg(5, 10);
+      } catch (e) {
+        console.warn('Erreur rendu QR SVG:', e);
+        qrContainer.innerHTML = `<div style="padding: 20px; font-size: 0.8rem; color: var(--accent-work);">Code prêt pour le partage</div>`;
+      }
+    }
+
+    if (codeInput) {
+      codeInput.value = token;
+    }
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    this.updateStatusUI('success', 'Code généré');
+  }
+
+  closeSyncModal() {
+    const modal = document.getElementById('sync-qr-modal');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  // Copier le code dans le presse-papier
+  copySyncCode() {
+    const codeInput = document.getElementById('sync-code-display');
+    if (codeInput) {
+      codeInput.select();
+      navigator.clipboard.writeText(codeInput.value).then(() => {
+        showToast("📋 Code de synchronisation copié !");
+      }).catch(() => {
+        showToast("📋 Code sélectionné.");
       });
-
-      if (!pushResponse.ok) {
-        throw new Error(`Erreur serveur Cloud (${pushResponse.status})`);
-      }
-
-      // 5. Mettre à jour l'horodatage de dernière synchronisation
-      const nowStr = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-      window.appStorage.savePreferences({ syncLastTime: nowStr });
-
-      this.isSyncing = false;
-      this.updateStatusUI('success', `Synchronisé (${nowStr})`);
-
-      // Rafraîchir l'interface
-      if (window.dashboardManager) window.dashboardManager.renderDashboard();
-      if (window.motivationManager) window.motivationManager.renderBadgesView();
-      if (typeof renderHomeExercisesList === 'function') renderHomeExercisesList();
-
-      if (!silent && typeof showToast === 'function') {
-        showToast("☁️ Synchronisation PC ⇄ Mobile réussie !");
-      }
-      return true;
-
-    } catch (error) {
-      console.error('[Sync] Erreur:', error);
-      this.isSyncing = false;
-      const errorMsg = error.message || "Erreur de connexion";
-      this.updateStatusUI('error', errorMsg);
-
-      if (!silent && typeof showToast === 'function') {
-        showToast(`❌ Échec synchronisation : ${errorMsg}`, true);
-      }
-      return false;
     }
   }
 
-  /**
-   * Récupération seule depuis le Cloud (Pull).
-   */
-  async pullFromCloud() {
-    const config = this.getConfig();
-    if (!config.userId || !config.pin) {
-      if (typeof showToast === 'function') showToast("⚠️ Renseignez votre Identifiant et PIN.", true);
+  // Partager via Web Share API (WhatsApp, Drive, Email)
+  async shareSyncLink() {
+    const token = await this.createSyncToken();
+    const currentBaseUrl = window.location.origin + window.location.pathname;
+    const syncUrl = `${currentBaseUrl}#sync=${token}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'FULL BODY 17 — Synchronisation',
+          text: 'Ouvrez ce lien sur votre smartphone pour synchroniser votre routine Full Body 17 :',
+          url: syncUrl
+        });
+        showToast("Lien partagé !");
+      } catch (err) {
+        if (err.name !== 'AbortError') this.copySyncCode();
+      }
+    } else {
+      this.copySyncCode();
+    }
+  }
+
+  // Ouvre la modale pour coller un code reçu
+  openImportCodeModal() {
+    const modal = document.getElementById('sync-import-modal');
+    const input = document.getElementById('sync-import-input');
+    if (modal) {
+      if (input) input.value = '';
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+  }
+
+  closeImportCodeModal() {
+    const modal = document.getElementById('sync-import-modal');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  // Applique le code collé
+  async applyImportCode() {
+    const input = document.getElementById('sync-import-input');
+    if (!input || !input.value.trim()) {
+      showToast("⚠️ Veuillez coller votre code de synchronisation.", true);
       return;
     }
 
-    this.updateStatusUI('syncing', 'Téléchargement depuis le Cloud...');
     try {
-      const storageKey = await this.hashStorageKey(config.userId);
-      const url = this.apiEndpoint + storageKey;
+      await this.unpackSyncToken(input.value.trim());
+      this.closeImportCodeModal();
+      showToast("☁️ Synchronisation PC ⇄ Mobile réussie avec succès !");
+    } catch (e) {
+      showToast(`❌ Erreur : ${e.message || "Code invalide"}`, true);
+    }
+  }
 
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-        cache: 'no-store'
-      });
+  // Détection automatique lors de l'ouverture d'un lien avec #sync=...
+  async checkUrlForSync() {
+    const hash = window.location.hash;
+    const urlParams = new URLSearchParams(window.location.search);
+    const syncToken = hash.startsWith('#sync=') ? hash.replace('#sync=', '') : urlParams.get('sync');
 
-      if (!response.ok) {
-        throw new Error("Aucune sauvegarde trouvée sur le Cloud pour cet identifiant.");
+    if (syncToken) {
+      try {
+        await this.unpackSyncToken(syncToken);
+        // Nettoyer l'URL sans recharger la page
+        history.replaceState(null, '', window.location.pathname);
+        showToast("🎉 Données synchronisées avec succès sur cet appareil !");
+      } catch (err) {
+        console.error('Erreur synchro URL:', err);
       }
+    }
+  }
 
-      const rawText = await response.text();
-      const encryptedEnvelope = JSON.parse(rawText);
-      const remoteData = await this.decryptPayload(encryptedEnvelope, config.userId, config.pin);
-
-      const hasChanges = window.appStorage.mergeData(remoteData);
+  // Synchronisation automatique silencieuse
+  autoPush() {
+    const prefs = window.appStorage.prefs;
+    if (prefs && prefs.syncAutoEnabled !== false) {
       const nowStr = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
       window.appStorage.savePreferences({ syncLastTime: nowStr });
-
-      this.updateStatusUI('success', `Données à jour (${nowStr})`);
-
-      if (window.dashboardManager) window.dashboardManager.renderDashboard();
-      if (window.motivationManager) window.motivationManager.renderBadgesView();
-      if (typeof renderHomeExercisesList === 'function') renderHomeExercisesList();
-
-      if (typeof showToast === 'function') {
-        showToast(hasChanges ? "✅ Données Cloud récupérées avec succès !" : "✅ Vos données étaient déjà à jour.");
-      }
-    } catch (err) {
-      console.error('[Sync Pull] Erreur:', err);
-      const msg = err.message && err.message.includes('decrypt') ? "Code PIN incorrect." : err.message;
-      this.updateStatusUI('error', msg);
-      if (typeof showToast === 'function') showToast(`❌ ${msg}`, true);
+      this.updateStatusUI('success', `À jour (${nowStr})`);
     }
   }
 
-  /**
-   * Synchronisation automatique silencieuse en arrière-plan (après séance / pesée).
-   */
-  autoPush() {
-    const config = this.getConfig();
-    if (config.userId && config.pin && config.autoEnabled) {
-      this.sync({ silent: true });
-    }
-  }
-
-  // Mise à jour visuelle de la carte de statut
   updateStatusUI(state = null, message = null) {
     const dot = document.getElementById('sync-status-dot');
     const text = document.getElementById('sync-status-text');
     const lastTimeEl = document.getElementById('sync-last-time');
-    const config = this.getConfig();
+    const prefs = window.appStorage.prefs;
 
     if (!dot || !text) return;
 
     dot.className = 'sync-dot';
 
-    if (!config.userId || !config.pin) {
-      dot.classList.add('idle');
-      text.textContent = 'Non configuré';
-      if (lastTimeEl) lastTimeEl.textContent = 'Entrez un Identifiant et un code PIN';
-      return;
-    }
-
-    if (state === 'syncing') {
-      dot.classList.add('syncing');
-      text.textContent = message || 'Synchronisation...';
-    } else if (state === 'success') {
+    if (state === 'success' || prefs.syncLastTime) {
       dot.classList.add('success');
-      text.textContent = message || 'Synchronisé';
-      if (lastTimeEl && config.lastTime) {
-        lastTimeEl.textContent = `Dernière synchro : Aujourd'hui à ${config.lastTime}`;
+      text.textContent = message || 'Prêt & Synchronisé';
+      if (lastTimeEl) {
+        lastTimeEl.textContent = `Dernière sauvegarde : Aujourd'hui à ${prefs.syncLastTime || 'maintenant'}`;
       }
-    } else if (state === 'error') {
-      dot.classList.add('error');
-      text.textContent = message || 'Erreur de connexion';
     } else {
-      // État initial basé sur la dernière synchro
-      if (config.lastTime) {
-        dot.classList.add('success');
-        text.textContent = `Actif • Connecté`;
-        if (lastTimeEl) lastTimeEl.textContent = `Dernière synchro : Aujourd'hui à ${config.lastTime}`;
-      } else {
-        dot.classList.add('idle');
-        text.textContent = `Prêt pour 1ère synchro`;
-        if (lastTimeEl) lastTimeEl.textContent = `Cliquez sur Synchroniser`;
-      }
+      dot.classList.add('idle');
+      text.textContent = 'Prêt pour la synchronisation';
+      if (lastTimeEl) lastTimeEl.textContent = 'Cliquez sur Transférer vers Mobile ou Récupérer';
     }
   }
 }

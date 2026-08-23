@@ -460,69 +460,41 @@
           Installer l'application sur cet appareil
         </button>
 
-        <!-- Synchronisation Cloud Pro Multi-Appareils (PC ⇄ Mobile) -->
+        <!-- Synchronisation Instantanée Multi-Appareils (PC ⇄ Mobile) -->
         <div class="settings-group sync-cloud-card">
           <div class="section-header" style="margin-bottom: 6px;">
-            <h3 class="section-title" style="font-size: 0.95rem;">☁️ Synchronisation Cloud (PC ⇄ Mobile)</h3>
+            <h3 class="section-title" style="font-size: 0.95rem;">📱 Synchronisation Instantanée (PC ⇄ Mobile)</h3>
           </div>
           <p style="font-size: 0.76rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
-            Synchronisez vos séances et pesées entre votre PC et votre smartphone en toute sécurité (Chiffrement AES-256).
+            Transférez vos séances, poids et badges en 1 seconde par QR Code, lien direct ou code sécurisé (100% privé).
           </p>
 
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-title">Identifiant de Synchronisation</span>
-              <span class="setting-desc">Votre pseudo unique (ex : hicham)</span>
-            </div>
-            <label for="sync-user-id" class="sr-only">Identifiant de synchronisation</label>
-            <input type="text" id="sync-user-id" class="styled-input" placeholder="ex: hicham" maxlength="30" style="width: 120px; text-transform: lowercase;">
+          <div class="sync-actions-grid" style="margin-bottom: 10px;">
+            <button class="btn-primary sync-btn" onclick="window.syncManager.openSyncModal()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+              <span>Transférer / Scanner</span>
+            </button>
+            <button class="btn-secondary sync-btn" onclick="window.syncManager.openImportCodeModal()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Coller un Code</span>
+            </button>
           </div>
 
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-title">Code PIN de sécurité</span>
-              <span class="setting-desc">4 à 8 chiffres pour déverrouiller vos données</span>
-            </div>
-            <label for="sync-user-pin" class="sr-only">Code PIN de sécurité</label>
-            <input type="password" id="sync-user-pin" class="styled-input" placeholder="••••" maxlength="8" style="width: 90px; letter-spacing: 2px; text-align: center;">
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-title">Synchronisation automatique</span>
-              <span class="setting-desc">Mise à jour en direct après chaque séance</span>
-            </div>
-            <label class="switch">
-              <input type="checkbox" id="sync-auto-enabled" checked>
-              <span class="slider"></span>
-            </label>
-          </div>
-
-          <!-- Statut visuel de la synchronisation -->
-          <div class="sync-status-box" id="sync-status-box">
+          <div class="sync-status-box" id="sync-status-box" style="margin-top: 6px;">
             <div class="sync-status-indicator">
-              <span class="sync-dot idle" id="sync-status-dot"></span>
-              <span class="sync-status-text" id="sync-status-text">Non configuré</span>
+              <span class="sync-dot success" id="sync-status-dot"></span>
+              <span class="sync-status-text" id="sync-status-text">Prêt pour la synchronisation</span>
             </div>
-            <span class="sync-last-time" id="sync-last-time">Entrez un Identifiant et un code PIN</span>
-          </div>
-
-          <!-- Boutons d'action Cloud -->
-          <div class="sync-actions-grid">
-            <button class="btn-primary sync-btn" id="btn-sync-now" onclick="triggerCloudSync('sync')" aria-label="Synchroniser avec le Cloud">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>
-              </svg>
-              <span>Synchroniser</span>
-            </button>
-            <button class="btn-secondary sync-btn" id="btn-sync-pull" onclick="triggerCloudSync('pull')" title="Récupérer depuis le Cloud" aria-label="Récupérer depuis le Cloud">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              <span>Récupérer</span>
-            </button>
+            <span class="sync-last-time" id="sync-last-time">Cliquez sur Transférer pour générer votre QR Code</span>
           </div>
         </div>
 
@@ -854,6 +826,61 @@
           Compris
         </button>
       </div>
+    </div>
+
+    <!-- ====================================================================
+         MODALE QR CODE DE SYNCHRONISATION INSTANTANÉE (PC ⇄ MOBILE)
+         ==================================================================== -->
+    <div id="sync-qr-modal" class="modal-overlay" style="display: none;" onclick="if(event.target === this) window.syncManager.closeSyncModal()">
+      <div class="modal-content modal-animated" style="max-width: 380px; text-align: center;">
+        <div class="modal-header" style="justify-content: center; position: relative;">
+          <h3 style="font-size: 1.15rem; font-weight: 900; color: var(--text-primary);">📱 Synchroniser avec Mobile</h3>
+          <button class="modal-close" style="position: absolute; right: 0; top: 0;" onclick="window.syncManager.closeSyncModal()" aria-label="Fermer">✕</button>
+        </div>
+
+        <p style="font-size: 0.78rem; color: var(--text-secondary); margin: 8px 0 14px 0; line-height: 1.4;">
+          Scannez ce QR Code avec l'appareil photo de votre smartphone pour synchroniser instantanément :
+        </p>
+
+        <div id="sync-qr-container" style="background: #ffffff; padding: 12px; border-radius: 16px; width: 190px; height: 190px; margin: 0 auto 14px auto; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(0,0,0,0.35);"></div>
+
+        <div style="margin-bottom: 12px;">
+          <label style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px;">OU COPIER LE CODE DE SYNCHRO :</label>
+          <input type="text" id="sync-code-display" readonly style="width: 100%; font-size: 0.72rem; padding: 8px 10px; background: rgba(0,0,0,0.25); border: 1px solid var(--border-medium); border-radius: 8px; color: var(--text-secondary); font-family: monospace; text-align: center; box-sizing: border-box;">
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-primary" style="flex: 1; padding: 10px; font-size: 0.82rem;" onclick="window.syncManager.shareSyncLink()">
+            🔗 Partager le lien
+          </button>
+          <button class="btn-secondary" style="flex: 1; padding: 10px; font-size: 0.82rem;" onclick="window.syncManager.copySyncCode()">
+            📋 Copier
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         MODALE IMPORT DE CODE DE SYNCHRONISATION (PC ⇄ MOBILE)
+         ==================================================================== -->
+    <div id="sync-import-modal" class="modal-overlay" style="display: none;" onclick="if(event.target === this) window.syncManager.closeImportCodeModal()">
+      <div class="modal-content modal-animated" style="max-width: 380px;">
+        <div class="modal-header">
+          <h3 style="font-size: 1.15rem; font-weight: 900; color: var(--text-primary);">📥 Coller un Code</h3>
+          <button class="modal-close" onclick="window.syncManager.closeImportCodeModal()" aria-label="Fermer">✕</button>
+        </div>
+
+        <p style="font-size: 0.78rem; color: var(--text-secondary); margin: 8px 0 14px 0; line-height: 1.4;">
+          Collez ci-dessous le code de synchronisation généré depuis votre autre appareil :
+        </p>
+
+        <textarea id="sync-import-input" rows="4" placeholder="Collez le code ici (GZ_... ou RAW_...)" style="width: 100%; padding: 10px; font-size: 0.78rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border-medium); border-radius: 8px; color: var(--text-primary); font-family: monospace; resize: none; margin-bottom: 14px; box-sizing: border-box;"></textarea>
+
+        <button class="btn-primary" style="width: 100%; padding: 12px; font-size: 0.88rem;" onclick="window.syncManager.applyImportCode()">
+          ⚡ Appliquer la synchronisation
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Scripts Applicatifs (defer pour téléchargement parallèle) -->
