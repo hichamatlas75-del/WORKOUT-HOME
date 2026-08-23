@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fullbody17-v2.1.7';
+const CACHE_NAME = 'fullbody17-v2.1.8';
 
 const ASSETS_TO_CACHE = [
   './',

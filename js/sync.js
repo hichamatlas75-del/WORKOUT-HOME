@@ -1,9 +1,63 @@
 /**
  * FULL BODY 17 — GESTIONNAIRE DE SYNCHRONISATION MULTI-UTILISATEURS PRO
  * Connexion transparente par Nom de Profil + Mot de Passe avec Chiffrement AES-256.
+ * Architecture Dual-Transport : Fetch + XHR Fallback pour compatibilité absolue.
  */
 
 const DEFAULT_FIREBASE_RTDB = 'https://workout-homefb17-default-rtdb.europe-west1.firebasedatabase.app';
+
+// Helper Réseau Double-Transport (Fetch standard + XMLHttpRequest)
+async function firebaseHttp(url, method = 'GET', data = null) {
+  // Option 1 : Fetch standard
+  try {
+    const fetchOpts = {
+      method: method,
+      mode: 'cors'
+    };
+    if (data) {
+      fetchOpts.headers = { 'Content-Type': 'application/json' };
+      fetchOpts.body = typeof data === 'string' ? data : JSON.stringify(data);
+    }
+    const resp = await fetch(url, fetchOpts);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
+    const text = await resp.text();
+    return text ? JSON.parse(text) : null;
+  } catch (fetchErr) {
+    console.warn('[Fetch Failed, tentative via XHR Fallback]:', fetchErr);
+
+    // Option 2 : XMLHttpRequest (contourne les restrictions de cache API du navigateur)
+    return new Promise((resolve, reject) => {
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open(method, url, true);
+        if (data) {
+          xhr.setRequestHeader('Content-Type', 'application/json');
+        }
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              resolve(xhr.responseText ? JSON.parse(xhr.responseText) : null);
+            } catch (e) {
+              resolve(xhr.responseText);
+            }
+          } else {
+            reject(new Error(`Serveur HTTP ${xhr.status}: ${xhr.statusText || 'Erreur'}`));
+          }
+        };
+        xhr.onerror = () => {
+          reject(new Error("Connexion Firebase bloquée par le navigateur ou un bloqueur de publicité (uBlock/AdGuard)."));
+        };
+        xhr.ontimeout = () => {
+          reject(new Error("Délai d'attente dépassé (Timeout)."));
+        };
+        xhr.timeout = 10000;
+        xhr.send(data ? (typeof data === 'string' ? data : JSON.stringify(data)) : null);
+      } catch (xhrErr) {
+        reject(xhrErr);
+      }
+    });
+  }
+}
 
 class ProfileSyncManager {
   constructor() {
@@ -180,16 +234,9 @@ class ProfileSyncManager {
       // 1. Tenter de lire les données distantes (GET)
       let remoteData = null;
       try {
-        const getResp = await fetch(endpoint, {
-          method: 'GET',
-          cache: 'no-store'
-        });
-
-        if (getResp.ok) {
-          const remoteEnvelope = await getResp.json();
-          if (remoteEnvelope) {
-            remoteData = await this.decryptPayload(remoteEnvelope, config.userId, config.password);
-          }
+        const remoteEnvelope = await firebaseHttp(endpoint, 'GET');
+        if (remoteEnvelope) {
+          remoteData = await this.decryptPayload(remoteEnvelope, config.userId, config.password);
         }
       } catch (err) {
         console.warn('[Sync GET]:', err);
@@ -216,15 +263,7 @@ class ProfileSyncManager {
 
       // 4. Chiffrer et envoyer au Cloud (PUT)
       const envelope = await this.encryptPayload(fullLocalData, config.userId, config.password);
-      const putResp = await fetch(endpoint, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(envelope)
-      });
-
-      if (!putResp.ok) {
-        throw new Error(`Erreur serveur (${putResp.status})`);
-      }
+      await firebaseHttp(endpoint, 'PUT', envelope);
 
       const nowStr = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
       window.appStorage.savePreferences({ syncLastTime: nowStr });
@@ -263,16 +302,7 @@ class ProfileSyncManager {
     this.updateStatusUI('syncing', 'Téléchargement de vos données...');
     try {
       const endpoint = await this.getEndpointUrl();
-      const getResp = await fetch(endpoint, {
-        method: 'GET',
-        cache: 'no-store'
-      });
-
-      if (!getResp.ok) {
-        throw new Error(`Erreur serveur (${getResp.status})`);
-      }
-
-      const remoteEnvelope = await getResp.json();
+      const remoteEnvelope = await firebaseHttp(endpoint, 'GET');
       if (!remoteEnvelope) {
         throw new Error("Aucune sauvegarde trouvée pour ce profil.");
       }
@@ -303,6 +333,48 @@ class ProfileSyncManager {
     const config = this.getConfig();
     if (config.userId && config.password && config.autoEnabled) {
       this.sync({ silent: true });
+    }
+  }
+
+  updateStatusUI(state = null, message = null) {
+    const dot = document.getElementById('sync-status-dot');
+    const text = document.getElementById('sync-status-text');
+    const lastTimeEl = document.getElementById('sync-last-time');
+    const config = this.getConfig();
+
+    if (!dot || !text) return;
+
+    dot.className = 'sync-dot';
+
+    if (!config.userId || !config.password) {
+      dot.classList.add('idle');
+      text.textContent = 'Non connecté';
+      if (lastTimeEl) lastTimeEl.textContent = 'Entrez un Nom de Profil et un Mot de passe';
+      return;
+    }
+
+    if (state === 'syncing') {
+      dot.classList.add('syncing');
+      text.textContent = message || 'Synchronisation...';
+    } else if (state === 'success') {
+      dot.classList.add('success');
+      text.textContent = message || `Connecté (${config.userId})`;
+      if (lastTimeEl && config.lastTime) {
+        lastTimeEl.textContent = `Dernière synchro : Aujourd'hui à ${config.lastTime}`;
+      }
+    } else if (state === 'error') {
+      dot.classList.add('error');
+      text.textContent = message || 'Erreur connexion';
+    } else {
+      if (config.lastTime) {
+        dot.classList.add('success');
+        text.textContent = `Connecté (${config.userId})`;
+        if (lastTimeEl) lastTimeEl.textContent = `Dernière synchro : Aujourd'hui à ${config.lastTime}`;
+      } else {
+        dot.classList.add('idle');
+        text.textContent = `Profil prêt (${config.userId})`;
+        if (lastTimeEl) lastTimeEl.textContent = 'Cliquez sur Se Connecter / Synchroniser';
+      }
     }
   }
 
@@ -338,28 +410,20 @@ class ProfileSyncManager {
       firebaseUrl: config.url
     });
 
-    // 4. Test Ping Firebase (GET shallow)
+    // 4. Test Ping Firebase (via dual-transport)
     const pingStart = Date.now();
     try {
-      const pingResp = await fetch(`${config.url}/.json?shallow=true`, {
-        method: 'GET',
-        mode: 'cors',
-        cache: 'no-store'
-      });
+      const pingResp = await firebaseHttp(`${config.url}/.json?shallow=true`, 'GET');
       const pingDuration = Date.now() - pingStart;
-      log('Connexion Firebase (Ping)', pingResp.ok, {
-        status: pingResp.status,
-        statusText: pingResp.statusText,
+      log('Connexion Firebase (Ping)', true, {
+        status: '200 OK',
         duration: `${pingDuration}ms`,
-        corsHeaders: {
-          allowOrigin: pingResp.headers.get('access-control-allow-origin')
-        }
+        data: pingResp
       });
     } catch (err) {
       log('Connexion Firebase (Ping)', false, {
         error: err.name,
-        message: err.message,
-        stack: err.stack
+        message: err.message
       });
     }
 
@@ -367,17 +431,10 @@ class ProfileSyncManager {
     if (config.userId) {
       try {
         const endpoint = await this.getEndpointUrl();
-        const getResp = await fetch(endpoint, {
-          method: 'GET',
-          mode: 'cors',
-          cache: 'no-store'
-        });
-        const getBody = await getResp.text();
-        log('Lecture Données Profil (GET)', getResp.ok, {
-          status: getResp.status,
+        const getResp = await firebaseHttp(endpoint, 'GET');
+        log('Lecture Données Profil (GET)', true, {
           endpoint: endpoint,
-          dataLength: getBody.length,
-          preview: getBody.slice(0, 100)
+          data: getResp ? 'Données distantes trouvées' : 'Nouveau profil vide (prêt)'
         });
       } catch (err) {
         log('Lecture Données Profil (GET)', false, {
@@ -390,22 +447,15 @@ class ProfileSyncManager {
     // 6. Test Écriture Firebase (PUT)
     try {
       const testEndpoint = `${config.url}/workout_profiles/diagnostic_test.json`;
-      const testPayload = JSON.stringify({ ping: 'ok', timestamp: Date.now() });
-      const putResp = await fetch(testEndpoint, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        mode: 'cors',
-        body: testPayload
-      });
-      log('Écriture Firebase (PUT)', putResp.ok, {
-        status: putResp.status,
-        statusText: putResp.statusText
+      const testPayload = { ping: 'ok', timestamp: Date.now() };
+      const putResp = await firebaseHttp(testEndpoint, 'PUT', testPayload);
+      log('Écriture Firebase (PUT)', true, {
+        result: putResp
       });
     } catch (err) {
       log('Écriture Firebase (PUT)', false, {
         error: err.name,
-        message: err.message,
-        stack: err.stack
+        message: err.message
       });
     }
 
@@ -482,5 +532,3 @@ window.closeSyncDiagnostic = function() {
   const modalEl = document.getElementById('diagnostic-modal');
   if (modalEl) modalEl.style.display = 'none';
 };
-
-
