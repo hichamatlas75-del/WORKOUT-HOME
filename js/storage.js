@@ -327,6 +327,11 @@ class AppStorage {
     };
   }
 
+  getLatestWeight() {
+    if (!this.weightHistory || this.weightHistory.length === 0) return null;
+    return this.weightHistory[this.weightHistory.length - 1];
+  }
+
   calculateBMI(weightKg) {
     const heightCm = parseFloat(this.prefs.heightCm);
     if (!weightKg || !heightCm || heightCm < 100 || heightCm > 250) {

@@ -857,6 +857,9 @@ function saveWeightEntry() {
     if (window.syncManager) {
       window.syncManager.autoPush();
     }
+    if (typeof updateProfileDrawerData === 'function') {
+      updateProfileDrawerData();
+    }
     showToast(`⚖️ Pesée de ${entry.weight} kg enregistrée !`);
   } else {
     showToast("❌ Erreur lors de l'enregistrement.", true);
@@ -878,6 +881,9 @@ function deleteWeightLog(id) {
       }
       if (window.syncManager) {
         window.syncManager.autoPush();
+      }
+      if (typeof updateProfileDrawerData === 'function') {
+        updateProfileDrawerData();
       }
       showToast("Pesée supprimée.");
     }
@@ -968,23 +974,43 @@ function updateProfileDrawerData() {
   const prefs = window.appStorage ? window.appStorage.prefs : {};
   updateAvatarDisplay();
 
-  // Pseudo et mot de passe
+  const isConnected = !!(prefs.syncUserId && prefs.syncUserPin);
+
+  // Bascule Vue Connecté vs Formulaire de connexion
+  const connectedView = document.getElementById('drawer-connected-view');
+  const loginView = document.getElementById('drawer-login-view');
+  const connectedAvatar = document.getElementById('drawer-connected-avatar');
+  const connectedName = document.getElementById('drawer-connected-name');
   const usernameDisplay = document.getElementById('drawer-username-display');
+
+  if (connectedView && loginView) {
+    if (isConnected) {
+      connectedView.style.display = 'block';
+      loginView.style.display = 'none';
+      if (connectedAvatar) connectedAvatar.textContent = prefs.userAvatar || '🦁';
+      if (connectedName) connectedName.textContent = `@${prefs.syncUserId}`;
+    } else {
+      connectedView.style.display = 'none';
+      loginView.style.display = 'block';
+    }
+  }
+
+  // Pseudo et mot de passe inputs
   const inputUser = document.getElementById('drawer-input-user');
   const inputPin = document.getElementById('drawer-input-pin');
 
   if (usernameDisplay) {
-    usernameDisplay.textContent = prefs.syncUserId ? `Profil : ${prefs.syncUserId}` : 'Mon Profil';
+    usernameDisplay.textContent = isConnected ? `Profil : ${prefs.syncUserId}` : 'Mon Profil';
   }
-  if (inputUser && prefs.syncUserId) inputUser.value = prefs.syncUserId;
-  if (inputPin && prefs.syncUserPin) inputPin.value = prefs.syncUserPin;
+  if (inputUser) inputUser.value = prefs.syncUserId || '';
+  if (inputPin) inputPin.value = prefs.syncUserPin || '';
 
   // Statut synchronisation
   const syncDot = document.getElementById('drawer-sync-dot');
   const syncText = document.getElementById('drawer-sync-text');
   if (syncDot && syncText) {
     syncDot.className = 'sync-dot';
-    if (prefs.syncUserId && prefs.syncUserPin) {
+    if (isConnected) {
       syncDot.classList.add('success');
       syncText.textContent = `Connecté (${prefs.syncUserId})`;
     } else {
@@ -993,27 +1019,74 @@ function updateProfileDrawerData() {
     }
   }
 
-  // Mini statistiques
-  const streakStats = window.appStorage.getStreakStats();
-  const totalWorkouts = window.appStorage.getTotalWorkouts();
-  const latestWeight = window.appStorage.getLatestWeight();
+  // Mini statistiques en direct
+  try {
+    const streakStats = window.appStorage.getStreakStats ? window.appStorage.getStreakStats() : { currentStreak: 0 };
+    const totalWorkouts = window.appStorage.getTotalWorkouts ? window.appStorage.getTotalWorkouts() : 0;
+    const weightStats = window.appStorage.getWeightStats ? window.appStorage.getWeightStats() : {};
+    const latestWeight = window.appStorage.getLatestWeight ? window.appStorage.getLatestWeight() : null;
 
-  const dStreak = document.getElementById('d-stat-streak');
-  const dWorkouts = document.getElementById('d-stat-workouts');
-  const dWeight = document.getElementById('d-stat-weight');
+    const dStreak = document.getElementById('d-stat-streak');
+    const dWorkouts = document.getElementById('d-stat-workouts');
+    const dWeight = document.getElementById('d-stat-weight');
 
-  if (dStreak) dStreak.textContent = `${streakStats.currentStreak} j`;
-  if (dWorkouts) dWorkouts.textContent = totalWorkouts;
-  if (dWeight) dWeight.textContent = latestWeight ? `${latestWeight.weight} kg` : '-- kg';
+    if (dStreak) dStreak.textContent = `${streakStats.currentStreak || 0} j`;
+    if (dWorkouts) dWorkouts.textContent = totalWorkouts || 0;
+    if (dWeight) {
+      if (latestWeight && latestWeight.weight) {
+        dWeight.textContent = `${latestWeight.weight} kg`;
+      } else if (weightStats && weightStats.currentWeight) {
+        dWeight.textContent = `${weightStats.currentWeight} kg`;
+      } else {
+        dWeight.textContent = '-- kg';
+      }
+    }
+  } catch (e) {
+    console.warn('Erreur affichage stats drawer:', e);
+  }
+}
+
+function disconnectProfile() {
+  showConfirmModal(
+    'Déconnexion du profil ?',
+    'Vous pourrez vous reconnecter à tout moment avec votre Nom de profil et Mot de passe.',
+    '🚪',
+    () => {
+      window.appStorage.savePreferences({
+        syncUserId: '',
+        syncUserPin: '',
+        syncLastTime: null
+      });
+      const setUserId = document.getElementById('sync-user-id');
+      const setUserPin = document.getElementById('sync-user-pin');
+      if (setUserId) setUserId.value = '';
+      if (setUserPin) setUserPin.value = '';
+      if (window.syncManager) {
+        window.syncManager.updateStatusUI();
+      }
+      updateProfileDrawerData();
+      if (typeof showToast === 'function') showToast('Profil déconnecté.');
+    }
+  );
 }
 
 async function saveAndSyncFromDrawer() {
+  const isConnected = !!(window.appStorage.prefs.syncUserId && window.appStorage.prefs.syncUserPin);
   const inputUser = document.getElementById('drawer-input-user');
   const inputPin = document.getElementById('drawer-input-pin');
   const btnSync = document.getElementById('drawer-btn-sync');
+  const btnSyncActive = document.getElementById('drawer-btn-sync-active');
 
-  const userId = inputUser ? inputUser.value.trim().toLowerCase() : '';
-  const pin = inputPin ? inputPin.value.trim() : '';
+  let userId = '';
+  let pin = '';
+
+  if (isConnected) {
+    userId = window.appStorage.prefs.syncUserId;
+    pin = window.appStorage.prefs.syncUserPin;
+  } else {
+    userId = inputUser ? inputUser.value.trim().toLowerCase() : '';
+    pin = inputPin ? inputPin.value.trim() : '';
+  }
 
   if (!userId || !pin) {
     if (typeof showToast === 'function') showToast("⚠️ Renseignez votre Nom de Profil et Mot de passe.", true);
@@ -1025,9 +1098,10 @@ async function saveAndSyncFromDrawer() {
     return;
   }
 
-  if (btnSync) {
-    btnSync.disabled = true;
-    btnSync.innerHTML = '⏳ Synchronisation...';
+  const targetBtn = btnSyncActive || btnSync;
+  if (targetBtn) {
+    targetBtn.disabled = true;
+    targetBtn.innerHTML = '⏳ Synchronisation...';
   }
 
   try {
@@ -1046,19 +1120,20 @@ async function saveAndSyncFromDrawer() {
     await window.syncManager.sync();
     updateProfileDrawerData();
   } finally {
-    if (btnSync) {
-      btnSync.disabled = false;
-      btnSync.innerHTML = '⚡ Se Connecter / Synchro';
+    if (targetBtn) {
+      targetBtn.disabled = false;
+      targetBtn.innerHTML = isConnected ? '⚡ Synchroniser maintenant' : '⚡ Se Connecter / Synchro';
     }
   }
 }
 
 async function pullFromDrawer() {
+  const isConnected = !!(window.appStorage.prefs.syncUserId && window.appStorage.prefs.syncUserPin);
   const inputUser = document.getElementById('drawer-input-user');
   const inputPin = document.getElementById('drawer-input-pin');
 
-  const userId = inputUser ? inputUser.value.trim().toLowerCase() : '';
-  const pin = inputPin ? inputPin.value.trim() : '';
+  let userId = isConnected ? window.appStorage.prefs.syncUserId : (inputUser ? inputUser.value.trim().toLowerCase() : '');
+  let pin = isConnected ? window.appStorage.prefs.syncUserPin : (inputPin ? inputPin.value.trim() : '');
 
   if (!userId || !pin) {
     if (typeof showToast === 'function') showToast("⚠️ Renseignez votre Nom de Profil et Mot de passe.", true);
@@ -1080,6 +1155,7 @@ window.closeProfileDrawer = closeProfileDrawer;
 window.selectAvatar = selectAvatar;
 window.updateAvatarDisplay = updateAvatarDisplay;
 window.updateProfileDrawerData = updateProfileDrawerData;
+window.disconnectProfile = disconnectProfile;
 window.saveAndSyncFromDrawer = saveAndSyncFromDrawer;
 window.pullFromDrawer = pullFromDrawer;
 

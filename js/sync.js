@@ -290,6 +290,7 @@ class ProfileSyncManager {
       if (typeof renderHomeExercisesList === 'function') renderHomeExercisesList();
       if (typeof loadSettingsForm === 'function') loadSettingsForm();
       if (typeof updateAvatarDisplay === 'function') updateAvatarDisplay();
+      if (typeof updateProfileDrawerData === 'function') updateProfileDrawerData();
 
       if (!silent && typeof showToast === 'function') {
         showToast(`🎉 Profil « ${config.userId} » synchronisé avec succès !`);
@@ -335,6 +336,7 @@ class ProfileSyncManager {
       if (typeof renderHomeExercisesList === 'function') renderHomeExercisesList();
       if (typeof loadSettingsForm === 'function') loadSettingsForm();
       if (typeof updateAvatarDisplay === 'function') updateAvatarDisplay();
+      if (typeof updateProfileDrawerData === 'function') updateProfileDrawerData();
 
       showToast(hasChanges ? "✅ Données de votre profil récupérées avec succès !" : "✅ Vos données étaient déjà à jour.");
     } catch (err) {

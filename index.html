@@ -42,7 +42,7 @@
         <div class="brand-info">
           <div class="brand-title-wrap">
             <span class="brand-title">FULL BODY 17</span>
-            <span class="version-tag">v2.2.3</span>
+            <span class="version-tag">v2.2.4</span>
           </div>
           <span class="brand-subtitle">Routine Quotidienne</span>
         </div>
@@ -995,23 +995,55 @@
 
         <!-- 2. Connexion / Profil Cloud -->
         <div class="drawer-section">
-          <div class="drawer-section-title">👤 Connexion Multi-Appareils</div>
-          <div class="drawer-field">
-            <label for="drawer-input-user">Nom de Profil</label>
-            <input type="text" id="drawer-input-user" class="styled-input" placeholder="ex: hicham" maxlength="30" style="text-transform: lowercase;">
+          <div class="drawer-section-title">👤 Profil &amp; Synchronisation</div>
+
+          <!-- Vue Profil Connecté (affichée quand le profil est actif) -->
+          <div id="drawer-connected-view" style="display: none;">
+            <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 10px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.3rem;" id="drawer-connected-avatar">🦁</span>
+                <div>
+                  <div style="font-weight: 800; font-size: 0.88rem; color: var(--text-primary);" id="drawer-connected-name">hicham</div>
+                  <div style="font-size: 0.68rem; color: var(--accent-work); display: flex; align-items: center; gap: 4px;">
+                    <span class="sync-dot success" style="width: 6px; height: 6px;"></span>
+                    <span>Synchronisé avec le Cloud</span>
+                  </div>
+                </div>
+              </div>
+              <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.68rem; width: auto; color: var(--accent-danger); border-color: rgba(239, 68, 68, 0.3);" onclick="disconnectProfile()" title="Changer de profil ou se déconnecter">
+                Déconnexion
+              </button>
+            </div>
+
+            <div class="drawer-btn-row" style="display: flex; gap: 8px;">
+              <button class="btn-primary" id="drawer-btn-sync-active" style="flex: 1; padding: 10px; font-size: 0.82rem;" onclick="saveAndSyncFromDrawer()">
+                ⚡ Synchroniser maintenant
+              </button>
+              <button class="btn-secondary" style="padding: 10px 12px; font-size: 0.82rem; width: auto;" onclick="pullFromDrawer()" title="Récupérer depuis le Cloud">
+                📥
+              </button>
+            </div>
           </div>
-          <div class="drawer-field" style="margin-top: 8px;">
-            <label for="drawer-input-pin">Mot de passe</label>
-            <input type="password" id="drawer-input-pin" class="styled-input" placeholder="••••••••" maxlength="30">
-          </div>
-          
-          <div class="drawer-btn-row" style="margin-top: 10px; display: flex; gap: 8px;">
-            <button class="btn-primary" id="drawer-btn-sync" style="flex: 1; padding: 10px; font-size: 0.82rem;" onclick="saveAndSyncFromDrawer()">
-              ⚡ Se Connecter / Synchro
-            </button>
-            <button class="btn-secondary" style="padding: 10px 12px; font-size: 0.82rem; width: auto;" onclick="pullFromDrawer()" title="Récupérer">
-              📥
-            </button>
+
+          <!-- Vue Formulaire de Connexion (affichée si non connecté) -->
+          <div id="drawer-login-view">
+            <div class="drawer-field">
+              <label for="drawer-input-user">Nom de Profil</label>
+              <input type="text" id="drawer-input-user" class="styled-input" placeholder="ex: hicham" maxlength="30" style="text-transform: lowercase;">
+            </div>
+            <div class="drawer-field" style="margin-top: 8px;">
+              <label for="drawer-input-pin">Mot de passe</label>
+              <input type="password" id="drawer-input-pin" class="styled-input" placeholder="••••••••" maxlength="30">
+            </div>
+            
+            <div class="drawer-btn-row" style="margin-top: 10px; display: flex; gap: 8px;">
+              <button class="btn-primary" id="drawer-btn-sync" style="flex: 1; padding: 10px; font-size: 0.82rem;" onclick="saveAndSyncFromDrawer()">
+                ⚡ Se Connecter / Synchro
+              </button>
+              <button class="btn-secondary" style="padding: 10px 12px; font-size: 0.82rem; width: auto;" onclick="pullFromDrawer()" title="Récupérer">
+                📥
+              </button>
+            </div>
           </div>
         </div>
 

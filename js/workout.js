@@ -334,6 +334,9 @@ class WorkoutEngine {
     if (window.syncManager) {
       window.syncManager.autoPush();
     }
+    if (typeof updateProfileDrawerData === 'function') {
+      updateProfileDrawerData();
+    }
 
     if (this.onFinish) {
       this.onFinish(session);
