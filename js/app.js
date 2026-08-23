@@ -916,7 +916,9 @@ function openProfileDrawer() {
   const overlay = document.getElementById('profile-drawer-overlay');
   if (overlay) {
     overlay.style.display = 'flex';
-    setTimeout(() => overlay.classList.add('active'), 10);
+    requestAnimationFrame(() => {
+      overlay.classList.add('active');
+    });
   }
   updateProfileDrawerData();
 }
@@ -926,8 +928,10 @@ function closeProfileDrawer() {
   if (overlay) {
     overlay.classList.remove('active');
     setTimeout(() => {
-      if (!overlay.classList.contains('active')) overlay.style.display = 'none';
-    }, 280);
+      if (!overlay.classList.contains('active')) {
+        overlay.style.display = 'none';
+      }
+    }, 250);
   }
 }
 
