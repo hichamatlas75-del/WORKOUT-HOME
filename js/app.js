@@ -7,48 +7,54 @@ let _liveClockInterval = null; // Référence stockée pour pouvoir annuler et r
 
 document.addEventListener('DOMContentLoaded', () => {
   // 1. Initialiser le thème (Sombre par défaut ou sauvegardé)
-  const savedTheme = window.appStorage.prefs.theme || 'dark';
-  const resolvedTheme = savedTheme === 'system'
-    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-    : savedTheme;
-  document.documentElement.setAttribute('data-theme', resolvedTheme);
-  const themeSelect = document.getElementById('setting-theme');
-  if (themeSelect) themeSelect.value = savedTheme;
+  try {
+    const savedTheme = window.appStorage.prefs.theme || 'dark';
+    const resolvedTheme = savedTheme === 'system'
+      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      : savedTheme;
+    document.documentElement.setAttribute('data-theme', resolvedTheme);
+    const themeSelect = document.getElementById('setting-theme');
+    if (themeSelect) themeSelect.value = savedTheme;
+  } catch (e) { console.warn('Theme init error:', e); }
 
   // 2. Initialiser les réglages dans le formulaire
-  loadSettingsForm();
+  try { loadSettingsForm(); } catch (e) { console.warn('Settings init error:', e); }
 
   // 3. Initialiser la liste des exercices sur la vue d'accueil
-  renderHomeExercisesList();
+  try { renderHomeExercisesList(); } catch (e) { console.warn('Exercises init error:', e); }
 
   // 4. Initialiser la navigation par onglets
-  initTabNavigation();
+  try { initTabNavigation(); } catch (e) { console.warn('Navigation init error:', e); }
 
   // 5. Initialiser les écouteurs de la séance en direct
-  initWorkoutUI();
+  try { initWorkoutUI(); } catch (e) { console.warn('Workout UI init error:', e); }
 
   // 6. Démarrer le compte à rebours 17:00 en direct
-  startLiveClock();
+  try { startLiveClock(); } catch (e) { console.warn('Clock init error:', e); }
 
   // 7. Initialiser les notifications & rappels
-  window.notificationManager.startReminderWatcher();
+  try { window.notificationManager.startReminderWatcher(); } catch (e) { console.warn('Notification init error:', e); }
 
   // 8. Rendu initial du tableau de bord & badges
-  window.dashboardManager.renderDashboard();
-  window.motivationManager.renderBadgesView();
+  try { window.dashboardManager.renderDashboard(); } catch (e) { console.warn('Dashboard init error:', e); }
+  try { window.motivationManager.renderBadgesView(); } catch (e) { console.warn('Badges init error:', e); }
 
   // 9. Vérifier les paramètres URL (ex: ?action=start ou ?tab=...)
-  const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('action') === 'start') {
-    startWorkoutSession();
-  } else if (urlParams.get('tab')) {
-    switchTab(urlParams.get('tab'));
-  }
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('action') === 'start') {
+      startWorkoutSession();
+    } else if (urlParams.get('tab')) {
+      switchTab(urlParams.get('tab'));
+    }
+  } catch (e) { console.warn('URL params error:', e); }
 
   // 10. Synchronisation automatique du profil au démarrage (si connecté)
-  if (window.syncManager && window.appStorage.prefs.syncUserId && window.appStorage.prefs.syncAutoEnabled) {
-    window.syncManager.sync({ silent: true });
-  }
+  try {
+    if (window.syncManager && window.appStorage.prefs.syncUserId && window.appStorage.prefs.syncAutoEnabled) {
+      window.syncManager.sync({ silent: true });
+    }
+  } catch (e) { console.warn('Auto sync error:', e); }
 });
 
 // --------------------------------------------------------------------------
@@ -216,6 +222,8 @@ function switchTab(tabName) {
     window.motivationManager.renderBadgesView();
   }
 }
+
+window.switchTab = switchTab;
 
 // --------------------------------------------------------------------------
 // MOTEUR D'ENTRAÎNEMENT & WORKOUT UI
