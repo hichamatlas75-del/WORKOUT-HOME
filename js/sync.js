@@ -12,15 +12,15 @@ class ProfileSyncManager {
 
   getConfig() {
     const prefs = window.appStorage ? window.appStorage.prefs : {};
+    
+    // Nettoyer toute ancienne URL invalide issue des versions précédentes
     let customUrl = (prefs.firebaseUrl || '').trim();
-    if (customUrl && !customUrl.startsWith('http://') && !customUrl.startsWith('https://')) {
-      customUrl = 'https://' + customUrl;
-    }
-    if (customUrl.endsWith('/')) {
-      customUrl = customUrl.slice(0, -1);
+    if (customUrl && (!customUrl.includes('firebasedatabase.app') && !customUrl.includes('firebaseio.com'))) {
+      customUrl = '';
+      if (window.appStorage) window.appStorage.savePreferences({ firebaseUrl: '' });
     }
 
-    const activeUrl = customUrl || DEFAULT_FIREBASE_RTDB;
+    const activeUrl = (customUrl || DEFAULT_FIREBASE_RTDB).replace(/\/+$/, '');
 
     return {
       url: activeUrl,

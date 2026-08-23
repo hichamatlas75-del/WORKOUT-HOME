@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fullbody17-v2.0.9';
+const CACHE_NAME = 'fullbody17-v2.1.0';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -66,8 +66,8 @@ self.addEventListener('activate', (event) => {
 
 // Stratégie Cache-First avec repli réseau
 self.addEventListener('fetch', (event) => {
-  // Ignorer les requêtes non-GET ou externes si nécessaire
-  if (event.request.method !== 'GET') return;
+  // Ne JAMAIS intercepter les requêtes vers Firebase ou non-GET
+  if (event.request.method !== 'GET' || event.request.url.includes('firebase')) return;
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
