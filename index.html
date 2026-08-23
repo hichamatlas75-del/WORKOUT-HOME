@@ -605,13 +605,13 @@
           <video src="videos/ex_1_jumping_jack.mp4" class="exercise-video" autoplay muted loop playsinline></video>
 
           <!-- PIP : Miniature de l'exercice suivant -->
-          <div class="live-pip-next" id="live-pip-next" style="display:none;" aria-label="Prochain exercice">
+          <div class="live-pip-next" id="live-pip-next" style="display:none;" onclick="jumpToNextExercise()" role="button" tabindex="0" title="Cliquer pour passer directement à cet exercice" aria-label="Passer directement au prochain exercice">
             <img id="live-pip-img" src="" alt="" class="live-pip-img">
-            <span class="live-pip-label">Suivant</span>
+            <span class="live-pip-label">Suivant ›</span>
           </div>
         </div>
 
-        <div class="live-next-box" id="live-next-info">
+        <div class="live-next-box" id="live-next-info" onclick="jumpToNextExercise()" role="button" tabindex="0" title="Cliquer pour passer directement à cet exercice">
           <span>À suivre :</span> <strong>Squat Libre</strong>
         </div>
       </div>

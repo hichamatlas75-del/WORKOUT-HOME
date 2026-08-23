@@ -243,6 +243,10 @@ function initWorkoutUI() {
   const nextBox = document.getElementById('live-next-info');
   const btnPause = document.getElementById('btn-live-pause');
 
+  if (nextBox) {
+    nextBox.onclick = () => jumpToNextExercise();
+  }
+
   const CIRCUMFERENCE = 2 * Math.PI * 110; // ~691.15
 
   // Mise à jour continue (Tick)
@@ -347,6 +351,10 @@ function toggleWorkoutPause() {
 
 function skipWorkoutExercise() {
   window.workoutEngine.skipNext();
+}
+
+function jumpToNextExercise() {
+  window.workoutEngine.jumpToNextExercise();
 }
 
 function prevWorkoutExercise() {
@@ -653,9 +661,21 @@ function updatePip(nextExercise) {
     pip = document.createElement('div');
     pip.id = 'live-pip-next';
     pip.className = 'live-pip-next';
-    pip.setAttribute('aria-label', 'Prochain exercice');
-    pip.innerHTML = `<img id="live-pip-img" class="live-pip-img" src="" alt=""><span class="live-pip-label">Suivant</span>`;
+    pip.setAttribute('role', 'button');
+    pip.setAttribute('tabindex', '0');
+    pip.setAttribute('title', 'Cliquer pour passer directement à cet exercice');
+    pip.setAttribute('aria-label', 'Passer directement au prochain exercice');
+    pip.onclick = (e) => {
+      e.stopPropagation();
+      jumpToNextExercise();
+    };
+    pip.innerHTML = `<img id="live-pip-img" class="live-pip-img" src="" alt=""><span class="live-pip-label">Suivant ›</span>`;
     box.appendChild(pip);
+  } else {
+    pip.onclick = (e) => {
+      e.stopPropagation();
+      jumpToNextExercise();
+    };
   }
 
   if (!nextExercise) {

@@ -576,6 +576,7 @@
 .live-next-box {
   width: 100%;
   background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   padding: 8px 12px;
   font-size: 0.8rem;
@@ -584,6 +585,21 @@
   justify-content: space-between;
   align-items: center;
   margin-top: 10px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .live-next-box:hover {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: var(--accent-work);
+    color: var(--text-primary);
+  }
+}
+
+.live-next-box:active {
+  transform: scale(0.98);
 }
 
 /* Contrôles d'entraînement */
@@ -1268,14 +1284,28 @@ input:checked + .slider:before {
   bottom: 10px;
   right: 10px;
   width: 82px;
-  background: rgba(9, 13, 22, 0.85);
+  background: rgba(9, 13, 22, 0.9);
   border: 2px solid var(--accent-work);
   border-radius: var(--radius-sm);
   overflow: hidden;
   box-shadow: 0 4px 18px rgba(16, 185, 129, 0.35);
   animation: pipSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   z-index: 5;
-  cursor: default;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .live-pip-next:hover {
+    transform: scale(1.08);
+    box-shadow: 0 6px 24px rgba(16, 185, 129, 0.65);
+    border-color: #ffffff;
+  }
+}
+
+.live-pip-next:active {
+  transform: scale(0.92);
 }
 
 @keyframes pipSlideIn {

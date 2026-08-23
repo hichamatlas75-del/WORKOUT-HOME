@@ -220,11 +220,52 @@ class WorkoutEngine {
     }
   }
 
-  // Sauter manuellement à l'exercice suivant
+  // Sauter manuellement à l'exercice suivant (passe par le repos ou l'étape normale)
   skipNext() {
     this.lastBeepSec = null;
     this.halfTimeTriggered = false;
     this.advanceStep();
+  }
+
+  // Sauter directement à l'exercice suivant (démarre l'effort immédiatement lors du clic sur la miniature)
+  jumpToNextExercise() {
+    this.lastBeepSec = null;
+    this.halfTimeTriggered = false;
+
+    if (this.state === WORKOUT_STATES.PREPARE) {
+      this.advanceStep();
+      return;
+    }
+
+    const mainCount = this.getMainCircuitCount();
+    const currentEx = EXERCISES_DATA[this.currentExerciseIndex];
+
+    // Si on est déjà sur l'étirement final -> Terminer la séance
+    if (currentEx && currentEx.isCoolDown) {
+      this.completeWorkout();
+      return;
+    }
+
+    const isLastOfCircuit = this.currentExerciseIndex === mainCount - 1;
+
+    if (isLastOfCircuit) {
+      if (this.currentRound < this.totalRounds) {
+        this.currentRound++;
+        this.currentExerciseIndex = 0;
+      } else {
+        // Passer aux étirements finaux
+        this.currentExerciseIndex = mainCount;
+      }
+    } else {
+      this.currentExerciseIndex++;
+    }
+
+    const duration = this.getExerciseDuration(this.currentExerciseIndex);
+    this.setPhase(WORKOUT_STATES.WORK, duration);
+    window.audioEngine.playGoTone();
+    if ('vibrate' in navigator) navigator.vibrate(150);
+    const ex = EXERCISES_DATA[this.currentExerciseIndex];
+    window.audioEngine.speak(`${ex.name}${ex.isPlank ? ` pour ${duration} secondes` : ''}`);
   }
 
   // Revenir en arrière
