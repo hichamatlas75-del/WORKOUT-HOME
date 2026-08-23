@@ -3,7 +3,7 @@
  * Connexion transparente par Nom de Profil + Mot de Passe avec Chiffrement AES-256.
  */
 
-const DEFAULT_FIREBASE_RTDB = 'https://workout-home-fb17-default-rtdb.firebaseio.com';
+const DEFAULT_FIREBASE_RTDB = 'https://workout-homefb17-default-rtdb.europe-west1.firebasedatabase.app';
 
 class ProfileSyncManager {
   constructor() {
