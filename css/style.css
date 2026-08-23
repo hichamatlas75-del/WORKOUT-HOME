@@ -147,12 +147,11 @@ body {
 
 @media (min-width: 768px) {
   .app-container {
-    max-width: 520px;
-    margin: 20px auto;
-    min-height: calc(100dvh - 40px);
+    max-width: 580px;
+    margin: 16px auto 30px auto;
+    min-height: calc(100vh - 32px);
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-subtle);
-    overflow: hidden;
   }
 }
 
