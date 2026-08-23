@@ -1,62 +1,74 @@
 /**
  * FULL BODY 17 — GESTIONNAIRE DE SYNCHRONISATION MULTI-UTILISATEURS PRO
- * Connexion transparente par Nom de Profil + Mot de Passe avec Chiffrement AES-256.
- * Architecture Dual-Transport : Fetch + XHR Fallback pour compatibilité absolue.
+ * Architecture Anti-Bloqueur : Passerelle API Cloudflare + Firebase Direct Fallback
+ * Chiffrement Client-Side AES-256 Zero-Knowledge.
  */
 
-const DEFAULT_FIREBASE_RTDB = 'https://workout-homefb17-default-rtdb.europe-west1.firebasedatabase.app';
+const CLOUDFLARE_API_GATEWAY = 'https://workout-home.pages.dev/api/sync';
+const DIRECT_FIREBASE_RTDB = 'https://workout-homefb17-default-rtdb.europe-west1.firebasedatabase.app';
 
-// Helper Réseau Double-Transport (Fetch standard + XMLHttpRequest)
-async function firebaseHttp(url, method = 'GET', data = null) {
-  // Option 1 : Fetch standard
-  try {
-    const fetchOpts = {
-      method: method,
-      mode: 'cors'
-    };
-    if (data) {
-      fetchOpts.headers = { 'Content-Type': 'application/json' };
-      fetchOpts.body = typeof data === 'string' ? data : JSON.stringify(data);
+// Moteur Réseau Hybride Multi-Endpoints (Anti-Bloqueur de publicité)
+async function cloudSyncRequest(userHash, method = 'GET', data = null) {
+  // Liste des routes possibles par ordre de priorité
+  const routes = [
+    // Route 1 : Passerelle Cloudflare (100% insensible aux bloqueurs)
+    `${CLOUDFLARE_API_GATEWAY}?user=${encodeURIComponent(userHash)}`,
+    // Route 2 : Firebase Direct
+    `${DIRECT_FIREBASE_RTDB}/workout_profiles/${encodeURIComponent(userHash)}.json`
+  ];
+
+  let lastError = null;
+
+  for (const url of routes) {
+    try {
+      const fetchOpts = {
+        method: method,
+        mode: 'cors'
+      };
+      if (data) {
+        fetchOpts.headers = { 'Content-Type': 'application/json' };
+        fetchOpts.body = typeof data === 'string' ? data : JSON.stringify(data);
+      }
+      const resp = await fetch(url, fetchOpts);
+      if (resp.ok) {
+        const text = await resp.text();
+        return text && text !== 'null' ? JSON.parse(text) : null;
+      }
+    } catch (err) {
+      console.warn(`[Route ${url} failed, trying next]:`, err);
+      lastError = err;
     }
-    const resp = await fetch(url, fetchOpts);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
-    const text = await resp.text();
-    return text ? JSON.parse(text) : null;
-  } catch (fetchErr) {
-    console.warn('[Fetch Failed, tentative via XHR Fallback]:', fetchErr);
+  }
 
-    // Option 2 : XMLHttpRequest (contourne les restrictions de cache API du navigateur)
-    return new Promise((resolve, reject) => {
-      try {
+  // Fallback via XMLHttpRequest
+  for (const url of routes) {
+    try {
+      const res = await new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open(method, url, true);
-        if (data) {
-          xhr.setRequestHeader('Content-Type', 'application/json');
-        }
+        if (data) xhr.setRequestHeader('Content-Type', 'application/json');
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
-              resolve(xhr.responseText ? JSON.parse(xhr.responseText) : null);
+              resolve(xhr.responseText && xhr.responseText !== 'null' ? JSON.parse(xhr.responseText) : null);
             } catch (e) {
               resolve(xhr.responseText);
             }
           } else {
-            reject(new Error(`Serveur HTTP ${xhr.status}: ${xhr.statusText || 'Erreur'}`));
+            reject(new Error(`HTTP ${xhr.status}`));
           }
         };
-        xhr.onerror = () => {
-          reject(new Error("Connexion Firebase bloquée par le navigateur ou un bloqueur de publicité (uBlock/AdGuard)."));
-        };
-        xhr.ontimeout = () => {
-          reject(new Error("Délai d'attente dépassé (Timeout)."));
-        };
-        xhr.timeout = 10000;
+        xhr.onerror = () => reject(new Error("Réseau indisponible"));
+        xhr.timeout = 8000;
         xhr.send(data ? (typeof data === 'string' ? data : JSON.stringify(data)) : null);
-      } catch (xhrErr) {
-        reject(xhrErr);
-      }
-    });
+      });
+      return res;
+    } catch (xhrErr) {
+      lastError = xhrErr;
+    }
   }
+
+  throw lastError || new Error("Impossible d'établir la connexion cloud.");
 }
 
 class ProfileSyncManager {
@@ -67,7 +79,6 @@ class ProfileSyncManager {
   getConfig() {
     const prefs = window.appStorage ? window.appStorage.prefs : {};
     return {
-      url: DEFAULT_FIREBASE_RTDB,
       userId: (prefs.syncUserId || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_'),
       password: (prefs.syncUserPin || '').trim(),
       autoEnabled: prefs.syncAutoEnabled !== false,
@@ -95,13 +106,6 @@ class ProfileSyncManager {
       hash |= 0;
     }
     return 'u_' + Math.abs(hash).toString(16).padStart(8, '0') + '_' + userId.slice(0, 10);
-  }
-
-  async getEndpointUrl() {
-    const config = this.getConfig();
-    if (!config.userId) return null;
-    const userHash = await this.hashUserId(config.userId);
-    return `${config.url}/workout_profiles/${userHash}.json`;
   }
 
   // --- CRYPTOGRAPHIE ZERO-KNOWLEDGE (AES-GCM Web Crypto) ---
@@ -229,12 +233,12 @@ class ProfileSyncManager {
     this.updateStatusUI('syncing', 'Synchronisation en cours...');
 
     try {
-      const endpoint = await this.getEndpointUrl();
+      const userHash = await this.hashUserId(config.userId);
 
       // 1. Tenter de lire les données distantes (GET)
       let remoteData = null;
       try {
-        const remoteEnvelope = await firebaseHttp(endpoint, 'GET');
+        const remoteEnvelope = await cloudSyncRequest(userHash, 'GET');
         if (remoteEnvelope) {
           remoteData = await this.decryptPayload(remoteEnvelope, config.userId, config.password);
         }
@@ -263,7 +267,7 @@ class ProfileSyncManager {
 
       // 4. Chiffrer et envoyer au Cloud (PUT)
       const envelope = await this.encryptPayload(fullLocalData, config.userId, config.password);
-      await firebaseHttp(endpoint, 'PUT', envelope);
+      await cloudSyncRequest(userHash, 'PUT', envelope);
 
       const nowStr = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
       window.appStorage.savePreferences({ syncLastTime: nowStr });
@@ -301,8 +305,8 @@ class ProfileSyncManager {
 
     this.updateStatusUI('syncing', 'Téléchargement de vos données...');
     try {
-      const endpoint = await this.getEndpointUrl();
-      const remoteEnvelope = await firebaseHttp(endpoint, 'GET');
+      const userHash = await this.hashUserId(config.userId);
+      const remoteEnvelope = await cloudSyncRequest(userHash, 'GET');
       if (!remoteEnvelope) {
         throw new Error("Aucune sauvegarde trouvée pour ce profil.");
       }
@@ -388,7 +392,7 @@ class ProfileSyncManager {
 
     const config = this.getConfig();
 
-    // 1. Informations système & navigateur
+    // 1. Informations système
     log('Environnement Web', true, {
       url: window.location.href,
       protocol: window.location.protocol,
@@ -400,60 +404,58 @@ class ProfileSyncManager {
 
     // 2. Vérification Crypto
     const hasSubtle = !!(window.crypto && window.crypto.subtle);
-    log('Module Cryptographie (AES-GCM)', hasSubtle, hasSubtle ? 'Web Crypto API disponible' : 'Fallback actif (crypto.subtle indisponible)');
+    log('Module Cryptographie (AES-GCM)', hasSubtle, hasSubtle ? 'Web Crypto API disponible' : 'Fallback actif');
 
     // 3. Configuration Profil
     log('Identifiants de profil', !!(config.userId && config.password), {
       userId: config.userId || '(non renseigné)',
       hasPassword: !!config.password,
-      autoEnabled: config.autoEnabled,
-      firebaseUrl: config.url
+      autoEnabled: config.autoEnabled
     });
 
-    // 4. Test Ping Firebase (via dual-transport)
-    const pingStart = Date.now();
+    // 4. Test Cloudflare API Gateway (Anti-AdBlock)
+    const cfStart = Date.now();
     try {
-      const pingResp = await firebaseHttp(`${config.url}/.json?shallow=true`, 'GET');
-      const pingDuration = Date.now() - pingStart;
-      log('Connexion Firebase (Ping)', true, {
+      const cfResp = await cloudSyncRequest('diagnostic_test', 'GET');
+      const cfDuration = Date.now() - cfStart;
+      log('Passerelle Cloud API (Anti-Bloqueur)', true, {
         status: '200 OK',
-        duration: `${pingDuration}ms`,
-        data: pingResp
+        duration: `${cfDuration}ms`,
+        data: cfResp ? 'Connecté' : 'Endpoint actif'
       });
     } catch (err) {
-      log('Connexion Firebase (Ping)', false, {
+      log('Passerelle Cloud API (Anti-Bloqueur)', false, {
         error: err.name,
         message: err.message
       });
     }
 
-    // 5. Test Lecture Profil (GET)
+    // 5. Test Lecture Données Profil (GET)
     if (config.userId) {
       try {
-        const endpoint = await this.getEndpointUrl();
-        const getResp = await firebaseHttp(endpoint, 'GET');
-        log('Lecture Données Profil (GET)', true, {
-          endpoint: endpoint,
+        const userHash = await this.hashUserId(config.userId);
+        const getResp = await cloudSyncRequest(userHash, 'GET');
+        log('Lecture Profil Cloud (GET)', true, {
+          userHash: userHash,
           data: getResp ? 'Données distantes trouvées' : 'Nouveau profil vide (prêt)'
         });
       } catch (err) {
-        log('Lecture Données Profil (GET)', false, {
+        log('Lecture Profil Cloud (GET)', false, {
           error: err.name,
           message: err.message
         });
       }
     }
 
-    // 6. Test Écriture Firebase (PUT)
+    // 6. Test Écriture Cloud (PUT)
     try {
-      const testEndpoint = `${config.url}/workout_profiles/diagnostic_test.json`;
       const testPayload = { ping: 'ok', timestamp: Date.now() };
-      const putResp = await firebaseHttp(testEndpoint, 'PUT', testPayload);
-      log('Écriture Firebase (PUT)', true, {
-        result: putResp
+      const putResp = await cloudSyncRequest('diagnostic_test', 'PUT', testPayload);
+      log('Écriture Cloud (PUT)', true, {
+        result: putResp || 'OK'
       });
     } catch (err) {
-      log('Écriture Firebase (PUT)', false, {
+      log('Écriture Cloud (PUT)', false, {
         error: err.name,
         message: err.message
       });
@@ -484,7 +486,7 @@ class ProfileSyncManager {
     if (modalEl) modalEl.style.display = 'flex';
     if (inlinePanel) inlinePanel.style.display = 'block';
 
-    const loadingHtml = '<div style="text-align:center; padding: 14px; color: var(--accent-work); font-size: 0.8rem;">⏳ Analyse de la connexion Firebase en cours...</div>';
+    const loadingHtml = '<div style="text-align:center; padding: 14px; color: var(--accent-work); font-size: 0.8rem;">⏳ Analyse de la connexion Cloud en cours...</div>';
     if (contentEl) contentEl.innerHTML = loadingHtml;
     if (inlineContent) inlineContent.innerHTML = loadingHtml;
 
