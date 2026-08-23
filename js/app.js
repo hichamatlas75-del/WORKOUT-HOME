@@ -45,9 +45,9 @@ document.addEventListener('DOMContentLoaded', () => {
     switchTab(urlParams.get('tab'));
   }
 
-  // 10. Synchronisation automatique par lien ou scan QR Code
-  if (window.syncManager) {
-    window.syncManager.checkUrlForSync();
+  // 10. Synchronisation Firebase automatique au démarrage (si configurée)
+  if (window.syncManager && window.appStorage.prefs.firebaseUrl && window.appStorage.prefs.syncAutoEnabled) {
+    window.syncManager.sync({ silent: true });
   }
 });
 
@@ -403,6 +403,7 @@ function loadSettingsForm() {
   const initWeightInput = document.getElementById('setting-initial-weight');
   const targetWeightInput = document.getElementById('setting-target-weight');
   const heightInput = document.getElementById('setting-height-cm');
+  const firebaseUrlInput = document.getElementById('setting-firebase-url');
   const syncIdInput = document.getElementById('sync-user-id');
   const syncPinInput = document.getElementById('sync-user-pin');
   const syncAutoSwitch = document.getElementById('sync-auto-enabled');
@@ -418,6 +419,7 @@ function loadSettingsForm() {
   if (initWeightInput) initWeightInput.value = prefs.initialWeight || "";
   if (targetWeightInput) targetWeightInput.value = prefs.targetWeight || "";
   if (heightInput) heightInput.value = prefs.heightCm || "";
+  if (firebaseUrlInput) firebaseUrlInput.value = prefs.firebaseUrl || "";
   if (syncIdInput) syncIdInput.value = prefs.syncUserId || "";
   if (syncPinInput) syncPinInput.value = prefs.syncUserPin || "";
   if (syncAutoSwitch) syncAutoSwitch.checked = prefs.syncAutoEnabled !== false;
@@ -443,6 +445,7 @@ function saveSettings() {
   const initWeightInput = document.getElementById('setting-initial-weight');
   const targetWeightInput = document.getElementById('setting-target-weight');
   const heightInput = document.getElementById('setting-height-cm');
+  const firebaseUrlInput = document.getElementById('setting-firebase-url');
   const syncIdInput = document.getElementById('sync-user-id');
   const syncPinInput = document.getElementById('sync-user-pin');
   const syncAutoSwitch = document.getElementById('sync-auto-enabled');
@@ -460,6 +463,7 @@ function saveSettings() {
     initialWeight: initWeightInput && initWeightInput.value ? parseFloat(initWeightInput.value) : null,
     targetWeight: targetWeightInput && targetWeightInput.value ? parseFloat(targetWeightInput.value) : null,
     heightCm: heightInput && heightInput.value ? parseInt(heightInput.value) : null,
+    firebaseUrl: firebaseUrlInput ? firebaseUrlInput.value.trim() : "",
     syncUserId: syncIdInput ? syncIdInput.value.trim().toLowerCase() : "",
     syncUserPin: syncPinInput ? syncPinInput.value.trim() : "",
     syncAutoEnabled: syncAutoSwitch ? syncAutoSwitch.checked : true
@@ -475,7 +479,7 @@ function saveSettings() {
 
   if (window.syncManager) {
     window.syncManager.updateStatusUI();
-    if (newPrefs.syncUserId && newPrefs.syncUserPin && newPrefs.syncAutoEnabled) {
+    if (newPrefs.firebaseUrl && newPrefs.syncUserId && newPrefs.syncAutoEnabled) {
       window.syncManager.sync({ silent: true });
     }
   }
@@ -871,23 +875,25 @@ function deleteWeightLog(id) {
 }
 
 // --------------------------------------------------------------------------
-// DÉCLENCHEUR DE SYNCHRONISATION CLOUD DEPUIS L'INTERFACE
+// DÉCLENCHEUR DE SYNCHRONISATION FIREBASE DEPUIS L'INTERFACE
 // --------------------------------------------------------------------------
-async function triggerCloudSync(mode = 'sync') {
+async function triggerFirebaseSync(mode = 'sync') {
+  const urlInput = document.getElementById('setting-firebase-url');
   const idInput = document.getElementById('sync-user-id');
   const pinInput = document.getElementById('sync-user-pin');
   const autoSwitch = document.getElementById('sync-auto-enabled');
 
-  if (idInput && pinInput) {
+  if (urlInput || idInput || pinInput) {
     window.appStorage.savePreferences({
-      syncUserId: idInput.value.trim().toLowerCase(),
-      syncUserPin: pinInput.value.trim(),
+      firebaseUrl: urlInput ? urlInput.value.trim() : "",
+      syncUserId: idInput ? idInput.value.trim().toLowerCase() : "",
+      syncUserPin: pinInput ? pinInput.value.trim() : "",
       syncAutoEnabled: autoSwitch ? autoSwitch.checked : true
     });
   }
 
   if (mode === 'pull') {
-    await window.syncManager.pullFromCloud();
+    await window.syncManager.pullFromFirebase();
   } else {
     await window.syncManager.sync();
   }

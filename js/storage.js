@@ -23,6 +23,8 @@ const DEFAULT_PREFERENCES = {
   voiceEnabled: true,
   theme: "dark",
   reminderActive: true,
+  firebaseUrl: "",
+  firebaseAuthToken: "",
   syncUserId: "",
   syncUserPin: "",
   syncAutoEnabled: true,
