@@ -463,7 +463,7 @@ function saveSettings() {
     initialWeight: initWeightInput && initWeightInput.value ? parseFloat(initWeightInput.value) : null,
     targetWeight: targetWeightInput && targetWeightInput.value ? parseFloat(targetWeightInput.value) : null,
     heightCm: heightInput && heightInput.value ? parseInt(heightInput.value) : null,
-    firebaseUrl: firebaseUrlInput ? firebaseUrlInput.value.trim() : "",
+    firebaseUrl: firebaseUrlInput ? firebaseUrlInput.value.trim() : (window.appStorage.prefs.firebaseUrl || ""),
     syncUserId: syncIdInput ? syncIdInput.value.trim().toLowerCase() : "",
     syncUserPin: syncPinInput ? syncPinInput.value.trim() : "",
     syncAutoEnabled: syncAutoSwitch ? syncAutoSwitch.checked : true
@@ -878,14 +878,14 @@ function deleteWeightLog(id) {
 // DÉCLENCHEUR DE CONNEXION ET SYNCHRONISATION MULTI-PROFILS
 // --------------------------------------------------------------------------
 async function triggerProfileSync(mode = 'sync') {
-  const urlInput = document.getElementById('setting-firebase-url');
   const idInput = document.getElementById('sync-user-id');
   const pinInput = document.getElementById('sync-user-pin');
   const autoSwitch = document.getElementById('sync-auto-enabled');
 
-  if (urlInput || idInput || pinInput) {
+  // Sauvegarder UNIQUEMENT le nom de profil et le mot de passe
+  // (jamais l'URL Firebase qui est intégrée dans le code)
+  if (idInput || pinInput) {
     window.appStorage.savePreferences({
-      firebaseUrl: urlInput ? urlInput.value.trim() : "",
       syncUserId: idInput ? idInput.value.trim().toLowerCase() : "",
       syncUserPin: pinInput ? pinInput.value.trim() : "",
       syncAutoEnabled: autoSwitch ? autoSwitch.checked : true
