@@ -330,6 +330,11 @@ class WorkoutEngine {
     }
     window.audioEngine.speak("Félicitations ! Séance terminée avec succès.");
 
+    // Synchronisation Cloud automatique (si activée)
+    if (window.syncManager) {
+      window.syncManager.autoPush();
+    }
+
     if (this.onFinish) {
       this.onFinish(session);
     }

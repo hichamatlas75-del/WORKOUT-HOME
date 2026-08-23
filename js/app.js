@@ -44,6 +44,11 @@ document.addEventListener('DOMContentLoaded', () => {
   } else if (urlParams.get('tab')) {
     switchTab(urlParams.get('tab'));
   }
+
+  // 10. Synchronisation Cloud automatique au démarrage (si configurée)
+  if (window.syncManager && window.appStorage.prefs.syncUserId && window.appStorage.prefs.syncAutoEnabled) {
+    window.syncManager.sync({ silent: true });
+  }
 });
 
 // --------------------------------------------------------------------------
@@ -398,6 +403,9 @@ function loadSettingsForm() {
   const initWeightInput = document.getElementById('setting-initial-weight');
   const targetWeightInput = document.getElementById('setting-target-weight');
   const heightInput = document.getElementById('setting-height-cm');
+  const syncIdInput = document.getElementById('sync-user-id');
+  const syncPinInput = document.getElementById('sync-user-pin');
+  const syncAutoSwitch = document.getElementById('sync-auto-enabled');
 
   if (timeInput) timeInput.value = prefs.targetTime || "17:00";
   if (roundsInput) roundsInput.value = prefs.rounds || 3;
@@ -410,9 +418,16 @@ function loadSettingsForm() {
   if (initWeightInput) initWeightInput.value = prefs.initialWeight || "";
   if (targetWeightInput) targetWeightInput.value = prefs.targetWeight || "";
   if (heightInput) heightInput.value = prefs.heightCm || "";
+  if (syncIdInput) syncIdInput.value = prefs.syncUserId || "";
+  if (syncPinInput) syncPinInput.value = prefs.syncUserPin || "";
+  if (syncAutoSwitch) syncAutoSwitch.checked = prefs.syncAutoEnabled !== false;
 
   window.audioEngine.soundEnabled = prefs.soundEnabled !== false;
   window.audioEngine.voiceEnabled = prefs.voiceEnabled !== false;
+
+  if (window.syncManager) {
+    window.syncManager.updateStatusUI();
+  }
 }
 
 function saveSettings() {
@@ -428,6 +443,9 @@ function saveSettings() {
   const initWeightInput = document.getElementById('setting-initial-weight');
   const targetWeightInput = document.getElementById('setting-target-weight');
   const heightInput = document.getElementById('setting-height-cm');
+  const syncIdInput = document.getElementById('sync-user-id');
+  const syncPinInput = document.getElementById('sync-user-pin');
+  const syncAutoSwitch = document.getElementById('sync-auto-enabled');
 
   const newPrefs = {
     targetTime: timeInput ? timeInput.value : "17:00",
@@ -441,7 +459,10 @@ function saveSettings() {
     theme: themeSelect ? themeSelect.value : "dark",
     initialWeight: initWeightInput && initWeightInput.value ? parseFloat(initWeightInput.value) : null,
     targetWeight: targetWeightInput && targetWeightInput.value ? parseFloat(targetWeightInput.value) : null,
-    heightCm: heightInput && heightInput.value ? parseInt(heightInput.value) : null
+    heightCm: heightInput && heightInput.value ? parseInt(heightInput.value) : null,
+    syncUserId: syncIdInput ? syncIdInput.value.trim().toLowerCase() : "",
+    syncUserPin: syncPinInput ? syncPinInput.value.trim() : "",
+    syncAutoEnabled: syncAutoSwitch ? syncAutoSwitch.checked : true
   };
 
   window.appStorage.savePreferences(newPrefs);
@@ -451,6 +472,13 @@ function saveSettings() {
   document.documentElement.setAttribute('data-theme', resolvedTheme);
   window.audioEngine.soundEnabled = newPrefs.soundEnabled;
   window.audioEngine.voiceEnabled = newPrefs.voiceEnabled;
+
+  if (window.syncManager) {
+    window.syncManager.updateStatusUI();
+    if (newPrefs.syncUserId && newPrefs.syncUserPin && newPrefs.syncAutoEnabled) {
+      window.syncManager.sync({ silent: true });
+    }
+  }
 
   // Mise à jour de l'affichage de l'accueil et du tableau de bord
   const targetDisplay = document.getElementById('hero-target-display');
@@ -812,6 +840,9 @@ function saveWeightEntry() {
     if (window.dashboardManager) {
       window.dashboardManager.renderWeightTracker();
     }
+    if (window.syncManager) {
+      window.syncManager.autoPush();
+    }
     showToast(`⚖️ Pesée de ${entry.weight} kg enregistrée !`);
   } else {
     showToast("❌ Erreur lors de l'enregistrement.", true);
@@ -831,9 +862,35 @@ function deleteWeightLog(id) {
       if (window.dashboardManager) {
         window.dashboardManager.renderWeightTracker();
       }
+      if (window.syncManager) {
+        window.syncManager.autoPush();
+      }
       showToast("Pesée supprimée.");
     }
   );
+}
+
+// --------------------------------------------------------------------------
+// DÉCLENCHEUR DE SYNCHRONISATION CLOUD DEPUIS L'INTERFACE
+// --------------------------------------------------------------------------
+async function triggerCloudSync(mode = 'sync') {
+  const idInput = document.getElementById('sync-user-id');
+  const pinInput = document.getElementById('sync-user-pin');
+  const autoSwitch = document.getElementById('sync-auto-enabled');
+
+  if (idInput && pinInput) {
+    window.appStorage.savePreferences({
+      syncUserId: idInput.value.trim().toLowerCase(),
+      syncUserPin: pinInput.value.trim(),
+      syncAutoEnabled: autoSwitch ? autoSwitch.checked : true
+    });
+  }
+
+  if (mode === 'pull') {
+    await window.syncManager.pullFromCloud();
+  } else {
+    await window.syncManager.sync();
+  }
 }
 
 

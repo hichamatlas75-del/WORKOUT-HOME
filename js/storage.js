@@ -22,7 +22,11 @@ const DEFAULT_PREFERENCES = {
   soundEnabled: true,
   voiceEnabled: true,
   theme: "dark",
-  reminderActive: true
+  reminderActive: true,
+  syncUserId: "",
+  syncUserPin: "",
+  syncAutoEnabled: true,
+  syncLastTime: null
 };
 
 class AppStorage {
@@ -419,6 +423,69 @@ class AppStorage {
       console.error('Erreur importation JSON:', e);
       return false;
     }
+  }
+
+  // --- Fusion intelligente des données locales et Cloud (Multi-Appareils) ---
+  mergeData(remoteData) {
+    if (!remoteData || typeof remoteData !== 'object') return false;
+
+    let updated = false;
+
+    // 1. Fusion des séances (par ID unique)
+    if (Array.isArray(remoteData.history)) {
+      const currentIds = new Set(this.history.map(s => s.id));
+      remoteData.history.forEach(remSession => {
+        if (remSession && remSession.id && !currentIds.has(remSession.id)) {
+          this.history.push(remSession);
+          currentIds.add(remSession.id);
+          updated = true;
+        }
+      });
+      // Tri par horodatage décroissant
+      this.history.sort((a, b) => (b.timestamp || new Date(b.date).getTime()) - (a.timestamp || new Date(a.date).getTime()));
+      localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(this.history));
+    }
+
+    // 2. Fusion des pesées
+    if (Array.isArray(remoteData.weightHistory)) {
+      const localDates = new Map(this.weightHistory.map(w => [w.date, w]));
+      remoteData.weightHistory.forEach(remW => {
+        if (remW && remW.date) {
+          const localW = localDates.get(remW.date);
+          if (!localW) {
+            this.weightHistory.push(remW);
+            localDates.set(remW.date, remW);
+            updated = true;
+          } else if ((remW.timestamp || 0) > (localW.timestamp || 0)) {
+            const idx = this.weightHistory.findIndex(w => w.date === remW.date);
+            if (idx >= 0) this.weightHistory[idx] = remW;
+            updated = true;
+          }
+        }
+      });
+      this.weightHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
+      localStorage.setItem(STORAGE_KEYS.WEIGHT, JSON.stringify(this.weightHistory));
+    }
+
+    // 3. Fusion des badges
+    if (Array.isArray(remoteData.badges)) {
+      const mergedBadges = Array.from(new Set([...this.badges, ...remoteData.badges]));
+      if (mergedBadges.length !== this.badges.length) {
+        this.badges = mergedBadges;
+        localStorage.setItem(STORAGE_KEYS.BADGES, JSON.stringify(this.badges));
+        updated = true;
+      }
+    }
+
+    // 4. Fusion des réglages (sauf identifiants de synchro locaux si déjà présents)
+    if (remoteData.prefs && typeof remoteData.prefs === 'object') {
+      const { syncUserId, syncUserPin, syncAutoEnabled, syncLastTime, ...cleanRemotePrefs } = remoteData.prefs;
+      this.prefs = { ...this.prefs, ...cleanRemotePrefs };
+      localStorage.setItem(STORAGE_KEYS.PREFS, JSON.stringify(this.prefs));
+      updated = true;
+    }
+
+    return updated;
   }
 
   clearAllData() {

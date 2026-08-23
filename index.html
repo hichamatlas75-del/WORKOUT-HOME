@@ -460,6 +460,72 @@
           Installer l'application sur cet appareil
         </button>
 
+        <!-- Synchronisation Cloud Pro Multi-Appareils (PC ⇄ Mobile) -->
+        <div class="settings-group sync-cloud-card">
+          <div class="section-header" style="margin-bottom: 6px;">
+            <h3 class="section-title" style="font-size: 0.95rem;">☁️ Synchronisation Cloud (PC ⇄ Mobile)</h3>
+          </div>
+          <p style="font-size: 0.76rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
+            Synchronisez vos séances et pesées entre votre PC et votre smartphone en toute sécurité (Chiffrement AES-256).
+          </p>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Identifiant de Synchronisation</span>
+              <span class="setting-desc">Votre pseudo unique (ex : hicham)</span>
+            </div>
+            <label for="sync-user-id" class="sr-only">Identifiant de synchronisation</label>
+            <input type="text" id="sync-user-id" class="styled-input" placeholder="ex: hicham" maxlength="30" style="width: 120px; text-transform: lowercase;">
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Code PIN de sécurité</span>
+              <span class="setting-desc">4 à 8 chiffres pour déverrouiller vos données</span>
+            </div>
+            <label for="sync-user-pin" class="sr-only">Code PIN de sécurité</label>
+            <input type="password" id="sync-user-pin" class="styled-input" placeholder="••••" maxlength="8" style="width: 90px; letter-spacing: 2px; text-align: center;">
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Synchronisation automatique</span>
+              <span class="setting-desc">Mise à jour en direct après chaque séance</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="sync-auto-enabled" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <!-- Statut visuel de la synchronisation -->
+          <div class="sync-status-box" id="sync-status-box">
+            <div class="sync-status-indicator">
+              <span class="sync-dot idle" id="sync-status-dot"></span>
+              <span class="sync-status-text" id="sync-status-text">Non configuré</span>
+            </div>
+            <span class="sync-last-time" id="sync-last-time">Entrez un Identifiant et un code PIN</span>
+          </div>
+
+          <!-- Boutons d'action Cloud -->
+          <div class="sync-actions-grid">
+            <button class="btn-primary sync-btn" id="btn-sync-now" onclick="triggerCloudSync('sync')" aria-label="Synchroniser avec le Cloud">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>
+              </svg>
+              <span>Synchroniser</span>
+            </button>
+            <button class="btn-secondary sync-btn" id="btn-sync-pull" onclick="triggerCloudSync('pull')" title="Récupérer depuis le Cloud" aria-label="Récupérer depuis le Cloud">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              <span>Récupérer</span>
+            </button>
+          </div>
+        </div>
+
         <!-- Exportation / Sauvegarde -->
         <div class="settings-group">
           <div class="setting-row">
@@ -800,6 +866,7 @@
   <script src="js/notifications.js" defer></script>
   <script src="js/pwa.js" defer></script>
   <script src="js/motion-player.js" defer></script>
+  <script src="js/sync.js" defer></script>
   <script src="js/app.js" defer></script>
 
   <!-- Script inline pour le bouton de bascule rapide de thème -->
