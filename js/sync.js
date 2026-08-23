@@ -306,47 +306,174 @@ class ProfileSyncManager {
     }
   }
 
-  updateStatusUI(state = null, message = null) {
-    const dot = document.getElementById('sync-status-dot');
-    const text = document.getElementById('sync-status-text');
-    const lastTimeEl = document.getElementById('sync-last-time');
+  // --- OUTIL DE DIAGNOSTIC & RAPPORT D'ERREUR ---
+  async runDiagnostic() {
+    const report = [];
+    const log = (step, ok, details) => {
+      report.push({ step, ok, details, time: new Date().toISOString() });
+      console.log(`[Diagnostic] ${ok ? '✅' : '❌'} ${step}:`, details);
+    };
+
     const config = this.getConfig();
 
-    if (!dot || !text) return;
+    // 1. Informations système & navigateur
+    log('Environnement Web', true, {
+      url: window.location.href,
+      protocol: window.location.protocol,
+      origin: window.location.origin,
+      isSecureContext: window.isSecureContext,
+      onLine: navigator.onLine,
+      userAgent: navigator.userAgent
+    });
 
-    dot.className = 'sync-dot';
+    // 2. Vérification Crypto
+    const hasSubtle = !!(window.crypto && window.crypto.subtle);
+    log('Module Cryptographie (AES-GCM)', hasSubtle, hasSubtle ? 'Web Crypto API disponible' : 'Fallback actif (crypto.subtle indisponible)');
 
-    if (!config.userId || !config.password) {
-      dot.classList.add('idle');
-      text.textContent = 'Non connecté';
-      if (lastTimeEl) lastTimeEl.textContent = 'Entrez un Nom de Profil et un Mot de passe';
-      return;
+    // 3. Configuration Profil
+    log('Identifiants de profil', !!(config.userId && config.password), {
+      userId: config.userId || '(non renseigné)',
+      hasPassword: !!config.password,
+      autoEnabled: config.autoEnabled,
+      firebaseUrl: config.url
+    });
+
+    // 4. Test Ping Firebase (GET shallow)
+    const pingStart = Date.now();
+    try {
+      const pingResp = await fetch(`${config.url}/.json?shallow=true`, {
+        method: 'GET',
+        mode: 'cors',
+        cache: 'no-store'
+      });
+      const pingDuration = Date.now() - pingStart;
+      log('Connexion Firebase (Ping)', pingResp.ok, {
+        status: pingResp.status,
+        statusText: pingResp.statusText,
+        duration: `${pingDuration}ms`,
+        corsHeaders: {
+          allowOrigin: pingResp.headers.get('access-control-allow-origin')
+        }
+      });
+    } catch (err) {
+      log('Connexion Firebase (Ping)', false, {
+        error: err.name,
+        message: err.message,
+        stack: err.stack
+      });
     }
 
-    if (state === 'syncing') {
-      dot.classList.add('syncing');
-      text.textContent = message || 'Synchronisation...';
-    } else if (state === 'success') {
-      dot.classList.add('success');
-      text.textContent = message || `Connecté (${config.userId})`;
-      if (lastTimeEl && config.lastTime) {
-        lastTimeEl.textContent = `Dernière synchro : Aujourd'hui à ${config.lastTime}`;
-      }
-    } else if (state === 'error') {
-      dot.classList.add('error');
-      text.textContent = message || 'Erreur connexion';
-    } else {
-      if (config.lastTime) {
-        dot.classList.add('success');
-        text.textContent = `Connecté (${config.userId})`;
-        if (lastTimeEl) lastTimeEl.textContent = `Dernière synchro : Aujourd'hui à ${config.lastTime}`;
-      } else {
-        dot.classList.add('idle');
-        text.textContent = `Profil prêt (${config.userId})`;
-        if (lastTimeEl) lastTimeEl.textContent = 'Cliquez sur Se Connecter / Synchroniser';
+    // 5. Test Lecture Profil (GET)
+    if (config.userId) {
+      try {
+        const endpoint = await this.getEndpointUrl();
+        const getResp = await fetch(endpoint, {
+          method: 'GET',
+          mode: 'cors',
+          cache: 'no-store'
+        });
+        const getBody = await getResp.text();
+        log('Lecture Données Profil (GET)', getResp.ok, {
+          status: getResp.status,
+          endpoint: endpoint,
+          dataLength: getBody.length,
+          preview: getBody.slice(0, 100)
+        });
+      } catch (err) {
+        log('Lecture Données Profil (GET)', false, {
+          error: err.name,
+          message: err.message
+        });
       }
     }
+
+    // 6. Test Écriture Firebase (PUT)
+    try {
+      const testEndpoint = `${config.url}/workout_profiles/diagnostic_test.json`;
+      const testPayload = JSON.stringify({ ping: 'ok', timestamp: Date.now() });
+      const putResp = await fetch(testEndpoint, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        mode: 'cors',
+        body: testPayload
+      });
+      log('Écriture Firebase (PUT)', putResp.ok, {
+        status: putResp.status,
+        statusText: putResp.statusText
+      });
+    } catch (err) {
+      log('Écriture Firebase (PUT)', false, {
+        error: err.name,
+        message: err.message,
+        stack: err.stack
+      });
+    }
+
+    // 7. Vérification Service Worker
+    if ('serviceWorker' in navigator) {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        log('Service Worker & PWA', true, {
+          active: !!reg && !!reg.active,
+          scope: reg ? reg.scope : null
+        });
+      } catch (e) {
+        log('Service Worker & PWA', false, { error: e.message });
+      }
+    }
+
+    return report;
+  }
+
+  async showDiagnosticModal() {
+    const modalEl = document.getElementById('diagnostic-modal');
+    const contentEl = document.getElementById('diagnostic-report-content');
+    if (!modalEl || !contentEl) return;
+
+    modalEl.style.display = 'flex';
+    contentEl.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--accent-work);">⏳ Analyse de la connexion Firebase en cours...</div>';
+
+    const report = await this.runDiagnostic();
+    let html = '';
+
+    report.forEach(item => {
+      const icon = item.ok ? '🟢' : '🔴';
+      const color = item.ok ? 'var(--accent-work)' : 'var(--accent-danger)';
+      html += `
+        <div style="margin-bottom: 12px; padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.03); border-left: 3px solid ${color};">
+          <div style="font-weight: 700; font-size: 0.85rem; color: ${color}; margin-bottom: 4px;">
+            ${icon} ${item.step}
+          </div>
+          <pre style="margin: 0; font-size: 0.72rem; color: var(--text-secondary); white-space: pre-wrap; word-break: break-word; font-family: monospace;">${JSON.stringify(item.details, null, 2)}</pre>
+        </div>
+      `;
+    });
+
+    contentEl.innerHTML = html;
+    window._lastDiagnosticReport = JSON.stringify(report, null, 2);
   }
 }
 
 window.syncManager = new ProfileSyncManager();
+
+function openSyncDiagnostic() {
+  if (window.syncManager) {
+    window.syncManager.showDiagnosticModal();
+  }
+}
+
+function copyDiagnosticReport() {
+  if (window._lastDiagnosticReport) {
+    navigator.clipboard.writeText(window._lastDiagnosticReport).then(() => {
+      if (typeof showToast === 'function') showToast("📋 Rapport de diagnostic copié !");
+    }).catch(() => {
+      if (typeof showToast === 'function') showToast("Sélectionnez et copiez le texte à l'écran.");
+    });
+  }
+}
+
+function closeSyncDiagnostic() {
+  const modalEl = document.getElementById('diagnostic-modal');
+  if (modalEl) modalEl.style.display = 'none';
+}
+
