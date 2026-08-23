@@ -45,8 +45,8 @@ document.addEventListener('DOMContentLoaded', () => {
     switchTab(urlParams.get('tab'));
   }
 
-  // 10. Synchronisation Firebase automatique au démarrage (si configurée)
-  if (window.syncManager && window.appStorage.prefs.firebaseUrl && window.appStorage.prefs.syncAutoEnabled) {
+  // 10. Synchronisation automatique du profil au démarrage (si connecté)
+  if (window.syncManager && window.appStorage.prefs.syncUserId && window.appStorage.prefs.syncAutoEnabled) {
     window.syncManager.sync({ silent: true });
   }
 });
@@ -875,9 +875,9 @@ function deleteWeightLog(id) {
 }
 
 // --------------------------------------------------------------------------
-// DÉCLENCHEUR DE SYNCHRONISATION FIREBASE DEPUIS L'INTERFACE
+// DÉCLENCHEUR DE CONNEXION ET SYNCHRONISATION MULTI-PROFILS
 // --------------------------------------------------------------------------
-async function triggerFirebaseSync(mode = 'sync') {
+async function triggerProfileSync(mode = 'sync') {
   const urlInput = document.getElementById('setting-firebase-url');
   const idInput = document.getElementById('sync-user-id');
   const pinInput = document.getElementById('sync-user-pin');
@@ -893,7 +893,7 @@ async function triggerFirebaseSync(mode = 'sync') {
   }
 
   if (mode === 'pull') {
-    await window.syncManager.pullFromFirebase();
+    await window.syncManager.pullFromCloud();
   } else {
     await window.syncManager.sync();
   }

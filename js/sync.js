@@ -1,46 +1,55 @@
 /**
- * FULL BODY 17 — GESTIONNAIRE DE SYNCHRONISATION FIREBASE REALTIME DATABASE PRO (PC ⇄ MOBILE)
- * Chiffrement AES-GCM 256-bit (Zero-Knowledge) & Synchronisation Cloud Firebase.
+ * FULL BODY 17 — GESTIONNAIRE DE SYNCHRONISATION MULTI-UTILISATEURS PRO
+ * Connexion transparente par Nom de Profil + Mot de Passe avec Chiffrement AES-256.
  */
 
-class FirebaseSyncManager {
+const DEFAULT_FIREBASE_RTDB = 'https://workout-home-fb17-default-rtdb.firebaseio.com';
+
+class ProfileSyncManager {
   constructor() {
     this.isSyncing = false;
   }
 
   getConfig() {
     const prefs = window.appStorage ? window.appStorage.prefs : {};
-    let url = (prefs.firebaseUrl || '').trim();
-    if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'https://' + url;
+    let customUrl = (prefs.firebaseUrl || '').trim();
+    if (customUrl && !customUrl.startsWith('http://') && !customUrl.startsWith('https://')) {
+      customUrl = 'https://' + customUrl;
     }
-    if (url.endsWith('/')) {
-      url = url.slice(0, -1);
+    if (customUrl.endsWith('/')) {
+      customUrl = customUrl.slice(0, -1);
     }
+
+    const activeUrl = customUrl || DEFAULT_FIREBASE_RTDB;
+
     return {
-      url: url,
-      authToken: (prefs.firebaseAuthToken || '').trim(),
-      userId: (prefs.syncUserId || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_'),
-      pin: (prefs.syncUserPin || '').trim(),
+      url: activeUrl,
+      userId: (prefs.syncUserId || '').trim().toLowerCase(),
+      password: (prefs.syncUserPin || '').trim(),
       autoEnabled: prefs.syncAutoEnabled !== false,
       lastTime: prefs.syncLastTime || null
     };
   }
 
-  getEndpointUrl() {
+  // Hachage sécurisé de l'identifiant pour la clé Firebase
+  async hashUserId(userId) {
+    const enc = new TextEncoder();
+    const hashBuf = await crypto.subtle.digest('SHA-256', enc.encode('fb17_usr_' + userId));
+    const hashArr = Array.from(new Uint8Array(hashBuf));
+    return 'u_' + hashArr.map(b => b.toString(16).padStart(2, '0')).slice(0, 20).join('');
+  }
+
+  async getEndpointUrl() {
     const config = this.getConfig();
-    if (!config.url || !config.userId) return null;
-    let endpoint = `${config.url}/workout_users/${config.userId}.json`;
-    if (config.authToken) {
-      endpoint += `?auth=${encodeURIComponent(config.authToken)}`;
-    }
-    return endpoint;
+    if (!config.userId) return null;
+    const userHash = await this.hashUserId(config.userId);
+    return `${config.url}/workout_profiles/${userHash}.json`;
   }
 
   // --- CRYPTOGRAPHIE ZERO-KNOWLEDGE (AES-GCM Web Crypto) ---
-  async deriveKey(userId, pin, salt = 'fb17_firebase_salt_v2') {
+  async deriveKey(userId, password) {
     const enc = new TextEncoder();
-    const secret = `${userId}:${pin}`;
+    const secret = `${userId.toLowerCase().trim()}:${password}`;
     const keyMaterial = await crypto.subtle.importKey(
       'raw',
       enc.encode(secret),
@@ -52,7 +61,7 @@ class FirebaseSyncManager {
     return crypto.subtle.deriveKey(
       {
         name: 'PBKDF2',
-        salt: enc.encode(salt),
+        salt: enc.encode('fb17_profile_salt_v3'),
         iterations: 10000,
         hash: 'SHA-256'
       },
@@ -63,18 +72,8 @@ class FirebaseSyncManager {
     );
   }
 
-  async encryptPayload(dataObj, userId, pin) {
-    if (!pin) {
-      return {
-        v: 2,
-        app: 'FULL_BODY_17',
-        encrypted: false,
-        data: dataObj,
-        updatedAt: Date.now()
-      };
-    }
-
-    const key = await this.deriveKey(userId, pin);
+  async encryptPayload(dataObj, userId, password) {
+    const key = await this.deriveKey(userId, password);
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const jsonStr = JSON.stringify(dataObj);
     const encodedData = new TextEncoder().encode(jsonStr);
@@ -89,29 +88,23 @@ class FirebaseSyncManager {
     const payloadHex = Array.from(new Uint8Array(ciphertext)).map(b => b.toString(16).padStart(2, '0')).join('');
 
     return {
-      v: 2,
+      v: 3,
       app: 'FULL_BODY_17',
-      encrypted: true,
+      profile: userId,
       iv: ivHex,
       payload: payloadHex,
       updatedAt: Date.now()
     };
   }
 
-  async decryptPayload(envelope, userId, pin) {
-    if (!envelope) throw new Error("Données distantes vides.");
-    if (envelope.encrypted === false && envelope.data) {
-      return envelope.data;
-    }
+  async decryptPayload(envelope, userId, password) {
+    if (!envelope) throw new Error("Aucune donnée trouvée.");
     if (!envelope.iv || !envelope.payload) {
       if (envelope.history || envelope.prefs) return envelope;
-      throw new Error("Format de données Firebase invalide.");
-    }
-    if (!pin) {
-      throw new Error("Ces données sont chiffrées : votre code PIN est requis pour les déverrouiller.");
+      throw new Error("Format de données invalide.");
     }
 
-    const key = await this.deriveKey(userId, pin);
+    const key = await this.deriveKey(userId, password);
     const iv = new Uint8Array(envelope.iv.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
     const ciphertext = new Uint8Array(envelope.payload.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
 
@@ -130,30 +123,30 @@ class FirebaseSyncManager {
     const { silent = false } = options;
     const config = this.getConfig();
 
-    if (!config.url) {
+    if (!config.userId || !config.password) {
       if (!silent && typeof showToast === 'function') {
-        showToast("⚠️ Veuillez renseigner l'URL de votre base Firebase dans les Réglages.", true);
+        showToast("⚠️ Renseignez votre Nom de Profil et Mot de passe.", true);
       }
-      this.updateStatusUI('error', 'URL Firebase requise');
+      this.updateStatusUI('error', 'Profil & Mot de passe requis');
       return false;
     }
 
-    if (!config.userId) {
+    if (config.password.length < 3) {
       if (!silent && typeof showToast === 'function') {
-        showToast("⚠️ Veuillez renseigner votre Identifiant de synchronisation.", true);
+        showToast("⚠️ Le mot de passe doit comporter au moins 3 caractères.", true);
       }
-      this.updateStatusUI('error', 'Identifiant requis');
+      this.updateStatusUI('error', 'Mot de passe trop court');
       return false;
     }
 
     if (this.isSyncing) return false;
     this.isSyncing = true;
-    this.updateStatusUI('syncing', 'Synchronisation Firebase...');
+    this.updateStatusUI('syncing', 'Synchronisation en cours...');
 
     try {
-      const endpoint = this.getEndpointUrl();
+      const endpoint = await this.getEndpointUrl();
 
-      // 1. Tenter de lire les données distantes sur Firebase (GET)
+      // 1. Tenter de lire les données distantes (GET)
       let remoteData = null;
       try {
         const getResp = await fetch(endpoint, {
@@ -165,13 +158,13 @@ class FirebaseSyncManager {
         if (getResp.ok) {
           const remoteEnvelope = await getResp.json();
           if (remoteEnvelope) {
-            remoteData = await this.decryptPayload(remoteEnvelope, config.userId, config.pin);
+            remoteData = await this.decryptPayload(remoteEnvelope, config.userId, config.password);
           }
         }
       } catch (err) {
-        console.warn('[Firebase GET]:', err);
-        if (err.message && err.message.includes('decrypt')) {
-          throw new Error("Code PIN incorrect pour ces données Firebase.");
+        console.warn('[Sync GET]:', err);
+        if (err.name === 'OperationError' || (err.message && err.message.includes('decrypt'))) {
+          throw new Error("Mot de passe incorrect pour ce profil.");
         }
       }
 
@@ -191,8 +184,8 @@ class FirebaseSyncManager {
         weightHistory: window.appStorage.weightHistory
       };
 
-      // 4. Chiffrer et envoyer sur Firebase (PUT)
-      const envelope = await this.encryptPayload(fullLocalData, config.userId, config.pin);
+      // 4. Chiffrer et envoyer au Cloud (PUT)
+      const envelope = await this.encryptPayload(fullLocalData, config.userId, config.password);
       const putResp = await fetch(endpoint, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -200,49 +193,46 @@ class FirebaseSyncManager {
       });
 
       if (!putResp.ok) {
-        if (putResp.status === 401 || putResp.status === 403) {
-          throw new Error("Accès refusé par les règles Firebase (.read/.write).");
-        }
-        throw new Error(`Erreur Firebase (${putResp.status} ${putResp.statusText})`);
+        throw new Error(`Erreur serveur (${putResp.status})`);
       }
 
       const nowStr = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
       window.appStorage.savePreferences({ syncLastTime: nowStr });
 
       this.isSyncing = false;
-      this.updateStatusUI('success', `Synchronisé (${nowStr})`);
+      this.updateStatusUI('success', `Connecté (${config.userId})`);
 
       if (window.dashboardManager) window.dashboardManager.renderDashboard();
       if (window.motivationManager) window.motivationManager.renderBadgesView();
       if (typeof renderHomeExercisesList === 'function') renderHomeExercisesList();
 
       if (!silent && typeof showToast === 'function') {
-        showToast("🔥 Synchronisation Firebase réussie !");
+        showToast(`🎉 Profil « ${config.userId} » synchronisé avec succès !`);
       }
       return true;
 
     } catch (error) {
-      console.error('[Firebase Sync Error]:', error);
+      console.error('[Sync Error]:', error);
       this.isSyncing = false;
-      const msg = error.message || "Erreur Firebase";
+      const msg = error.message || "Erreur de connexion";
       this.updateStatusUI('error', msg);
       if (!silent && typeof showToast === 'function') {
-        showToast(`❌ Échec Firebase : ${msg}`, true);
+        showToast(`❌ ${msg}`, true);
       }
       return false;
     }
   }
 
-  async pullFromFirebase() {
+  async pullFromCloud() {
     const config = this.getConfig();
-    if (!config.url || !config.userId) {
-      showToast("⚠️ URL Firebase et Identifiant requis.", true);
+    if (!config.userId || !config.password) {
+      showToast("⚠️ Renseignez votre Nom de Profil et Mot de passe.", true);
       return;
     }
 
-    this.updateStatusUI('syncing', 'Téléchargement Firebase...');
+    this.updateStatusUI('syncing', 'Téléchargement de vos données...');
     try {
-      const endpoint = this.getEndpointUrl();
+      const endpoint = await this.getEndpointUrl();
       const getResp = await fetch(endpoint, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
@@ -250,32 +240,31 @@ class FirebaseSyncManager {
       });
 
       if (!getResp.ok) {
-        if (getResp.status === 401 || getResp.status === 403) {
-          throw new Error("Accès refusé par les règles Firebase.");
-        }
-        throw new Error(`Erreur Firebase (${getResp.status})`);
+        throw new Error(`Erreur serveur (${getResp.status})`);
       }
 
       const remoteEnvelope = await getResp.json();
       if (!remoteEnvelope) {
-        throw new Error("Aucune sauvegarde trouvée sur Firebase pour cet identifiant.");
+        throw new Error("Aucune sauvegarde trouvée pour ce profil.");
       }
 
-      const remoteData = await this.decryptPayload(remoteEnvelope, config.userId, config.pin);
+      const remoteData = await this.decryptPayload(remoteEnvelope, config.userId, config.password);
       const hasChanges = window.appStorage.mergeData(remoteData);
       const nowStr = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
       window.appStorage.savePreferences({ syncLastTime: nowStr });
 
-      this.updateStatusUI('success', `Données à jour (${nowStr})`);
+      this.updateStatusUI('success', `Connecté (${config.userId})`);
 
       if (window.dashboardManager) window.dashboardManager.renderDashboard();
       if (window.motivationManager) window.motivationManager.renderBadgesView();
       if (typeof renderHomeExercisesList === 'function') renderHomeExercisesList();
 
-      showToast(hasChanges ? "🔥 Données Firebase récupérées avec succès !" : "🔥 Vos données étaient déjà à jour.");
+      showToast(hasChanges ? "✅ Données de votre profil récupérées avec succès !" : "✅ Vos données étaient déjà à jour.");
     } catch (err) {
-      console.error('[Firebase Pull Error]:', err);
-      const msg = err.message || "Erreur récupération";
+      console.error('[Pull Error]:', err);
+      const msg = (err.name === 'OperationError' || (err.message && err.message.includes('decrypt')))
+        ? "Mot de passe incorrect pour ce profil."
+        : (err.message || "Erreur de récupération");
       this.updateStatusUI('error', msg);
       showToast(`❌ ${msg}`, true);
     }
@@ -283,7 +272,7 @@ class FirebaseSyncManager {
 
   autoPush() {
     const config = this.getConfig();
-    if (config.url && config.userId && config.autoEnabled) {
+    if (config.userId && config.password && config.autoEnabled) {
       this.sync({ silent: true });
     }
   }
@@ -298,10 +287,10 @@ class FirebaseSyncManager {
 
     dot.className = 'sync-dot';
 
-    if (!config.url || !config.userId) {
+    if (!config.userId || !config.password) {
       dot.classList.add('idle');
-      text.textContent = 'Firebase non configuré';
-      if (lastTimeEl) lastTimeEl.textContent = "Entrez l'URL de votre base Firebase";
+      text.textContent = 'Non connecté';
+      if (lastTimeEl) lastTimeEl.textContent = 'Entrez un Nom de Profil et un Mot de passe';
       return;
     }
 
@@ -310,25 +299,25 @@ class FirebaseSyncManager {
       text.textContent = message || 'Synchronisation...';
     } else if (state === 'success') {
       dot.classList.add('success');
-      text.textContent = message || 'Firebase Connecté';
+      text.textContent = message || `Connecté (${config.userId})`;
       if (lastTimeEl && config.lastTime) {
         lastTimeEl.textContent = `Dernière synchro : Aujourd'hui à ${config.lastTime}`;
       }
     } else if (state === 'error') {
       dot.classList.add('error');
-      text.textContent = message || 'Erreur Firebase';
+      text.textContent = message || 'Erreur connexion';
     } else {
       if (config.lastTime) {
         dot.classList.add('success');
-        text.textContent = 'Firebase Connecté';
+        text.textContent = `Connecté (${config.userId})`;
         if (lastTimeEl) lastTimeEl.textContent = `Dernière synchro : Aujourd'hui à ${config.lastTime}`;
       } else {
         dot.classList.add('idle');
-        text.textContent = 'Prêt pour 1ère synchro';
-        if (lastTimeEl) lastTimeEl.textContent = 'Cliquez sur Synchroniser';
+        text.textContent = `Profil prêt (${config.userId})`;
+        if (lastTimeEl) lastTimeEl.textContent = 'Cliquez sur Se Connecter / Synchroniser';
       }
     }
   }
 }
 
-window.syncManager = new FirebaseSyncManager();
+window.syncManager = new ProfileSyncManager();

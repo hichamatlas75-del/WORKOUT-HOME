@@ -460,46 +460,37 @@
           Installer l'application sur cet appareil
         </button>
 
-        <!-- Synchronisation Cloud Firebase (PC ⇄ Mobile) -->
+        <!-- Profil & Connexion Multi-Appareils -->
         <div class="settings-group sync-cloud-card">
           <div class="section-header" style="margin-bottom: 6px;">
-            <h3 class="section-title" style="font-size: 0.95rem;">🔥 Synchronisation Cloud Firebase (PC ⇄ Mobile)</h3>
+            <h3 class="section-title" style="font-size: 0.95rem;">👤 Profil &amp; Connexion Multi-Appareils</h3>
           </div>
-          <p style="font-size: 0.76rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
-            Synchronisez vos données en temps réel entre votre PC et votre smartphone via Google Firebase Realtime Database.
+          <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
+            Entrez votre <strong>Nom de Profil</strong> et un <strong>Mot de passe</strong> pour retrouver vos séances et pesées sur tous vos appareils (PC, Mobile, Tablette).
           </p>
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-title">URL de votre base Firebase</span>
-              <span class="setting-desc">Ex : https://votre-projet-rtdb.firebaseio.com</span>
-            </div>
-            <label for="setting-firebase-url" class="sr-only">URL Firebase</label>
-            <input type="url" id="setting-firebase-url" class="styled-input" placeholder="https://...firebaseio.com" style="width: 170px; font-size: 0.75rem;">
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-title">Identifiant de Synchronisation</span>
+              <span class="setting-title">Nom de Profil</span>
               <span class="setting-desc">Votre pseudo unique (ex : hicham)</span>
             </div>
-            <label for="sync-user-id" class="sr-only">Identifiant de synchronisation</label>
-            <input type="text" id="sync-user-id" class="styled-input" placeholder="ex: hicham" maxlength="30" style="width: 120px; text-transform: lowercase;">
+            <label for="sync-user-id" class="sr-only">Nom de Profil</label>
+            <input type="text" id="sync-user-id" class="styled-input" placeholder="ex: hicham" maxlength="30" style="width: 130px; text-transform: lowercase;">
           </div>
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-title">Code PIN de sécurité</span>
-              <span class="setting-desc">4 à 8 chiffres pour chiffrer vos données (optionnel)</span>
+              <span class="setting-title">Mot de passe</span>
+              <span class="setting-desc">Pour sécuriser et déverrouiller vos données</span>
             </div>
-            <label for="sync-user-pin" class="sr-only">Code PIN de sécurité</label>
-            <input type="password" id="sync-user-pin" class="styled-input" placeholder="••••" maxlength="8" style="width: 90px; letter-spacing: 2px; text-align: center;">
+            <label for="sync-user-pin" class="sr-only">Mot de passe</label>
+            <input type="password" id="sync-user-pin" class="styled-input" placeholder="••••••••" maxlength="30" style="width: 120px;">
           </div>
 
           <div class="setting-row">
             <div class="setting-info">
               <span class="setting-title">Synchronisation automatique</span>
-              <span class="setting-desc">Mise à jour en direct après chaque séance &amp; pesée</span>
+              <span class="setting-desc">Mise à jour en direct après chaque séance</span>
             </div>
             <label class="switch">
               <input type="checkbox" id="sync-auto-enabled" checked>
@@ -507,24 +498,24 @@
             </label>
           </div>
 
-          <!-- Statut visuel Firebase -->
+          <!-- Statut visuel -->
           <div class="sync-status-box" id="sync-status-box">
             <div class="sync-status-indicator">
               <span class="sync-dot idle" id="sync-status-dot"></span>
-              <span class="sync-status-text" id="sync-status-text">Firebase non configuré</span>
+              <span class="sync-status-text" id="sync-status-text">Non connecté</span>
             </div>
-            <span class="sync-last-time" id="sync-last-time">Entrez l'URL de votre base Firebase</span>
+            <span class="sync-last-time" id="sync-last-time">Entrez un Nom de Profil et un Mot de passe</span>
           </div>
 
-          <!-- Boutons d'action Firebase -->
+          <!-- Boutons de connexion & synchro -->
           <div class="sync-actions-grid">
-            <button class="btn-primary sync-btn" id="btn-sync-now" onclick="triggerFirebaseSync('sync')" aria-label="Synchroniser avec Firebase">
+            <button class="btn-primary sync-btn" id="btn-sync-now" onclick="triggerProfileSync('sync')" aria-label="Se Connecter ou Synchroniser">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>
               </svg>
-              <span>Synchroniser</span>
+              <span>Se Connecter / Synchroniser</span>
             </button>
-            <button class="btn-secondary sync-btn" id="btn-sync-pull" onclick="triggerFirebaseSync('pull')" title="Récupérer depuis Firebase" aria-label="Récupérer depuis Firebase">
+            <button class="btn-secondary sync-btn" id="btn-sync-pull" onclick="triggerProfileSync('pull')" title="Récupérer mes données" aria-label="Récupérer mes données">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="7 10 12 15 17 10"/>
@@ -533,6 +524,15 @@
               <span>Récupérer</span>
             </button>
           </div>
+
+          <!-- Option avancée (Optionnel pour base personnalisée) -->
+          <details style="margin-top: 10px; font-size: 0.74rem; color: var(--text-muted);">
+            <summary style="cursor: pointer; padding: 4px 0; user-select: none;">⚙️ Paramètres avancés (URL Firebase)</summary>
+            <div style="margin-top: 8px;">
+              <label for="setting-firebase-url" style="display:block; margin-bottom: 4px; font-size: 0.72rem;">URL Firebase personnalisée (optionnel) :</label>
+              <input type="url" id="setting-firebase-url" class="styled-input" placeholder="Par défaut : Cloud Full Body 17" style="width: 100%; box-sizing: border-box; font-size: 0.72rem;">
+            </div>
+          </details>
         </div>
 
         <!-- Exportation / Sauvegarde -->
