@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 2. Initialiser les réglages dans le formulaire
   try { loadSettingsForm(); } catch (e) { console.warn('Settings init error:', e); }
+  try { updateAvatarDisplay(); } catch (e) { console.warn('Avatar init error:', e); }
 
   // 3. Initialiser la liste des exercices sur la vue d'accueil
   try { renderHomeExercisesList(); } catch (e) { console.warn('Exercises init error:', e); }
@@ -567,6 +568,7 @@ function reInitApp() {
 
   // Reconstruire l'interface
   loadSettingsForm();
+  updateAvatarDisplay();
   renderHomeExercisesList();
   startLiveClock();
   window.dashboardManager.renderDashboard();
@@ -906,6 +908,143 @@ async function triggerProfileSync(mode = 'sync') {
     await window.syncManager.sync();
   }
 }
+
+// --------------------------------------------------------------------------
+// GESTION DU MENU BURGER & DU TIROIR PROFIL AVATAR
+// --------------------------------------------------------------------------
+function openProfileDrawer() {
+  const overlay = document.getElementById('profile-drawer-overlay');
+  if (overlay) {
+    overlay.style.display = 'flex';
+    setTimeout(() => overlay.classList.add('active'), 10);
+  }
+  updateProfileDrawerData();
+}
+
+function closeProfileDrawer() {
+  const overlay = document.getElementById('profile-drawer-overlay');
+  if (overlay) {
+    overlay.classList.remove('active');
+    setTimeout(() => {
+      if (!overlay.classList.contains('active')) overlay.style.display = 'none';
+    }, 280);
+  }
+}
+
+function selectAvatar(avatarEmoji) {
+  window.appStorage.savePreferences({ userAvatar: avatarEmoji });
+  updateAvatarDisplay();
+  if (window.syncManager) {
+    window.syncManager.autoPush();
+  }
+  if (typeof showToast === 'function') {
+    showToast(`Avatar ${avatarEmoji} sélectionné !`);
+  }
+}
+
+function updateAvatarDisplay() {
+  const prefs = window.appStorage ? window.appStorage.prefs : {};
+  const currentAvatar = prefs.userAvatar || '🦁';
+
+  // Badge Header
+  const headerAvatar = document.getElementById('header-avatar-badge');
+  if (headerAvatar) headerAvatar.textContent = currentAvatar;
+
+  // Avatar dans le tiroir
+  const drawerAvatar = document.getElementById('drawer-avatar-display');
+  if (drawerAvatar) drawerAvatar.textContent = currentAvatar;
+
+  // Options actives dans la grille
+  document.querySelectorAll('.avatar-opt').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-avatar') === currentAvatar);
+  });
+}
+
+function updateProfileDrawerData() {
+  const prefs = window.appStorage ? window.appStorage.prefs : {};
+  updateAvatarDisplay();
+
+  // Pseudo et mot de passe
+  const usernameDisplay = document.getElementById('drawer-username-display');
+  const inputUser = document.getElementById('drawer-input-user');
+  const inputPin = document.getElementById('drawer-input-pin');
+
+  if (usernameDisplay) {
+    usernameDisplay.textContent = prefs.syncUserId ? `Profil : ${prefs.syncUserId}` : 'Mon Profil';
+  }
+  if (inputUser && prefs.syncUserId) inputUser.value = prefs.syncUserId;
+  if (inputPin && prefs.syncUserPin) inputPin.value = prefs.syncUserPin;
+
+  // Statut synchronisation
+  const syncDot = document.getElementById('drawer-sync-dot');
+  const syncText = document.getElementById('drawer-sync-text');
+  if (syncDot && syncText) {
+    syncDot.className = 'sync-dot';
+    if (prefs.syncUserId && prefs.syncUserPin) {
+      syncDot.classList.add('success');
+      syncText.textContent = `Connecté (${prefs.syncUserId})`;
+    } else {
+      syncDot.classList.add('idle');
+      syncText.textContent = 'Non connecté';
+    }
+  }
+
+  // Mini statistiques
+  const streakStats = window.appStorage.getStreakStats();
+  const totalWorkouts = window.appStorage.getTotalWorkouts();
+  const latestWeight = window.appStorage.getLatestWeight();
+
+  const dStreak = document.getElementById('d-stat-streak');
+  const dWorkouts = document.getElementById('d-stat-workouts');
+  const dWeight = document.getElementById('d-stat-weight');
+
+  if (dStreak) dStreak.textContent = `${streakStats.currentStreak} j`;
+  if (dWorkouts) dWorkouts.textContent = totalWorkouts;
+  if (dWeight) dWeight.textContent = latestWeight ? `${latestWeight.weight} kg` : '-- kg';
+}
+
+async function saveAndSyncFromDrawer() {
+  const inputUser = document.getElementById('drawer-input-user');
+  const inputPin = document.getElementById('drawer-input-pin');
+
+  const userId = inputUser ? inputUser.value.trim().toLowerCase() : '';
+  const pin = inputPin ? inputPin.value.trim() : '';
+
+  if (!userId || !pin) {
+    if (typeof showToast === 'function') showToast("⚠️ Renseignez votre Nom de Profil et Mot de passe.", true);
+    return;
+  }
+
+  window.appStorage.savePreferences({
+    syncUserId: userId,
+    syncUserPin: pin,
+    syncAutoEnabled: true
+  });
+
+  // Mettre à jour aussi les champs dans Réglages
+  const setUserId = document.getElementById('sync-user-id');
+  const setUserPin = document.getElementById('sync-user-pin');
+  if (setUserId) setUserId.value = userId;
+  if (setUserPin) setUserPin.value = pin;
+
+  updateProfileDrawerData();
+  await window.syncManager.sync();
+  updateProfileDrawerData();
+}
+
+async function pullFromDrawer() {
+  await saveAndSyncFromDrawer();
+  await window.syncManager.pullFromCloud();
+  updateProfileDrawerData();
+}
+
+window.openProfileDrawer = openProfileDrawer;
+window.closeProfileDrawer = closeProfileDrawer;
+window.selectAvatar = selectAvatar;
+window.updateAvatarDisplay = updateAvatarDisplay;
+window.saveAndSyncFromDrawer = saveAndSyncFromDrawer;
+window.pullFromDrawer = pullFromDrawer;
+
 
 
 

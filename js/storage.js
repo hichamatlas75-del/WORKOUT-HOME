@@ -27,6 +27,7 @@ const DEFAULT_PREFERENCES = {
   firebaseAuthToken: "",
   syncUserId: "",
   syncUserPin: "",
+  userAvatar: "🦁",
   syncAutoEnabled: true,
   syncLastTime: null
 };

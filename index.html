@@ -42,7 +42,7 @@
         <div class="brand-info">
           <div class="brand-title-wrap">
             <span class="brand-title">FULL BODY 17</span>
-            <span class="version-tag">v2.2.0</span>
+            <span class="version-tag">v2.2.1</span>
           </div>
           <span class="brand-subtitle">Routine Quotidienne</span>
         </div>
@@ -51,6 +51,15 @@
         <button class="icon-btn" id="btn-quick-theme" onclick="toggleQuickTheme()" title="Changer de thème" aria-label="Changer de thème">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+
+        <button class="profile-burger-btn" id="btn-profile-burger" onclick="openProfileDrawer()" title="Mon Profil &amp; Synchronisation" aria-label="Menu Profil">
+          <span class="user-avatar-badge" id="header-avatar-badge">🦁</span>
+          <svg class="burger-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
           </svg>
         </button>
       </div>
@@ -941,6 +950,100 @@
         <button class="btn-secondary" style="padding: 10px 16px; font-size: 0.82rem;" onclick="closeSyncDiagnostic()">
           Fermer
         </button>
+      </div>
+    </div>
+  <!-- ====================================================================
+       TIROIR LATÉRAL MENU BURGER & PROFIL AVATAR (PROFILE DRAWER)
+       ==================================================================== -->
+  <div id="profile-drawer-overlay" class="drawer-overlay" style="display: none;" onclick="if(event.target === this) closeProfileDrawer()">
+    <div class="profile-drawer" id="profile-drawer">
+      <div class="drawer-header">
+        <div class="drawer-user-info">
+          <div class="drawer-avatar-display" id="drawer-avatar-display">🦁</div>
+          <div>
+            <div class="drawer-username" id="drawer-username-display">Mon Profil</div>
+            <div class="drawer-sync-badge" id="drawer-sync-badge">
+              <span class="sync-dot idle" id="drawer-sync-dot"></span>
+              <span id="drawer-sync-text">Non connecté</span>
+            </div>
+          </div>
+        </div>
+        <button class="icon-btn drawer-close-btn" onclick="closeProfileDrawer()" aria-label="Fermer le menu">✕</button>
+      </div>
+
+      <div class="drawer-body">
+        <!-- 1. Choix de l'Avatar -->
+        <div class="drawer-section">
+          <div class="drawer-section-title">🎭 Choisir mon Avatar</div>
+          <div class="avatar-picker-grid" id="avatar-picker-grid">
+            <button class="avatar-opt" data-avatar="🦁" onclick="selectAvatar('🦁')">🦁</button>
+            <button class="avatar-opt" data-avatar="⚡" onclick="selectAvatar('⚡')">⚡</button>
+            <button class="avatar-opt" data-avatar="🏋️‍♂️" onclick="selectAvatar('🏋️‍♂️')">🏋️‍♂️</button>
+            <button class="avatar-opt" data-avatar="🥋" onclick="selectAvatar('🥋')">🥋</button>
+            <button class="avatar-opt" data-avatar="🏃‍♂️" onclick="selectAvatar('🏃‍♂️')">🏃‍♂️</button>
+            <button class="avatar-opt" data-avatar="🔥" onclick="selectAvatar('🔥')">🔥</button>
+            <button class="avatar-opt" data-avatar="🏆" onclick="selectAvatar('🏆')">🏆</button>
+            <button class="avatar-opt" data-avatar="🥊" onclick="selectAvatar('🥊')">🥊</button>
+            <button class="avatar-opt" data-avatar="🐺" onclick="selectAvatar('🐺')">🐺</button>
+            <button class="avatar-opt" data-avatar="🧘‍♀️" onclick="selectAvatar('🧘‍♀️')">🧘‍♀️</button>
+            <button class="avatar-opt" data-avatar="🚀" onclick="selectAvatar('🚀')">🚀</button>
+            <button class="avatar-opt" data-avatar="👑" onclick="selectAvatar('👑')">👑</button>
+          </div>
+        </div>
+
+        <!-- 2. Connexion / Profil Cloud -->
+        <div class="drawer-section">
+          <div class="drawer-section-title">👤 Connexion Multi-Appareils</div>
+          <div class="drawer-field">
+            <label for="drawer-input-user">Nom de Profil</label>
+            <input type="text" id="drawer-input-user" class="styled-input" placeholder="ex: hicham" maxlength="30" style="text-transform: lowercase;">
+          </div>
+          <div class="drawer-field" style="margin-top: 8px;">
+            <label for="drawer-input-pin">Mot de passe</label>
+            <input type="password" id="drawer-input-pin" class="styled-input" placeholder="••••••••" maxlength="30">
+          </div>
+          
+          <div class="drawer-btn-row" style="margin-top: 10px; display: flex; gap: 8px;">
+            <button class="btn-primary" style="flex: 1; padding: 10px; font-size: 0.82rem;" onclick="saveAndSyncFromDrawer()">
+              ⚡ Se Connecter / Synchro
+            </button>
+            <button class="btn-secondary" style="padding: 10px 12px; font-size: 0.82rem; width: auto;" onclick="pullFromDrawer()" title="Récupérer">
+              📥
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. Mini Résumé d'activité -->
+        <div class="drawer-section drawer-stats-box">
+          <div class="drawer-mini-stat">
+            <span class="d-stat-val" id="d-stat-streak">0 j</span>
+            <span class="d-stat-lbl">Série en cours</span>
+          </div>
+          <div class="drawer-mini-stat">
+            <span class="d-stat-val" id="d-stat-workouts">0</span>
+            <span class="d-stat-lbl">Séances totales</span>
+          </div>
+          <div class="drawer-mini-stat">
+            <span class="d-stat-val" id="d-stat-weight">-- kg</span>
+            <span class="d-stat-lbl">Poids actuel</span>
+          </div>
+        </div>
+
+        <!-- 4. Raccourcis rapides -->
+        <div class="drawer-links">
+          <button class="drawer-nav-link" onclick="closeProfileDrawer(); switchTab('dashboard');">
+            <span>📊 Tableau de bord &amp; Progrès</span>
+            <span>➔</span>
+          </button>
+          <button class="drawer-nav-link" onclick="closeProfileDrawer(); switchTab('badges');">
+            <span>🏅 Badges &amp; Trophées</span>
+            <span>➔</span>
+          </button>
+          <button class="drawer-nav-link" onclick="closeProfileDrawer(); switchTab('settings');">
+            <span>⚙️ Tous les Réglages</span>
+            <span>➔</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
