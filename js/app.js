@@ -231,6 +231,7 @@ window.switchTab = switchTab;
 // --------------------------------------------------------------------------
 function startWorkoutSession() {
   window.audioEngine.initContext();
+  updateWorkoutMusicBtnState();
   const overlay = document.getElementById('workout-overlay');
   if (overlay) overlay.classList.add('active');
 
@@ -408,6 +409,10 @@ function loadSettingsForm() {
   const restInput = document.getElementById('setting-rest-duration');
   const soundSwitch = document.getElementById('setting-sound');
   const voiceSwitch = document.getElementById('setting-voice');
+  const musicSwitch = document.getElementById('setting-music');
+  const musicStyleSelect = document.getElementById('setting-music-style');
+  const musicVolumeSlider = document.getElementById('setting-music-volume');
+  const musicVolumeLbl = document.getElementById('setting-music-volume-lbl');
   const reminderSwitch = document.getElementById('setting-reminder');
   const initWeightInput = document.getElementById('setting-initial-weight');
   const targetWeightInput = document.getElementById('setting-target-weight');
@@ -424,7 +429,18 @@ function loadSettingsForm() {
   if (restInput) restInput.value = prefs.restDuration || 20;
   if (soundSwitch) soundSwitch.checked = prefs.soundEnabled !== false;
   if (voiceSwitch) voiceSwitch.checked = prefs.voiceEnabled !== false;
+  if (musicSwitch) musicSwitch.checked = prefs.musicEnabled !== false;
+  if (musicStyleSelect) musicStyleSelect.value = prefs.musicStyle || "synthwave";
+  if (musicVolumeSlider) {
+    const volPct = Math.round((prefs.musicVolume !== undefined ? prefs.musicVolume : 0.6) * 100);
+    musicVolumeSlider.value = volPct;
+    if (musicVolumeLbl) musicVolumeLbl.textContent = volPct + '%';
+  }
   if (reminderSwitch) reminderSwitch.checked = prefs.reminderActive !== false;
+  const reminderStatusDesc = document.getElementById('setting-reminder-status-desc');
+  if (reminderStatusDesc && window.notificationManager) {
+    reminderStatusDesc.textContent = `Statut : ${window.notificationManager.getPermissionStatus()}`;
+  }
   if (initWeightInput) initWeightInput.value = prefs.initialWeight || "";
   if (targetWeightInput) targetWeightInput.value = prefs.targetWeight || "";
   if (heightInput) heightInput.value = prefs.heightCm || "";
@@ -435,6 +451,11 @@ function loadSettingsForm() {
 
   window.audioEngine.soundEnabled = prefs.soundEnabled !== false;
   window.audioEngine.voiceEnabled = prefs.voiceEnabled !== false;
+  if (window.audioEngine.musicEngine) {
+    window.audioEngine.musicEngine.enabled = prefs.musicEnabled !== false;
+    window.audioEngine.musicEngine.setVolume(prefs.musicVolume !== undefined ? prefs.musicVolume : 0.6);
+    window.audioEngine.musicEngine.setStyle(prefs.musicStyle || "synthwave");
+  }
 
   if (window.syncManager) {
     window.syncManager.updateStatusUI();
@@ -449,6 +470,9 @@ function saveSettings() {
   const restInput = document.getElementById('setting-rest-duration');
   const soundSwitch = document.getElementById('setting-sound');
   const voiceSwitch = document.getElementById('setting-voice');
+  const musicSwitch = document.getElementById('setting-music');
+  const musicStyleSelect = document.getElementById('setting-music-style');
+  const musicVolumeSlider = document.getElementById('setting-music-volume');
   const reminderSwitch = document.getElementById('setting-reminder');
   const themeSelect = document.getElementById('setting-theme');
   const initWeightInput = document.getElementById('setting-initial-weight');
@@ -467,6 +491,9 @@ function saveSettings() {
     restDuration: restInput ? Math.min(60, Math.max(10, parseInt(restInput.value) || 20)) : 20,
     soundEnabled: soundSwitch ? soundSwitch.checked : true,
     voiceEnabled: voiceSwitch ? voiceSwitch.checked : true,
+    musicEnabled: musicSwitch ? musicSwitch.checked : true,
+    musicStyle: musicStyleSelect ? musicStyleSelect.value : "synthwave",
+    musicVolume: musicVolumeSlider ? (parseInt(musicVolumeSlider.value) / 100) : 0.6,
     reminderActive: reminderSwitch ? reminderSwitch.checked : true,
     theme: themeSelect ? themeSelect.value : "dark",
     initialWeight: initWeightInput && initWeightInput.value ? parseFloat(initWeightInput.value) : null,
@@ -485,11 +512,25 @@ function saveSettings() {
   document.documentElement.setAttribute('data-theme', resolvedTheme);
   window.audioEngine.soundEnabled = newPrefs.soundEnabled;
   window.audioEngine.voiceEnabled = newPrefs.voiceEnabled;
+  if (window.audioEngine.musicEngine) {
+    window.audioEngine.musicEngine.enabled = newPrefs.musicEnabled;
+    window.audioEngine.musicEngine.setVolume(newPrefs.musicVolume);
+    window.audioEngine.musicEngine.setStyle(newPrefs.musicStyle);
+  }
+  updateWorkoutMusicBtnState();
 
   if (window.syncManager) {
     window.syncManager.updateStatusUI();
     if (newPrefs.syncUserId && newPrefs.syncUserPin && newPrefs.syncAutoEnabled) {
       window.syncManager.sync({ silent: true });
+    }
+  }
+
+  if (window.notificationManager) {
+    window.notificationManager.syncStateWithServiceWorker();
+    const reminderStatusDesc = document.getElementById('setting-reminder-status-desc');
+    if (reminderStatusDesc) {
+      reminderStatusDesc.textContent = `Statut : ${window.notificationManager.getPermissionStatus()}`;
     }
   }
 
@@ -502,6 +543,44 @@ function saveSettings() {
 
   showToast("✅ Réglages enregistrés avec succès !");
 }
+
+// --------------------------------------------------------------------------
+// CONTRÔLE RAPIDE DE LA MUSIQUE PENDANT LA SÉANCE
+// --------------------------------------------------------------------------
+function toggleWorkoutMusic() {
+  if (!window.audioEngine || !window.audioEngine.musicEngine) return;
+  window.audioEngine.initContext();
+  const musicEngine = window.audioEngine.musicEngine;
+  musicEngine.enabled = !musicEngine.enabled;
+  window.appStorage.savePreferences({ musicEnabled: musicEngine.enabled });
+
+  const btnMusic = document.getElementById('btn-live-music');
+  const settingMusic = document.getElementById('setting-music');
+  if (settingMusic) settingMusic.checked = musicEngine.enabled;
+
+  if (musicEngine.enabled) {
+    if (btnMusic) btnMusic.classList.remove('muted');
+    if (window.workoutEngine && window.workoutEngine.state !== WORKOUT_STATES.IDLE && window.workoutEngine.state !== WORKOUT_STATES.COMPLETED) {
+      musicEngine.start(window.workoutEngine.state);
+    }
+    showToast("🎵 Musique de fond activée");
+  } else {
+    if (btnMusic) btnMusic.classList.add('muted');
+    musicEngine.stop();
+    showToast("🔇 Musique de fond coupée");
+  }
+}
+
+function updateWorkoutMusicBtnState() {
+  const btnMusic = document.getElementById('btn-live-music');
+  const isEnabled = window.appStorage ? (window.appStorage.prefs.musicEnabled !== false) : true;
+  if (btnMusic) {
+    btnMusic.classList.toggle('muted', !isEnabled);
+  }
+}
+
+window.toggleWorkoutMusic = toggleWorkoutMusic;
+window.updateWorkoutMusicBtnState = updateWorkoutMusicBtnState;
 
 // --------------------------------------------------------------------------
 // SAUVEGARDE & RESTAURATION (EXPORT / IMPORT JSON)

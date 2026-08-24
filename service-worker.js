@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fullbody17-v2.2.4';
+const CACHE_NAME = 'fullbody17-v2.3.1';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -30,7 +30,15 @@ const ASSETS_TO_CACHE = [
   './images/ex_8_stretching.jpg'
 ];
 
-// Installation du Service Worker et mise en cache résiliente des ressources
+// État mémoire synchronisé pour les rappels
+let reminderState = {
+  active: true,
+  targetTime: "17:00",
+  doneToday: false,
+  lastNotifiedDate: null
+};
+
+// 1. Installation du Service Worker et mise en cache résiliente des ressources
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -48,7 +56,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activation et nettoyage des anciens caches
+// 2. Activation et nettoyage des anciens caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -64,7 +72,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Stratégie Cache-First avec repli réseau
+// 3. Stratégie Cache-First avec repli réseau
 self.addEventListener('fetch', (event) => {
   // Ne JAMAIS intercepter les requêtes vers Firebase ou non-GET
   if (event.request.method !== 'GET' || event.request.url.includes('firebase')) return;
@@ -105,22 +113,138 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Gestion des clics sur notifications
+// --------------------------------------------------------------------------
+// 4. RAPPELS NATIFS PWA HORS-LIGNE & GESTION DES NOTIFICATIONS
+// --------------------------------------------------------------------------
+
+// Fonction utilitaire pour afficher une notification riche et interactive
+function showRichWorkoutNotification(title, body, customData = {}) {
+  const options = {
+    body: body || "Votre séance quotidienne de 15 à 20 min vous attend. Prêt ?",
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-192.png',
+    image: './images/ex_1_jumping_jack.jpg',
+    tag: 'fb17-daily-reminder',
+    renotify: true,
+    requireInteraction: true,
+    vibrate: [200, 100, 200, 100, 400],
+    actions: [
+      {
+        action: 'start',
+        title: '🚀 Démarrer la séance'
+      },
+      {
+        action: 'snooze',
+        title: '⏰ Reporter (+15 min)'
+      }
+    ],
+    data: {
+      url: './index.html?action=start',
+      timestamp: Date.now(),
+      ...customData
+    }
+  };
+
+  return self.registration.showNotification(title || "C'est l'heure de votre Full Body 17 !", options);
+}
+
+// Support de l'API Periodic Background Sync (Android/Chrome natif en tâche de fond)
+self.addEventListener('periodicsync', (event) => {
+  if (event.tag === 'daily-workout-reminder' || event.tag === 'workout-check') {
+    event.waitUntil(
+      (async () => {
+        const now = new Date();
+        const hours = now.getHours();
+        // Si entre 16h30 et 21h00 et que la séance n'a pas été faite
+        if (hours >= 16 && hours <= 21 && !reminderState.doneToday && reminderState.active) {
+          await showRichWorkoutNotification(
+            "C'est l'heure de votre Full Body 17 !",
+            "🔥 Prenez 15 minutes pour vous aujourd'hui. Maintenez votre série active !"
+          );
+        }
+      })()
+    );
+  }
+});
+
+// Support des notifications Push Web distantes
+self.addEventListener('push', (event) => {
+  let data = {};
+  if (event.data) {
+    try { data = event.data.json(); } catch (e) { data = { body: event.data.text() }; }
+  }
+
+  const title = data.title || "Full Body 17 • Rappel d'entraînement";
+  const body = data.body || "Votre routine quotidienne est prête !";
+
+  event.waitUntil(showRichWorkoutNotification(title, body, data));
+});
+
+// Gestion des interactions & clics sur la notification
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+
+  const action = event.action;
+
+  // Action : Reporter de 15 minutes
+  if (action === 'snooze') {
+    event.waitUntil(
+      new Promise((resolve) => {
+        setTimeout(async () => {
+          await showRichWorkoutNotification(
+            "Rappel différé • Full Body 17 ⏰",
+            "Les 15 minutes de pause sont écoulées ! C'est le moment de vous lancer."
+          );
+          resolve();
+        }, 15 * 60 * 1000);
+      })
+    );
+    return;
+  }
+
+  // Action : Démarrer directement la séance ou clic sur le corps de la notification
+  const targetUrl = (action === 'start' || !event.notification.data?.url)
+    ? './index.html?action=start'
+    : event.notification.data.url;
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      if (clientList.length > 0) {
-        let client = clientList[0];
-        for (let i = 0; i < clientList.length; i++) {
-          if (clientList[i].focused) {
-            client = clientList[i];
-            break;
-          }
+      // Si une fenêtre est déjà ouverte, la mettre en focus et naviguer
+      for (const client of clientList) {
+        if ('focus' in client) {
+          client.navigate(targetUrl);
+          return client.focus();
         }
-        return client.focus();
       }
-      return clients.openWindow('./index.html?action=start');
+      // Sinon ouvrir une nouvelle fenêtre PWA
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
     })
   );
+});
+
+// Communication bidirectionnelle avec l'application (Message Channel)
+self.addEventListener('message', (event) => {
+  if (!event.data) return;
+
+  if (event.data.type === 'SYNC_REMINDER_STATE') {
+    reminderState = {
+      ...reminderState,
+      ...event.data.payload
+    };
+  } else if (event.data.type === 'TRIGGER_TEST_NOTIFICATION') {
+    showRichWorkoutNotification(
+      "Test Rappel PWA • FULL BODY 17",
+      "✅ Vos notifications natives PWA sont actives avec actions rapides et vibration."
+    );
+  } else if (event.data.type === 'SCHEDULE_SNOOZE') {
+    const delayMinutes = event.data.minutes || 15;
+    setTimeout(() => {
+      showRichWorkoutNotification(
+        "Rappel différé • Full Body 17 ⏰",
+        "Prêt pour vos 15 minutes de routine Full Body ?"
+      );
+    }, delayMinutes * 60 * 1000);
+  }
 });

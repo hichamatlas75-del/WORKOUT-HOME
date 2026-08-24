@@ -276,6 +276,18 @@ body {
   transform: scale(0.95);
 }
 
+.icon-btn.muted {
+  opacity: 0.45;
+  filter: grayscale(1);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.icon-btn#btn-live-music:not(.muted) {
+  color: var(--accent-work);
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+}
+
 /* ==========================================================================
    NAVIGATION INFÉRIEURE (BOTTOM BAR)
    ========================================================================== */

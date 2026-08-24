@@ -21,6 +21,9 @@ const DEFAULT_PREFERENCES = {
   heightCm: null, // Taille en cm pour calcul IMC
   soundEnabled: true,
   voiceEnabled: true,
+  musicEnabled: true,
+  musicVolume: 0.6,
+  musicStyle: "synthwave", // "synthwave" | "electro" | "chill"
   theme: "dark",
   reminderActive: true,
   firebaseUrl: "",

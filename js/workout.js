@@ -53,6 +53,14 @@ class WorkoutEngine {
     // Activer le maintien de l'écran allumé (Wake Lock)
     this.requestWakeLock();
 
+    // Démarrer la musique de fond motivante si activée
+    if (window.audioEngine && window.audioEngine.musicEngine) {
+      window.audioEngine.musicEngine.enabled = prefs.musicEnabled !== false;
+      window.audioEngine.musicEngine.setVolume(prefs.musicVolume !== undefined ? prefs.musicVolume : 0.6);
+      window.audioEngine.musicEngine.setStyle(prefs.musicStyle || 'synthwave');
+      window.audioEngine.musicEngine.start('PREPARE');
+    }
+
     // Démarrage par la phase de préparation (5 secondes)
     this.setPhase(WORKOUT_STATES.PREPARE, 5);
     this.startTimerLoop();
@@ -67,6 +75,11 @@ class WorkoutEngine {
     this.timeRemaining = duration;
     this.totalPhaseDuration = duration;
     this.phaseEndTime = Date.now() + duration * 1000;
+
+    // Mise à jour de la phase musicale (rythme d'effort vs repos)
+    if (window.audioEngine && window.audioEngine.musicEngine) {
+      window.audioEngine.musicEngine.setPhase(newState);
+    }
 
     // Mise à jour visuelle des classes du conteneur
     const overlay = document.getElementById('workout-overlay');
@@ -290,6 +303,9 @@ class WorkoutEngine {
   togglePause() {
     if (this.state === WORKOUT_STATES.PAUSED) {
       this.state = this.previousState || WORKOUT_STATES.WORK;
+      if (window.audioEngine && window.audioEngine.musicEngine) {
+        window.audioEngine.musicEngine.togglePause(false);
+      }
       // Recalculer l'heure de fin après la pause et relancer la boucle
       this.phaseEndTime = Date.now() + this.timeRemaining * 1000;
       this.startTimerLoop();
@@ -297,6 +313,9 @@ class WorkoutEngine {
     } else if (this.state === WORKOUT_STATES.WORK || this.state === WORKOUT_STATES.REST || this.state === WORKOUT_STATES.PREPARE) {
       this.previousState = this.state;
       this.state = WORKOUT_STATES.PAUSED;
+      if (window.audioEngine && window.audioEngine.musicEngine) {
+        window.audioEngine.musicEngine.togglePause(true);
+      }
       // Arrêter la boucle pendant la pause pour économiser CPU/batterie
       if (this.timerInterval) {
         clearInterval(this.timerInterval);
@@ -311,6 +330,11 @@ class WorkoutEngine {
     this.state = WORKOUT_STATES.COMPLETED;
     if (this.timerInterval) clearInterval(this.timerInterval);
     this.releaseWakeLock();
+
+    // Arrêter la musique de fond
+    if (window.audioEngine && window.audioEngine.musicEngine) {
+      window.audioEngine.musicEngine.stop();
+    }
 
     const actualDurationSec = Math.round(this.elapsedSeconds);
 
@@ -337,6 +361,9 @@ class WorkoutEngine {
     if (typeof updateProfileDrawerData === 'function') {
       updateProfileDrawerData();
     }
+    if (window.notificationManager) {
+      window.notificationManager.syncStateWithServiceWorker();
+    }
 
     if (this.onFinish) {
       this.onFinish(session);
@@ -347,6 +374,12 @@ class WorkoutEngine {
   quitWorkout() {
     if (this.timerInterval) clearInterval(this.timerInterval);
     this.releaseWakeLock();
+
+    // Arrêter la musique de fond
+    if (window.audioEngine && window.audioEngine.musicEngine) {
+      window.audioEngine.musicEngine.stop();
+    }
+
     this.state = WORKOUT_STATES.IDLE;
   }
 

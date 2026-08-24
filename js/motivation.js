@@ -135,8 +135,8 @@ class MotivationManager {
 
     for (let i = 0; i < 90; i++) {
       particles.push({
-        x: canvas.width * 0.5,
-        y: canvas.height * 0.4,
+        x: (canvas.width / dpr) * 0.5,
+        y: (canvas.height / dpr) * 0.4,
         vx: (Math.random() - 0.5) * 14,
         vy: (Math.random() - 0.7) * 16,
         size: Math.random() * 8 + 4,

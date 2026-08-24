@@ -42,7 +42,7 @@
         <div class="brand-info">
           <div class="brand-title-wrap">
             <span class="brand-title">FULL BODY 17</span>
-            <span class="version-tag">v2.2.4</span>
+            <span class="version-tag">v2.3.0</span>
           </div>
           <span class="brand-subtitle">Routine Quotidienne</span>
         </div>
@@ -305,6 +305,10 @@
         </div>
 
         <div class="settings-group">
+          <div class="section-header" style="margin-bottom: 8px;">
+            <h3 class="section-title" style="font-size: 0.95rem;">⏰ Rappels Natifs &amp; Rendez-vous 17h</h3>
+          </div>
+
           <div class="setting-row">
             <div class="setting-info">
               <span class="setting-title">Heure de rendez-vous</span>
@@ -316,8 +320,8 @@
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-title">Rappel quotidien</span>
-              <span class="setting-desc">Notification locale à l'heure fixée</span>
+              <span class="setting-title">Rappel quotidien PWA</span>
+              <span class="setting-desc">Notification native avec boutons Démarrer et Reporter</span>
             </div>
             <label class="switch">
               <input type="checkbox" id="setting-reminder" checked>
@@ -327,11 +331,11 @@
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-title">Tester la notification</span>
-              <span class="setting-desc">Vérifier l'autorisation du navigateur</span>
+              <span class="setting-title">Statut &amp; Test</span>
+              <span class="setting-desc" id="setting-reminder-status-desc">Vérification de l'autorisation</span>
             </div>
-            <button class="btn-secondary" style="width: auto; padding: 6px 12px; font-size: 0.8rem;" onclick="window.notificationManager.sendTestNotification()">
-              Tester
+            <button class="btn-secondary" style="width: auto; padding: 6px 14px; font-size: 0.82rem;" onclick="window.notificationManager.sendTestNotification()">
+              🔔 Tester le rappel
             </button>
           </div>
         </div>
@@ -384,6 +388,43 @@
         </div>
 
         <div class="settings-group">
+          <div class="section-header" style="margin-bottom: 8px;">
+            <h3 class="section-title" style="font-size: 0.95rem;">🎵 Audio &amp; Ambiance Musique</h3>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Musique de fond motivante</span>
+              <span class="setting-desc">Rythme fitness dynamique adaptatif pendant la séance</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="setting-music" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Style musical</span>
+              <span class="setting-desc">Ambiance sonore de l'entraînement</span>
+            </div>
+            <label for="setting-music-style" class="sr-only">Style musical</label>
+            <select id="setting-music-style" class="styled-input">
+              <option value="synthwave">⚡ Synthwave Workout (124 BPM)</option>
+              <option value="electro">🔥 Électro Cardio Energy (128 BPM)</option>
+              <option value="chill">🧘 Zen Lo-Fi &amp; Stretch (100 BPM)</option>
+            </select>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Volume de la musique</span>
+              <span class="setting-desc" id="setting-music-volume-lbl">60%</span>
+            </div>
+            <label for="setting-music-volume" class="sr-only">Volume de la musique</label>
+            <input type="range" id="setting-music-volume" min="0" max="100" value="60" style="accent-color: var(--accent-work); cursor: pointer; width: 110px;" oninput="document.getElementById('setting-music-volume-lbl').textContent = this.value + '%'">
+          </div>
+
           <div class="setting-row">
             <div class="setting-info">
               <span class="setting-title">Signaux sonores</span>
@@ -398,7 +439,7 @@
           <div class="setting-row">
             <div class="setting-info">
               <span class="setting-title">Coach vocal français</span>
-              <span class="setting-desc">Annonce du nom des exercices</span>
+              <span class="setting-desc">Annonce du nom des exercices avec baisse auto de la musique</span>
             </div>
             <label class="switch">
               <input type="checkbox" id="setting-voice" checked>
@@ -660,6 +701,14 @@
             <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
             <line x1="8" y1="21" x2="16" y2="21"></line>
             <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+        </button>
+
+        <button class="icon-btn" id="btn-live-music" onclick="toggleWorkoutMusic()" title="Musique de fond" aria-label="Activer ou désactiver la musique de fond">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18V5l12-2v13"></path>
+            <circle cx="6" cy="18" r="3"></circle>
+            <circle cx="18" cy="16" r="3"></circle>
           </svg>
         </button>
 
