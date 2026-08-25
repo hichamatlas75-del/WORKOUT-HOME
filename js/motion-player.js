@@ -106,10 +106,11 @@ class MotionPlayer {
       case 2: this.drawSquat(ctx, w, h, time, floorY); break;
       case 3: this.drawPushup(ctx, w, h, time, floorY); break;
       case 4: this.drawCrunchScissor(ctx, w, h, time, floorY); break;
-      case 5: this.drawGluteBridge(ctx, w, h, time, floorY); break;
-      case 6: this.drawHipExtension(ctx, w, h, time, floorY); break;
-      case 7: this.drawPlank(ctx, w, h, time, floorY); break;
-      case 8: this.drawDynamicStretching(ctx, w, h, time, floorY); break;
+      case 5: this.drawMountainClimber(ctx, w, h, time, floorY); break;
+      case 6: this.drawGluteBridge(ctx, w, h, time, floorY); break;
+      case 7: this.drawHipExtension(ctx, w, h, time, floorY); break;
+      case 8: this.drawPlank(ctx, w, h, time, floorY); break;
+      case 9: this.drawDynamicStretching(ctx, w, h, time, floorY); break;
       default: this.drawSquat(ctx, w, h, time, floorY);
     }
   }
@@ -328,7 +329,58 @@ class MotionPlayer {
   }
 
   // --------------------------------------------------------------------------
-  // 05. PONT FESSIER (Mouvement Réel : Montée pelvienne, contraction fessiers)
+  // 05. MOUNTAIN CLIMBERS (Mouvement Réel : Position planche & montées genoux dynamiques)
+  // --------------------------------------------------------------------------
+  drawMountainClimber(ctx, w, h, time, floorY) {
+    const cycle = (time % 0.7) / 0.7; // 0.7s par cycle complet (rythmé et rapide)
+    const legPhase = Math.sin(cycle * Math.PI * 2);
+
+    const handsX = w * 0.68;
+    const handsY = floorY - 4;
+    const shoulderX = handsX - 4;
+    const shoulderY = floorY - 46;
+
+    const hipX = w * 0.44;
+    const hipY = floorY - 36 + Math.abs(legPhase) * 3;
+
+    const headX = shoulderX + 14;
+    const headY = shoulderY - 6;
+
+    // Jambe 1 (avant / arrière)
+    const knee1T = (legPhase + 1) / 2;
+    const knee1X = hipX + (knee1T * 26);
+    const knee1Y = floorY - 24 - (knee1T * 8);
+    const foot1X = hipX - 32 + (knee1T * 38);
+    const foot1Y = floorY - 4 - (knee1T * 10);
+
+    // Jambe 2 (en opposition)
+    const knee2T = 1 - knee1T;
+    const knee2X = hipX + (knee2T * 26);
+    const knee2Y = floorY - 24 - (knee2T * 8);
+    const foot2X = hipX - 32 + (knee2T * 38);
+    const foot2Y = floorY - 4 - (knee2T * 10);
+
+    // Bras tendus en appui solide
+    this.drawLimb(ctx, shoulderX, shoulderY, handsX, handsY, 5.5, '#f8fafc');
+
+    // Buste / Tronc gainé
+    this.drawLimb(ctx, shoulderX, shoulderY, hipX, hipY, 8, '#f8fafc', 'rgba(16, 185, 129, 0.4)');
+
+    // Jambe 2 (arrière-plan)
+    this.drawLimb(ctx, hipX, hipY, knee2X, knee2Y, 5.5, '#64748b');
+    this.drawLimb(ctx, knee2X, knee2Y, foot2X, foot2Y, 5, '#64748b');
+
+    // Jambe 1 (premier plan en vert émeraude / actif)
+    this.drawLimb(ctx, hipX, hipY, knee1X, knee1Y, 7, '#10b981', 'rgba(16, 185, 129, 0.7)');
+    this.drawLimb(ctx, knee1X, knee1Y, foot1X, foot1Y, 5.5, '#10b981');
+
+    this.drawHead(ctx, headX, headY, 8.5);
+    this.drawJoint(ctx, handsX, handsY, 3.5, '#10b981');
+    this.drawJoint(ctx, knee1X, knee1Y, 4, '#10b981');
+  }
+
+  // --------------------------------------------------------------------------
+  // 06. PONT FESSIER (Mouvement Réel : Montée pelvienne, contraction fessiers)
   // --------------------------------------------------------------------------
   drawGluteBridge(ctx, w, h, time, floorY) {
     const cycle = (time % 2.6) / 2.6;
@@ -363,7 +415,7 @@ class MotionPlayer {
   }
 
   // --------------------------------------------------------------------------
-  // 06. EXTENSION DE HANCHE DEBOUT (Mouvement Réel : Balancier arrière contrôlé)
+  // 07. EXTENSION DE HANCHE DEBOUT (Mouvement Réel : Balancier arrière contrôlé)
   // --------------------------------------------------------------------------
   drawHipExtension(ctx, w, h, time, floorY) {
     const cycle = (time % 2.4) / 2.4;
@@ -404,7 +456,7 @@ class MotionPlayer {
   }
 
   // --------------------------------------------------------------------------
-  // 07. GAINAGE PLANCHE CLASSIQUE (Mouvement Réel : Alignement parfait, respiration & vibration transverse)
+  // 08. GAINAGE PLANCHE CLASSIQUE (Mouvement Réel : Alignement parfait, respiration & vibration transverse)
   // --------------------------------------------------------------------------
   drawPlank(ctx, w, h, time, floorY) {
     const breathe = Math.sin(time * Math.PI * 1.8) * 2;
@@ -431,15 +483,15 @@ class MotionPlayer {
 
     // Planche abdominale (Glow abdominal intense)
     this.drawLimb(ctx, shoulderX, shoulderY, hipX, hipY, 8.5, '#10b981', `rgba(16, 185, 129, ${0.6 + pulseGlow})`);
-    this.drawLimb(ctx, hipX, hipY, feetX, feetY, 6.5, '#f8fafc');
+    this.drawLimb(ctx, hipX, hipY, feetX, feetY, 7, '#f8fafc');
 
-    this.drawHead(ctx, headX, headY, 8);
-    this.drawJoint(ctx, hipX, hipY, 4, '#10b981');
+    this.drawHead(ctx, headX, headY, 8.5);
+    this.drawJoint(ctx, elbowX, elbowY, 3.5, '#10b981');
   }
 
   // --------------------------------------------------------------------------
-  // 08. ÉTIREMENTS DYNAMIQUES (Mouvement Réel : Grande ouverture des bras & cage thoracique)
-  // --------------------------------------------------------------------------
+  // 09. ÉTIREMENTS DYNAMIQUES (Mouvement Réel : Ouvertures amples & respirations)
+  // -----------------------------------------------------------------------------------------------------------------------------------------
   drawDynamicStretching(ctx, w, h, time, floorY) {
     const cycle = (time % 3.6) / 3.6;
     const expand = (1 - Math.cos(cycle * Math.PI * 2)) / 2; // 0 = bras le long du corps, 1 = grands bras ouverts

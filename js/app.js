@@ -170,7 +170,8 @@ function openExerciseModal(exerciseId) {
   const svgEl = document.getElementById('modal-ex-svg-box');
 
   if (titleEl) titleEl.textContent = ex.name;
-  if (numberEl) numberEl.textContent = `Exercice ${ex.number}/08 • ${durationDisplay}`;
+  const totalExFormatted = String(EXERCISES_DATA.length).padStart(2, '0');
+  if (numberEl) numberEl.textContent = `Exercice ${ex.number}/${totalExFormatted} • ${durationDisplay}`;
   if (musclesEl) musclesEl.textContent = ex.targetMuscles;
   if (descEl) descEl.textContent = ex.description;
   if (cueEl) cueEl.textContent = ex.cue;

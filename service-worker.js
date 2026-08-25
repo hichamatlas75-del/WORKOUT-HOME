@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fullbody17-v2.3.1';
+const CACHE_NAME = 'fullbody17-v2.3.2';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -24,6 +24,7 @@ const ASSETS_TO_CACHE = [
   './images/ex_2_squat.jpg',
   './images/ex_3_pushups.jpg',
   './images/ex_4_crunch_scissor.jpg',
+  './images/ex_mountain_climbers.jpg',
   './images/ex_5_bridge.jpg',
   './images/ex_6_hip_ext.jpg',
   './images/ex_7_plank.jpg',

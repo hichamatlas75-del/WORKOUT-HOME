@@ -113,6 +113,24 @@ const EXERCISES_DATA = [
   {
     id: 5,
     number: "05",
+    name: "MOUNTAIN CLIMBERS",
+    subtitle: "Cardio dynamique & sangle abdominale",
+    duration: 40,
+    image: "images/ex_mountain_climbers.jpg",
+    video: "videos/ex_mountain_climbers.mp4",
+    targetMuscles: "Grand droit, Fléchisseurs de hanches, Épaules, Cardio",
+    targetPrimary: "CARDIO & ABDOMINAUX",
+    cue: "Dos plat aligné en planche, mains sous les épaules, ramenez les genoux vers la poitrine avec rythme.",
+    breathing: "Respiration rythmée et dynamique en accord avec les montées de genoux.",
+    description: "En position de pompe haute, amenez alternativement et rapidement les genoux vers le buste en gardant les abdominaux gainés et les hanches stables à hauteur d'épaules.",
+    adaptation: "Débutant : Version pas à pas lente et contrôlée sans impulsion. Avancé : Vitesse maximale ou genoux croisés vers le coude opposé (Cross Climbers).",
+    get illustrationHtml() {
+      return renderExerciseMediaHtml(this);
+    }
+  },
+  {
+    id: 6,
+    number: "06",
     name: "PONT FESSIER",
     subtitle: "Extension pelvienne & chaîne postérieure",
     duration: 40,
@@ -129,8 +147,8 @@ const EXERCISES_DATA = [
     }
   },
   {
-    id: 6,
-    number: "06",
+    id: 7,
+    number: "07",
     name: "EXTENSION DE HANCHE DEBOUT",
     subtitle: "Activation fessière & posture",
     duration: 40,
@@ -147,8 +165,8 @@ const EXERCISES_DATA = [
     }
   },
   {
-    id: 7,
-    number: "07",
+    id: 8,
+    number: "08",
     name: "GAINAGE PLANCHE CLASSIQUE",
     subtitle: "Sangle abdominale profonde & transverse (30s - 2min)",
     duration: 45,
@@ -166,8 +184,8 @@ const EXERCISES_DATA = [
     }
   },
   {
-    id: 8,
-    number: "08",
+    id: 9,
+    number: "09",
     name: "ÉTIREMENTS DYNAMIQUES",
     subtitle: "Mobilité, souplesse & retour au calme (1 série finale)",
     duration: 40,
