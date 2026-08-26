@@ -1,6 +1,7 @@
 /**
  * FULL BODY 17 — MOTEUR D'ENTRAÎNEMENT & CHRONOMÈTRE
  * Gestion des cycles Effort / Repos / Tours, Synchronisation Audio et Wake Lock.
+ * Support dynamique des routines par niveau (Débutant, Intermédiaire, Avancé) et personnalisées.
  */
 
 const WORKOUT_STATES = {
@@ -19,7 +20,8 @@ class WorkoutEngine {
 
     this.currentRound = 1;
     this.totalRounds = 2;
-    this.currentExerciseIndex = 0; // 0 à 5
+    this.currentExerciseIndex = 0;
+    this.exercises = [];
 
     this.timeRemaining = 0;
     this.totalPhaseDuration = 0;
@@ -38,12 +40,32 @@ class WorkoutEngine {
     this.CIRCLE_CIRCUMFERENCE = 2 * Math.PI * 110;
   }
 
+  // Obtenir la liste active des exercices pour la séance
+  getExercises() {
+    if (this.exercises && this.exercises.length > 0) {
+      return this.exercises;
+    }
+    if (typeof window.getActiveWorkoutExercises === 'function' && window.appStorage) {
+      return window.getActiveWorkoutExercises(window.appStorage.prefs);
+    }
+    return (window.EXERCISES_DATA || []);
+  }
+
   // Démarrer une nouvelle séance
   startWorkout(options = {}) {
-    const prefs = window.appStorage.prefs;
+    const prefs = window.appStorage ? window.appStorage.prefs : {};
     this.totalRounds = options.rounds || prefs.rounds || 2;
     this.workDuration = options.workDuration || prefs.workDuration || 40;
     this.restDuration = options.restDuration || prefs.restDuration || 20;
+
+    // Récupération des exercices de la séance selon le niveau ou la sélection
+    if (options.exercises && Array.isArray(options.exercises) && options.exercises.length > 0) {
+      this.exercises = options.exercises;
+    } else if (typeof window.getActiveWorkoutExercises === 'function') {
+      this.exercises = window.getActiveWorkoutExercises(prefs);
+    } else {
+      this.exercises = window.EXERCISES_DATA || [];
+    }
 
     this.currentRound = 1;
     this.currentExerciseIndex = 0;
@@ -65,7 +87,8 @@ class WorkoutEngine {
     this.setPhase(WORKOUT_STATES.PREPARE, 5);
     this.startTimerLoop();
 
-    const firstEx = EXERCISES_DATA[0];
+    const activeList = this.getExercises();
+    const firstEx = activeList[0] || { name: "Exercice 1" };
     window.audioEngine.speak(`Préparez-vous. Premier exercice : ${firstEx.name}`);
   }
 
@@ -118,11 +141,14 @@ class WorkoutEngine {
         }
       }
 
-      // Signal de mi-temps à 20s pour les exercices unilatéraux (06. Extension de hanche debout)
-      if (this.state === WORKOUT_STATES.WORK && (this.currentExerciseIndex === 5)) {
+      // Signal de mi-temps à 20s pour les exercices unilatéraux
+      const currentList = this.getExercises();
+      const currentEx = currentList[this.currentExerciseIndex];
+      const isUnilateral = currentEx && (currentEx.id === 7 || currentEx.id === 15);
+      if (this.state === WORKOUT_STATES.WORK && isUnilateral) {
         if (Math.abs(this.timeRemaining - 20) < 0.15 && !this.halfTimeTriggered) {
           window.audioEngine.playHalfTimeTone();
-          window.audioEngine.speak("Mi-temps, changez de jambe");
+          window.audioEngine.speak("Mi-temps, changez de côté");
           this.halfTimeTriggered = true;
         }
       }
@@ -150,35 +176,38 @@ class WorkoutEngine {
 
   // Nombre d'exercices du circuit principal (hors retour au calme)
   getMainCircuitCount() {
-    return EXERCISES_DATA.filter(e => !e.isCoolDown).length; // 7
+    const list = this.getExercises();
+    return list.filter(e => !e.isCoolDown).length;
   }
 
   // Obtenir la durée spécifique d'un exercice (ex: 30s, 45s, 60s, 120s pour la Planche)
   getExerciseDuration(index) {
-    const ex = EXERCISES_DATA[index];
+    const list = this.getExercises();
+    const ex = list[index];
     if (ex && ex.isPlank) {
-      return parseInt(window.appStorage.prefs.plankDuration) || 45;
+      return parseInt(window.appStorage ? window.appStorage.prefs.plankDuration : 45) || 45;
     }
     return this.workDuration;
   }
 
   // Transition vers l'étape suivante de la séance
   advanceStep() {
+    const list = this.getExercises();
+
     if (this.state === WORKOUT_STATES.PREPARE) {
       // Fin de la préparation -> Début de l'exercice 1
       const duration = this.getExerciseDuration(this.currentExerciseIndex);
       this.setPhase(WORKOUT_STATES.WORK, duration);
       window.audioEngine.playGoTone();
-      // Feedback haptique
-      if ('vibrate' in navigator) navigator.vibrate(150);
-      const ex = EXERCISES_DATA[this.currentExerciseIndex];
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) navigator.vibrate(150);
+      const ex = list[this.currentExerciseIndex] || { name: 'Exercice' };
       window.audioEngine.speak(`${ex.name}, série ${this.currentRound}, c'est parti pour ${duration} secondes`);
       return;
     }
 
     if (this.state === WORKOUT_STATES.WORK) {
       const mainCount = this.getMainCircuitCount();
-      const currentEx = EXERCISES_DATA[this.currentExerciseIndex];
+      const currentEx = list[this.currentExerciseIndex];
 
       // Si on vient de finir l'étirement final -> Fin de séance
       if (currentEx && currentEx.isCoolDown) {
@@ -196,12 +225,12 @@ class WorkoutEngine {
       // Déterminer le prochain exercice pour l'annonce vocale
       if (isLastOfCircuit) {
         if (isLastRound) {
-          window.audioEngine.speak(`3 séries terminées ! Repos 20 secondes. Place au retour au calme : Étirements.`);
+          window.audioEngine.speak(`${this.totalRounds} séries terminées ! Repos 20 secondes. Place au retour au calme : Étirements.`);
         } else {
           window.audioEngine.speak(`Fin du tour ${this.currentRound}. Repos 20 secondes. Préparez-vous pour le tour ${this.currentRound + 1}.`);
         }
       } else {
-        const nextEx = EXERCISES_DATA[this.currentExerciseIndex + 1];
+        const nextEx = list[this.currentExerciseIndex + 1] || { name: 'Suivant' };
         window.audioEngine.speak(`Récupération 20 secondes. Prochain exercice : ${nextEx.name}`);
       }
       return;
@@ -226,9 +255,8 @@ class WorkoutEngine {
       const duration = this.getExerciseDuration(this.currentExerciseIndex);
       this.setPhase(WORKOUT_STATES.WORK, duration);
       window.audioEngine.playGoTone();
-      // Feedback haptique au début de l'exercice
-      if ('vibrate' in navigator) navigator.vibrate(150);
-      const ex = EXERCISES_DATA[this.currentExerciseIndex];
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) navigator.vibrate(150);
+      const ex = list[this.currentExerciseIndex] || { name: 'Exercice' };
       window.audioEngine.speak(`${ex.name}${ex.isPlank ? ` pour ${duration} secondes` : ''}`);
     }
   }
@@ -250,8 +278,9 @@ class WorkoutEngine {
       return;
     }
 
+    const list = this.getExercises();
     const mainCount = this.getMainCircuitCount();
-    const currentEx = EXERCISES_DATA[this.currentExerciseIndex];
+    const currentEx = list[this.currentExerciseIndex];
 
     // Si on est déjà sur l'étirement final -> Terminer la séance
     if (currentEx && currentEx.isCoolDown) {
@@ -276,8 +305,8 @@ class WorkoutEngine {
     const duration = this.getExerciseDuration(this.currentExerciseIndex);
     this.setPhase(WORKOUT_STATES.WORK, duration);
     window.audioEngine.playGoTone();
-    if ('vibrate' in navigator) navigator.vibrate(150);
-    const ex = EXERCISES_DATA[this.currentExerciseIndex];
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) navigator.vibrate(150);
+    const ex = list[this.currentExerciseIndex] || { name: 'Exercice' };
     window.audioEngine.speak(`${ex.name}${ex.isPlank ? ` pour ${duration} secondes` : ''}`);
   }
 
@@ -306,7 +335,6 @@ class WorkoutEngine {
       if (window.audioEngine && window.audioEngine.musicEngine) {
         window.audioEngine.musicEngine.togglePause(false);
       }
-      // Recalculer l'heure de fin après la pause et relancer la boucle
       this.phaseEndTime = Date.now() + this.timeRemaining * 1000;
       this.startTimerLoop();
       if (this.onStateChange) this.onStateChange(this.state, this.getCurrentInfo());
@@ -316,7 +344,6 @@ class WorkoutEngine {
       if (window.audioEngine && window.audioEngine.musicEngine) {
         window.audioEngine.musicEngine.togglePause(true);
       }
-      // Arrêter la boucle pendant la pause pour économiser CPU/batterie
       if (this.timerInterval) {
         clearInterval(this.timerInterval);
         this.timerInterval = null;
@@ -337,19 +364,21 @@ class WorkoutEngine {
     }
 
     const actualDurationSec = Math.round(this.elapsedSeconds);
+    const list = this.getExercises();
+    const prefs = window.appStorage ? window.appStorage.prefs : {};
 
     // Enregistrement dans le stockage local
     const session = window.appStorage.addWorkoutSession({
       durationSeconds: actualDurationSec,
       rounds: this.totalRounds,
       completed: true,
-      exercisesCount: EXERCISES_DATA.length
+      exercisesCount: list.length,
+      level: prefs.userLevel || 'intermediate'
     });
 
     // Sons & Voix de victoire
     window.audioEngine.playVictoryFanfare();
-    // Feedback haptique de victoire
-    if ('vibrate' in navigator) {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       navigator.vibrate([200, 100, 200, 100, 400]);
     }
     window.audioEngine.speak("Félicitations ! Séance terminée avec succès.");
@@ -385,8 +414,9 @@ class WorkoutEngine {
 
   // Données de l'état actuel pour l'interface
   getCurrentInfo() {
+    const list = this.getExercises();
     const mainCount = this.getMainCircuitCount();
-    const currentEx = EXERCISES_DATA[this.currentExerciseIndex] || EXERCISES_DATA[0];
+    const currentEx = list[this.currentExerciseIndex] || list[0] || { name: 'Exercice' };
     const isCoolDown = !!currentEx.isCoolDown;
 
     let nextIndex;
@@ -397,7 +427,7 @@ class WorkoutEngine {
     } else {
       nextIndex = this.currentExerciseIndex + 1;
     }
-    const nextEx = nextIndex !== null ? EXERCISES_DATA[nextIndex] : null;
+    const nextEx = (nextIndex !== null && nextIndex < list.length) ? list[nextIndex] : null;
 
     return {
       state: this.state,
@@ -407,7 +437,7 @@ class WorkoutEngine {
       roundLabel: isCoolDown ? 'RETOUR AU CALME' : `SÉRIE ${this.currentRound} / ${this.totalRounds}`,
       stepLabel: isCoolDown ? 'ÉTIR. (1 SÉRIE)' : `${this.currentExerciseIndex + 1} / ${mainCount}`,
       exerciseIndex: this.currentExerciseIndex + 1,
-      totalExercises: EXERCISES_DATA.length,
+      totalExercises: list.length,
       currentExercise: currentEx,
       nextExercise: nextEx,
       timeRemaining: Math.ceil(this.timeRemaining),
@@ -416,12 +446,11 @@ class WorkoutEngine {
     };
   }
 
-  // Maintien de l'écran allumé (Screen Wake Lock API) avec récupération automatique
+  // Maintien de l'écran allumé (Screen Wake Lock API)
   async requestWakeLock() {
-    if ('wakeLock' in navigator) {
+    if (typeof navigator !== 'undefined' && 'wakeLock' in navigator) {
       try {
         this.wakeLock = await navigator.wakeLock.request('screen');
-        // Récupération automatique du Wake Lock si relâché par le système
         this.wakeLock.addEventListener('release', () => {
           this.wakeLock = null;
         });
@@ -430,8 +459,7 @@ class WorkoutEngine {
       }
     }
 
-    // Récupérer le Wake Lock quand l'app redevient visible
-    if (!this._visibilityListenerAdded) {
+    if (!this._visibilityListenerAdded && typeof document !== 'undefined' && document.addEventListener) {
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible' &&
             this.state !== WORKOUT_STATES.IDLE &&
@@ -453,3 +481,4 @@ class WorkoutEngine {
 }
 
 window.workoutEngine = new WorkoutEngine();
+

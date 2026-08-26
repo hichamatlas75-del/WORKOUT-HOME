@@ -114,27 +114,80 @@ function startLiveClock() {
 }
 
 // --------------------------------------------------------------------------
-// LISTE DES 7 EXERCICES SUR L'ACCUEIL
+// LISTE DES EXERCICES SUR L'ACCUEIL & SÉLECTION DE NIVEAU
 // --------------------------------------------------------------------------
 function renderHomeExercisesList() {
   const container = document.getElementById('home-exercise-list');
   if (!container) return;
 
-  const prefs = window.appStorage.prefs;
+  const prefs = window.appStorage ? window.appStorage.prefs : {};
+  const activeExercises = typeof window.getActiveWorkoutExercises === 'function'
+    ? window.getActiveWorkoutExercises(prefs)
+    : (window.EXERCISES_DATA || []);
 
-  container.innerHTML = EXERCISES_DATA.map(ex => {
+  const activeProf = window.appStorage ? window.appStorage.getActiveProfile() : null;
+
+  // 1. Mettre à jour l'en-tête utilisateur sur l'accueil
+  const userAvatarEl = document.getElementById('home-user-avatar');
+  const userNameEl = document.getElementById('home-user-name');
+  const userLevelBadge = document.getElementById('home-user-level-badge');
+
+  if (userAvatarEl && activeProf) userAvatarEl.textContent = activeProf.avatar || '🦁';
+  if (userNameEl && activeProf) userNameEl.textContent = activeProf.name || 'Moi';
+  if (userLevelBadge) {
+    const level = prefs.userLevel || 'intermediate';
+    const levelNames = { beginner: '🟢 Débutant', intermediate: '🟡 Intermédiaire', advanced: '🔴 Avancé', custom: '✨ Sur-mesure' };
+    userLevelBadge.textContent = levelNames[level] || 'Intermédiaire';
+  }
+
+  // 2. Mettre à jour les specs hero
+  const specCount = document.getElementById('home-spec-count');
+  const specRounds = document.getElementById('home-spec-rounds');
+  const specWorkRest = document.getElementById('home-spec-workrest');
+  const durationPill = document.getElementById('home-duration-pill');
+  const routineSubtitle = document.getElementById('home-routine-subtitle');
+
+  const mainCount = activeExercises.filter(e => !e.isCoolDown).length;
+  const rounds = prefs.rounds || 3;
+  const workSec = prefs.workDuration || 40;
+  const restSec = prefs.restDuration || 20;
+  const estMinutes = Math.round((rounds * mainCount * (workSec + restSec) + 60) / 60);
+
+  if (specCount) specCount.textContent = activeExercises.length;
+  if (specRounds) specRounds.textContent = `${rounds} Séries`;
+  if (specWorkRest) specWorkRest.textContent = `${workSec}s / ${restSec}s`;
+  if (durationPill) durationPill.textContent = `${estMinutes - 2}-${estMinutes + 2} min`;
+  if (routineSubtitle) {
+    routineSubtitle.textContent = `${mainCount} exercices (${rounds} séries) + Étirements (1 série finale)`;
+  }
+
+  // 3. Mettre à jour les boutons de niveau actif
+  const levelBtns = document.querySelectorAll('#home-level-pills .level-pill-btn');
+  levelBtns.forEach(btn => {
+    const btnLevel = btn.getAttribute('data-level');
+    btn.classList.toggle('active', btnLevel === (prefs.userLevel || 'intermediate'));
+  });
+
+  // 4. Rendu de la liste d'exercices
+  container.innerHTML = activeExercises.map((ex, index) => {
     const durationDisplay = ex.isPlank 
       ? (prefs.plankDuration == 120 ? '2 min' : `${prefs.plankDuration || 45}s`)
       : `${ex.duration}s`;
+
+    const numDisplay = String(index + 1).padStart(2, '0');
+    const levelClass = ex.level || 'intermediate';
 
     return `
       <div class="exercise-item-card" onclick="openExerciseModal(${ex.id})">
         <div class="ex-thumb-container">
           <img src="${ex.image}" alt="${ex.name}" class="ex-thumb-img" loading="lazy">
-          <span class="ex-thumb-badge">${ex.number}</span>
+          <span class="ex-thumb-badge">${numDisplay}</span>
         </div>
         <div class="ex-info">
-          <div class="ex-name">${ex.name}</div>
+          <div class="ex-name" style="display: flex; align-items: center; gap: 6px;">
+            <span>${ex.name}</span>
+            <span class="badge-tag-level ${levelClass}" style="font-size: 0.6rem;">${ex.levelLabel || 'Standard'}</span>
+          </div>
           <div class="ex-desc">${ex.subtitle}</div>
         </div>
         <div class="ex-meta">
@@ -148,11 +201,25 @@ function renderHomeExercisesList() {
   }).join('');
 }
 
+function setUserLevel(level) {
+  if (!window.appStorage) return;
+  window.appStorage.savePreferences({
+    userLevel: level,
+    customExerciseIds: null
+  });
+  renderHomeExercisesList();
+  const levelNames = { beginner: '🟢 Débutant', intermediate: '🟡 Intermédiaire', advanced: '🔴 Avancé' };
+  if (typeof showToast === 'function') {
+    showToast(`Niveau réglé sur : ${levelNames[level] || level}`);
+  }
+}
+
 // --------------------------------------------------------------------------
 // MODALE DÉTAILLÉE D'UN EXERCICE
 // --------------------------------------------------------------------------
 function openExerciseModal(exerciseId) {
-  const ex = EXERCISES_DATA.find(e => e.id === exerciseId);
+  const all = typeof window.getAllExercises === 'function' ? window.getAllExercises() : (window.EXERCISES_DATA || []);
+  const ex = all.find(e => e.id === Number(exerciseId));
   if (!ex) return;
 
   const prefs = window.appStorage.prefs;
@@ -1054,6 +1121,9 @@ function updateProfileDrawerData() {
   const prefs = window.appStorage ? window.appStorage.prefs : {};
   updateAvatarDisplay();
 
+  // Rendu de la liste des profils utilisateurs
+  try { renderDrawerProfilesList(); } catch (e) { console.warn('Profiles list error:', e); }
+
   const isConnected = !!(prefs.syncUserId && prefs.syncUserPin);
 
   // Bascule Vue Connecté vs Formulaire de connexion
@@ -1079,8 +1149,9 @@ function updateProfileDrawerData() {
   const inputUser = document.getElementById('drawer-input-user');
   const inputPin = document.getElementById('drawer-input-pin');
 
+  const activeProf = window.appStorage ? window.appStorage.getActiveProfile() : null;
   if (usernameDisplay) {
-    usernameDisplay.textContent = isConnected ? `Profil : ${prefs.syncUserId}` : 'Mon Profil';
+    usernameDisplay.textContent = activeProf ? `Profil : ${activeProf.name}` : (isConnected ? `Profil : ${prefs.syncUserId}` : 'Mon Profil');
   }
   if (inputUser) inputUser.value = prefs.syncUserId || '';
   if (inputPin) inputPin.value = prefs.syncUserPin || '';
@@ -1128,7 +1199,7 @@ function updateProfileDrawerData() {
 
 function disconnectProfile() {
   showConfirmModal(
-    'Déconnexion du profil ?',
+    'Déconnexion du profil Cloud ?',
     'Vous pourrez vous reconnecter à tout moment avec votre Nom de profil et Mot de passe.',
     '🚪',
     () => {
@@ -1191,7 +1262,6 @@ async function saveAndSyncFromDrawer() {
       syncAutoEnabled: true
     });
 
-    // Mettre à jour aussi les champs dans Réglages
     const setUserId = document.getElementById('sync-user-id');
     const setUserPin = document.getElementById('sync-user-pin');
     if (setUserId) setUserId.value = userId;
@@ -1230,6 +1300,278 @@ async function pullFromDrawer() {
   updateProfileDrawerData();
 }
 
+// --------------------------------------------------------------------------
+// MULTI-UTILISATEURS & GESTION DES PROFILS
+// --------------------------------------------------------------------------
+function renderDrawerProfilesList() {
+  const container = document.getElementById('drawer-profiles-list');
+  if (!container || !window.appStorage) return;
+
+  const profiles = window.appStorage.getProfiles();
+  const activeId = window.appStorage.getActiveProfileId();
+
+  container.innerHTML = profiles.map(prof => {
+    const isActive = prof.id === activeId;
+    const levelNames = { beginner: 'Débutant', intermediate: 'Intermédiaire', advanced: 'Avancé', custom: 'Sur-mesure' };
+    const levelText = levelNames[prof.level] || 'Intermédiaire';
+
+    return `
+      <div class="profile-card-item ${isActive ? 'active' : ''}" onclick="switchUserProfile('${prof.id}')">
+        <div class="profile-card-left">
+          <span class="profile-card-avatar">${prof.avatar || '⚡'}</span>
+          <div class="profile-card-info">
+            <span class="profile-card-name">${prof.name}</span>
+            <span class="profile-card-badge">${levelText}</span>
+          </div>
+        </div>
+        <div class="profile-card-actions" onclick="event.stopPropagation();">
+          ${isActive ? '<span style="color: var(--accent-work); font-size: 0.82rem; font-weight: 800;">✓ Actif</span>' : `<button class="btn-secondary" style="padding: 4px 10px; font-size: 0.72rem; width: auto;" onclick="switchUserProfile('${prof.id}')">Choisir</button>`}
+          ${profiles.length > 1 && !isActive ? `<button class="btn-profile-delete" onclick="deleteUserProfile('${prof.id}', '${prof.name.replace(/'/g, "\\'")}')" title="Supprimer ce profil">🗑️</button>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+let _newProfAvatar = '⚡';
+let _newProfLevel = 'intermediate';
+
+function openNewProfileModal() {
+  const modal = document.getElementById('new-profile-modal');
+  const nameInput = document.getElementById('new-prof-name');
+  _newProfAvatar = '⚡';
+  _newProfLevel = 'intermediate';
+
+  if (nameInput) nameInput.value = '';
+  selectNewProfileAvatar(_newProfAvatar);
+  selectNewProfileLevel(_newProfLevel);
+
+  if (modal) modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeNewProfileModal() {
+  const modal = document.getElementById('new-profile-modal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function selectNewProfileAvatar(avatar) {
+  _newProfAvatar = avatar;
+  document.querySelectorAll('#new-prof-avatar-grid .avatar-opt').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-avatar') === avatar);
+  });
+}
+
+function selectNewProfileLevel(level) {
+  _newProfLevel = level;
+  document.querySelectorAll('#new-prof-level-grid .level-pill-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-level') === level);
+  });
+}
+
+function confirmCreateNewProfile() {
+  const nameInput = document.getElementById('new-prof-name');
+  const name = nameInput ? nameInput.value.trim() : '';
+
+  if (!name) {
+    if (typeof showToast === 'function') showToast("⚠️ Veuillez saisir un nom pour le profil.", true);
+    return;
+  }
+
+  const newProf = window.appStorage.createProfile({
+    name,
+    avatar: _newProfAvatar,
+    level: _newProfLevel
+  });
+
+  closeNewProfileModal();
+  switchUserProfile(newProf.id);
+  if (typeof showToast === 'function') showToast(`🎉 Profil créé : ${newProf.name} !`);
+}
+
+function switchUserProfile(profileId) {
+  if (!window.appStorage) return;
+  const prof = window.appStorage.switchProfile(profileId);
+  if (!prof) return;
+
+  reInitAppState();
+  if (typeof showToast === 'function') {
+    showToast(`Profil actif : ${prof.name} ${prof.avatar}`);
+  }
+}
+
+function deleteUserProfile(profileId, profileName) {
+  showConfirmModal(
+    `Supprimer le profil "${profileName}" ?`,
+    'Toutes les données, séries et pesées de cet utilisateur seront effacées.',
+    '🗑️',
+    () => {
+      window.appStorage.deleteProfile(profileId);
+      reInitAppState();
+      if (typeof showToast === 'function') showToast('Profil supprimé.');
+    }
+  );
+}
+
+function reInitAppState() {
+  // 1. Initialiser le thème
+  try {
+    const savedTheme = window.appStorage.prefs.theme || 'dark';
+    const resolvedTheme = savedTheme === 'system'
+      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      : savedTheme;
+    document.documentElement.setAttribute('data-theme', resolvedTheme);
+    const themeSelect = document.getElementById('setting-theme');
+    if (themeSelect) themeSelect.value = savedTheme;
+  } catch (e) {}
+
+  // 2. Formulaire & Avatars
+  try { loadSettingsForm(); } catch (e) {}
+  try { updateAvatarDisplay(); } catch (e) {}
+
+  // 3. Exercices Accueil
+  try { renderHomeExercisesList(); } catch (e) {}
+
+  // 4. Horloge 17h
+  try { startLiveClock(); } catch (e) {}
+
+  // 5. Dashboard & Badges
+  try { if (window.dashboardManager) window.dashboardManager.renderDashboard(); } catch (e) {}
+  try { if (window.motivationManager) window.motivationManager.renderBadgesView(); } catch (e) {}
+
+  // 6. Drawer profil
+  try { updateProfileDrawerData(); } catch (e) {}
+}
+
+// --------------------------------------------------------------------------
+// SÉLECTION PERSONNALISÉE DES EXERCICES (ROUTINE SUR MESURE)
+// --------------------------------------------------------------------------
+let _customSelectedExerciseIds = [];
+let _activePickerFilter = 'all';
+
+function openCustomExercisesModal() {
+  const modal = document.getElementById('custom-exercises-modal');
+  if (!modal || !window.appStorage) return;
+
+  const prefs = window.appStorage.prefs;
+  const currentExercises = typeof window.getActiveWorkoutExercises === 'function'
+    ? window.getActiveWorkoutExercises(prefs)
+    : (window.EXERCISES_DATA || []);
+
+  _customSelectedExerciseIds = currentExercises.map(e => e.id);
+  _activePickerFilter = 'all';
+
+  renderCustomExercisesPickerList();
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeCustomExercisesModal() {
+  const modal = document.getElementById('custom-exercises-modal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function filterCustomExercisesList(filter) {
+  _activePickerFilter = filter;
+  document.querySelectorAll('#custom-ex-filter-bar .filter-pill-opt').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-filter') === filter);
+  });
+  renderCustomExercisesPickerList();
+}
+
+function renderCustomExercisesPickerList() {
+  const container = document.getElementById('custom-exercise-picker-list');
+  const summaryEl = document.getElementById('custom-ex-selection-summary');
+  if (!container) return;
+
+  const allExercises = typeof window.getAllExercises === 'function' ? window.getAllExercises() : (window.EXERCISES_DATA || []);
+  
+  let filtered = allExercises;
+  if (_activePickerFilter !== 'all') {
+    if (['beginner', 'intermediate', 'advanced'].includes(_activePickerFilter)) {
+      filtered = allExercises.filter(e => e.level === _activePickerFilter);
+    } else {
+      filtered = allExercises.filter(e => e.category === _activePickerFilter);
+    }
+  }
+
+  if (summaryEl) {
+    summaryEl.textContent = `${_customSelectedExerciseIds.length} exercice(s) sélectionné(s)`;
+  }
+
+  container.innerHTML = filtered.map(ex => {
+    const isSelected = _customSelectedExerciseIds.includes(ex.id);
+    const levelClass = ex.level || 'intermediate';
+
+    return `
+      <div class="exercise-picker-item ${isSelected ? 'selected' : ''}" onclick="toggleCustomExerciseSelection(${ex.id})">
+        <div class="picker-item-left">
+          <input type="checkbox" class="picker-item-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleCustomExerciseSelection(${ex.id})">
+          <div class="picker-item-info">
+            <div class="picker-item-name">${ex.number}. ${ex.name}</div>
+            <div class="picker-item-sub">${ex.subtitle}</div>
+            <div class="picker-item-tags">
+              <span class="badge-tag-level ${levelClass}">${ex.levelLabel || 'Standard'}</span>
+              <span class="badge-tag-level" style="background: rgba(255,255,255,0.06); color: var(--text-secondary);">${ex.targetPrimary}</span>
+            </div>
+          </div>
+        </div>
+        <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted);">
+          ${ex.duration}s
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleCustomExerciseSelection(exerciseId) {
+  const id = Number(exerciseId);
+  const index = _customSelectedExerciseIds.indexOf(id);
+  if (index >= 0) {
+    if (_customSelectedExerciseIds.length <= 1) {
+      if (typeof showToast === 'function') showToast("⚠️ Vous devez garder au moins 1 exercice dans votre séance.", true);
+      return;
+    }
+    _customSelectedExerciseIds.splice(index, 1);
+  } else {
+    _customSelectedExerciseIds.push(id);
+  }
+  renderCustomExercisesPickerList();
+}
+
+function resetRoutineToActiveLevel() {
+  const prefs = window.appStorage ? window.appStorage.prefs : {};
+  const currentLevel = prefs.userLevel === 'custom' ? 'intermediate' : (prefs.userLevel || 'intermediate');
+  const levelExercises = typeof window.getExercisesForLevel === 'function'
+    ? window.getExercisesForLevel(currentLevel)
+    : (window.EXERCISES_DATA || []);
+
+  _customSelectedExerciseIds = levelExercises.map(e => e.id);
+  renderCustomExercisesPickerList();
+  if (typeof showToast === 'function') showToast(`Réinitialisé sur le niveau ${currentLevel}`);
+}
+
+function saveCustomWorkoutSelection() {
+  if (!_customSelectedExerciseIds || _customSelectedExerciseIds.length === 0) {
+    if (typeof showToast === 'function') showToast("⚠️ Veuillez sélectionner au moins 1 exercice.", true);
+    return;
+  }
+
+  window.appStorage.savePreferences({
+    userLevel: 'custom',
+    customExerciseIds: [..._customSelectedExerciseIds]
+  });
+
+  closeCustomExercisesModal();
+  renderHomeExercisesList();
+  if (typeof showToast === 'function') {
+    showToast(`✨ Routine sur-mesure enregistrée (${_customSelectedExerciseIds.length} exercices) !`);
+  }
+}
+
+// Exports globaux
 window.openProfileDrawer = openProfileDrawer;
 window.closeProfileDrawer = closeProfileDrawer;
 window.selectAvatar = selectAvatar;
@@ -1238,6 +1580,23 @@ window.updateProfileDrawerData = updateProfileDrawerData;
 window.disconnectProfile = disconnectProfile;
 window.saveAndSyncFromDrawer = saveAndSyncFromDrawer;
 window.pullFromDrawer = pullFromDrawer;
+window.setUserLevel = setUserLevel;
+window.renderDrawerProfilesList = renderDrawerProfilesList;
+window.openNewProfileModal = openNewProfileModal;
+window.closeNewProfileModal = closeNewProfileModal;
+window.selectNewProfileAvatar = selectNewProfileAvatar;
+window.selectNewProfileLevel = selectNewProfileLevel;
+window.confirmCreateNewProfile = confirmCreateNewProfile;
+window.switchUserProfile = switchUserProfile;
+window.deleteUserProfile = deleteUserProfile;
+window.openCustomExercisesModal = openCustomExercisesModal;
+window.closeCustomExercisesModal = closeCustomExercisesModal;
+window.filterCustomExercisesList = filterCustomExercisesList;
+window.toggleCustomExerciseSelection = toggleCustomExerciseSelection;
+window.resetRoutineToActiveLevel = resetRoutineToActiveLevel;
+window.saveCustomWorkoutSelection = saveCustomWorkoutSelection;
+window.reInitAppState = reInitAppState;
+
 
 
 

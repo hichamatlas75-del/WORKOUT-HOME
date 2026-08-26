@@ -111,6 +111,17 @@ class MotionPlayer {
       case 7: this.drawHipExtension(ctx, w, h, time, floorY); break;
       case 8: this.drawPlank(ctx, w, h, time, floorY); break;
       case 9: this.drawDynamicStretching(ctx, w, h, time, floorY); break;
+      case 10: this.drawLunges(ctx, w, h, time, floorY); break;
+      case 11: this.drawKneePushup(ctx, w, h, time, floorY); break;
+      case 12: this.drawDiamondPushup(ctx, w, h, time, floorY); break;
+      case 13: this.drawBurpee(ctx, w, h, time, floorY); break;
+      case 14: this.drawRussianTwist(ctx, w, h, time, floorY); break;
+      case 15: this.drawSidePlank(ctx, w, h, time, floorY); break;
+      case 16: this.drawChairDips(ctx, w, h, time, floorY); break;
+      case 17: this.drawBicycleCrunches(ctx, w, h, time, floorY); break;
+      case 18: this.drawHighKnees(ctx, w, h, time, floorY); break;
+      case 19: this.drawSuperman(ctx, w, h, time, floorY); break;
+      case 20: this.drawWallSit(ctx, w, h, time, floorY); break;
       default: this.drawSquat(ctx, w, h, time, floorY);
     }
   }
@@ -526,6 +537,298 @@ class MotionPlayer {
     this.drawLimb(ctx, shoulderX + 4, shoulderY, rightX, rightY, 5, '#06b6d4', 'rgba(6, 182, 212, 0.5)');
 
     this.drawHead(ctx, headX, headY, 9, '#06b6d4');
+  }
+
+  // --------------------------------------------------------------------------
+  // 10. FENTES ALTERNÉES (Lunges)
+  // --------------------------------------------------------------------------
+  drawLunges(ctx, w, h, time, floorY) {
+    const cycle = (time % 2.4) / 2.4;
+    const lungeProgress = (1 - Math.cos(cycle * Math.PI * 2)) / 2;
+    const cx = w * 0.5;
+
+    const hipY = floorY - 50 + (lungeProgress * 20);
+    const shoulderY = hipY - 36;
+    const headY = shoulderY - 14;
+
+    // Jambe avant fléchie
+    const frontKneeX = cx + 22;
+    const frontKneeY = floorY - 20 + (lungeProgress * 5);
+    const frontFootX = cx + 24;
+    this.drawLimb(ctx, cx, hipY, frontKneeX, frontKneeY, 6.5, '#10b981', 'rgba(16, 185, 129, 0.4)');
+    this.drawLimb(ctx, frontKneeX, frontKneeY, frontFootX, floorY - 4, 6, '#f8fafc');
+
+    // Jambe arrière
+    const backKneeX = cx - 24;
+    const backKneeY = floorY - 12 - (lungeProgress * 2);
+    const backFootX = cx - 36;
+    this.drawLimb(ctx, cx, hipY, backKneeX, backKneeY, 6, '#f8fafc');
+    this.drawLimb(ctx, backKneeX, backKneeY, backFootX, floorY - 4, 5.5, '#f8fafc');
+
+    // Buste & Tête
+    this.drawLimb(ctx, cx, shoulderY, cx, hipY, 8, '#f8fafc');
+    this.drawHead(ctx, cx, headY, 9);
+    // Bras en garde équilibre
+    this.drawLimb(ctx, cx, shoulderY + 4, cx + 12, shoulderY + 16, 4.5, '#10b981');
+  }
+
+  // --------------------------------------------------------------------------
+  // 11. POMPES SUR LES GENOUX (Knee Push-ups)
+  // --------------------------------------------------------------------------
+  drawKneePushup(ctx, w, h, time, floorY) {
+    const cycle = (time % 2.0) / 2.0;
+    const push = (1 - Math.cos(cycle * Math.PI * 2)) / 2;
+    const cx = w * 0.5;
+
+    const handX = cx - 25;
+    const handY = floorY - 4;
+    const kneeX = cx + 38;
+    const kneeY = floorY - 4;
+
+    const shoulderY = floorY - 32 + (push * 16);
+    const shoulderX = handX;
+    const hipY = floorY - 22 + (push * 10);
+    const hipX = kneeX - 28;
+
+    this.drawLimb(ctx, handX, handY, shoulderX, shoulderY, 5.5, '#10b981', 'rgba(16, 185, 129, 0.4)');
+    this.drawLimb(ctx, shoulderX, shoulderY, hipX, hipY, 7.5, '#f8fafc');
+    this.drawLimb(ctx, hipX, hipY, kneeX, kneeY, 6.5, '#f8fafc');
+    // Pieds relevés derrière
+    this.drawLimb(ctx, kneeX, kneeY, kneeX + 16, floorY - 20, 5, '#94a3b8');
+    this.drawHead(ctx, shoulderX - 12, shoulderY - 8, 8.5);
+  }
+
+  // --------------------------------------------------------------------------
+  // 12. POMPES DIAMANT (Diamond Push-ups)
+  // --------------------------------------------------------------------------
+  drawDiamondPushup(ctx, w, h, time, floorY) {
+    const cycle = (time % 1.8) / 1.8;
+    const push = (1 - Math.cos(cycle * Math.PI * 2)) / 2;
+    const cx = w * 0.5;
+
+    const handX = cx - 20;
+    const handY = floorY - 4;
+    const feetX = cx + 55;
+    const feetY = floorY - 4;
+
+    const shoulderY = floorY - 36 + (push * 20);
+    const shoulderX = handX;
+    const hipY = floorY - 24 + (push * 12);
+    const hipX = cx + 15;
+
+    // Bras rapprochés diamond
+    this.drawLimb(ctx, handX, handY, shoulderX, shoulderY, 5.5, '#f43f5e', 'rgba(244, 63, 94, 0.6)');
+    this.drawLimb(ctx, shoulderX, shoulderY, hipX, hipY, 8, '#f43f5e', 'rgba(244, 63, 94, 0.4)');
+    this.drawLimb(ctx, hipX, hipY, feetX, feetY, 6.5, '#f8fafc');
+    this.drawHead(ctx, shoulderX - 14, shoulderY - 10, 8.5);
+  }
+
+  // --------------------------------------------------------------------------
+  // 13. BURPEES (Cardio Explosif)
+  // --------------------------------------------------------------------------
+  drawBurpee(ctx, w, h, time, floorY) {
+    const phase = (time % 2.8) / 2.8; // 0..1
+    const cx = w * 0.5;
+
+    if (phase < 0.35) {
+      // Phase saut vertical
+      const jumpY = Math.sin((phase / 0.35) * Math.PI) * 35;
+      const hipY = floorY - 65 - jumpY;
+      const shoulderY = hipY - 35;
+      this.drawLimb(ctx, cx, hipY, cx - 10, floorY - 10 - jumpY, 6, '#f43f5e', 'rgba(244, 63, 94, 0.6)');
+      this.drawLimb(ctx, cx, hipY, cx + 10, floorY - 10 - jumpY, 6, '#f43f5e');
+      this.drawLimb(ctx, cx, shoulderY, cx, hipY, 8, '#f43f5e');
+      this.drawLimb(ctx, cx, shoulderY, cx - 18, shoulderY - 25, 5, '#f43f5e');
+      this.drawLimb(ctx, cx, shoulderY, cx + 18, shoulderY - 25, 5, '#f43f5e');
+      this.drawHead(ctx, cx, shoulderY - 14, 9, '#f43f5e');
+    } else {
+      // Phase planche basse / squat
+      const plankTime = (phase - 0.35) / 0.65;
+      const handX = cx - 25;
+      const feetX = cx + 45;
+      const shoulderY = floorY - 28;
+      const hipY = floorY - 22;
+      this.drawLimb(ctx, handX, floorY - 4, handX, shoulderY, 5.5, '#f43f5e');
+      this.drawLimb(ctx, handX, shoulderY, cx + 10, hipY, 7.5, '#f43f5e');
+      this.drawLimb(ctx, cx + 10, hipY, feetX, floorY - 4, 6.5, '#f8fafc');
+      this.drawHead(ctx, handX - 12, shoulderY - 8, 8.5);
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 14. RUSSIAN TWISTS (Rotation Obliques)
+  // --------------------------------------------------------------------------
+  drawRussianTwist(ctx, w, h, time, floorY) {
+    const cycle = Math.sin(time * 3);
+    const cx = w * 0.5;
+
+    const hipX = cx;
+    const hipY = floorY - 18;
+    const shoulderX = cx - 18;
+    const shoulderY = floorY - 48;
+    const headX = shoulderX - 8;
+    const headY = shoulderY - 12;
+
+    // Pieds décollés
+    const kneeX = cx + 22;
+    const kneeY = floorY - 32;
+    const feetX = cx + 42;
+    const feetY = floorY - 36;
+
+    this.drawLimb(ctx, hipX, hipY, kneeX, kneeY, 6, '#f8fafc');
+    this.drawLimb(ctx, kneeX, kneeY, feetX, feetY, 5.5, '#f8fafc');
+    this.drawLimb(ctx, shoulderX, shoulderY, hipX, hipY, 8, '#38bdf8', 'rgba(56, 189, 248, 0.6)');
+
+    // Bras en rotation
+    const handX = cx + (cycle * 22);
+    const handY = floorY - 26;
+    this.drawLimb(ctx, shoulderX, shoulderY, handX, handY, 5, '#38bdf8', 'rgba(56, 189, 248, 0.5)');
+    this.drawHead(ctx, headX, headY, 8.5);
+  }
+
+  // --------------------------------------------------------------------------
+  // 15. GAINAGE LATÉRAL (Side Plank)
+  // --------------------------------------------------------------------------
+  drawSidePlank(ctx, w, h, time, floorY) {
+    const cx = w * 0.5;
+    const elbowX = cx - 35;
+    const elbowY = floorY - 4;
+    const shoulderX = elbowX;
+    const shoulderY = floorY - 38;
+    const hipX = cx + 5;
+    const hipY = floorY - 28;
+    const feetX = cx + 50;
+    const feetY = floorY - 4;
+
+    this.drawLimb(ctx, elbowX, elbowY, shoulderX, shoulderY, 6, '#10b981');
+    this.drawLimb(ctx, shoulderX, shoulderY, hipX, hipY, 8, '#10b981', 'rgba(16, 185, 129, 0.5)');
+    this.drawLimb(ctx, hipX, hipY, feetX, feetY, 6.5, '#f8fafc');
+    // Bras supérieur levé
+    this.drawLimb(ctx, shoulderX, shoulderY, shoulderX, shoulderY - 28, 5, '#10b981', 'rgba(16, 185, 129, 0.4)');
+    this.drawHead(ctx, shoulderX - 12, shoulderY - 8, 8.5);
+  }
+
+  // --------------------------------------------------------------------------
+  // 16. DIPS SUR CHAISE
+  // --------------------------------------------------------------------------
+  drawChairDips(ctx, w, h, time, floorY) {
+    const cycle = (time % 2.0) / 2.0;
+    const dip = (1 - Math.cos(cycle * Math.PI * 2)) / 2;
+    const cx = w * 0.5;
+
+    const chairX = cx + 25;
+    const chairY = floorY - 38;
+    // Dessin chaise
+    this.drawLimb(ctx, chairX, floorY - 4, chairX, chairY, 4, '#475569');
+    this.drawLimb(ctx, chairX - 10, chairY, chairX + 15, chairY, 5, '#475569');
+
+    const handX = chairX - 5;
+    const handY = chairY;
+    const hipX = cx - 5;
+    const hipY = floorY - 32 + (dip * 16);
+    const shoulderX = hipX;
+    const shoulderY = hipY - 32;
+
+    this.drawLimb(ctx, handX, handY, shoulderX, shoulderY, 5.5, '#a855f7', 'rgba(168, 85, 247, 0.6)');
+    this.drawLimb(ctx, shoulderX, shoulderY, hipX, hipY, 7.5, '#a855f7');
+    // Jambes avancées fléchies
+    this.drawLimb(ctx, hipX, hipY, cx - 25, floorY - 4, 6, '#f8fafc');
+    this.drawHead(ctx, shoulderX, shoulderY - 12, 8.5);
+  }
+
+  // --------------------------------------------------------------------------
+  // 17. BICYCLE CRUNCHES
+  // --------------------------------------------------------------------------
+  drawBicycleCrunches(ctx, w, h, time, floorY) {
+    const cycle = Math.sin(time * 3.5);
+    const cx = w * 0.5;
+
+    const hipX = cx - 10;
+    const hipY = floorY - 10;
+    const shoulderX = cx - 35;
+    const shoulderY = floorY - 22;
+
+    // Jambe gauche vs droite pédalage
+    const leg1X = cx + 15 + (cycle * 18);
+    const leg1Y = floorY - 25;
+    const leg2X = cx + 38 - (cycle * 18);
+    const leg2Y = floorY - 12;
+
+    this.drawLimb(ctx, hipX, hipY, leg1X, leg1Y, 6, '#38bdf8', 'rgba(56, 189, 248, 0.5)');
+    this.drawLimb(ctx, hipX, hipY, leg2X, leg2Y, 6, '#f8fafc');
+    this.drawLimb(ctx, shoulderX, shoulderY, hipX, hipY, 7.5, '#38bdf8');
+    this.drawHead(ctx, shoulderX - 10, shoulderY - 6, 8.5);
+  }
+
+  // --------------------------------------------------------------------------
+  // 18. MONTÉES DE GENOUX (High Knees)
+  // --------------------------------------------------------------------------
+  drawHighKnees(ctx, w, h, time, floorY) {
+    const cycle = Math.sin(time * 6);
+    const cx = w * 0.5;
+
+    const hipY = floorY - 65;
+    const shoulderY = hipY - 36;
+
+    // Alternance genou haut
+    const knee1Y = cycle > 0 ? (hipY + 5 - (cycle * 22)) : (floorY - 28);
+    const knee2Y = cycle < 0 ? (hipY + 5 - (Math.abs(cycle) * 22)) : (floorY - 28);
+
+    this.drawLimb(ctx, cx, hipY, cx - 10, knee1Y, 6, '#10b981', 'rgba(16, 185, 129, 0.5)');
+    this.drawLimb(ctx, cx - 10, knee1Y, cx - 8, floorY - 4, 5.5, '#f8fafc');
+    this.drawLimb(ctx, cx, hipY, cx + 10, knee2Y, 6, '#10b981', 'rgba(16, 185, 129, 0.5)');
+    this.drawLimb(ctx, cx + 10, knee2Y, cx + 8, floorY - 4, 5.5, '#f8fafc');
+
+    this.drawLimb(ctx, cx, shoulderY, cx, hipY, 8, '#f8fafc');
+    this.drawHead(ctx, cx, shoulderY - 14, 9);
+  }
+
+  // --------------------------------------------------------------------------
+  // 19. SUPERMAN (Extension lombaire)
+  // --------------------------------------------------------------------------
+  drawSuperman(ctx, w, h, time, floorY) {
+    const cycle = (time % 2.4) / 2.4;
+    const lift = (1 - Math.cos(cycle * Math.PI * 2)) / 2;
+    const cx = w * 0.5;
+
+    const hipX = cx;
+    const hipY = floorY - 8;
+    const chestX = cx - 25;
+    const chestY = floorY - 8 - (lift * 16);
+    const feetX = cx + 38;
+    const feetY = floorY - 8 - (lift * 14);
+
+    this.drawLimb(ctx, chestX, chestY, hipX, hipY, 8, '#38bdf8', 'rgba(56, 189, 248, 0.5)');
+    this.drawLimb(ctx, hipX, hipY, feetX, feetY, 6, '#38bdf8');
+    // Bras tendus devant levés
+    this.drawLimb(ctx, chestX, chestY, chestX - 25, chestY - 10, 5, '#38bdf8');
+    this.drawHead(ctx, chestX - 10, chestY - 8, 8.5);
+  }
+
+  // --------------------------------------------------------------------------
+  // 20. CHAISE AU MUR (Wall Sit)
+  // --------------------------------------------------------------------------
+  drawWallSit(ctx, w, h, time, floorY) {
+    const cx = w * 0.5;
+    const wallX = cx - 25;
+
+    // Mur
+    this.drawLimb(ctx, wallX, floorY - 4, wallX, floorY - 85, 4, '#475569');
+
+    const hipX = wallX;
+    const hipY = floorY - 42;
+    const kneeX = cx + 8;
+    const kneeY = floorY - 42;
+    const footX = kneeX;
+    const footY = floorY - 4;
+
+    // Buste plaqué
+    this.drawLimb(ctx, wallX, floorY - 75, hipX, hipY, 8, '#10b981', 'rgba(16, 185, 129, 0.5)');
+    // Cuisses horizontales à 90°
+    this.drawLimb(ctx, hipX, hipY, kneeX, kneeY, 7, '#10b981', 'rgba(16, 185, 129, 0.6)');
+    // Tibias verticaux
+    this.drawLimb(ctx, kneeX, kneeY, footX, footY, 6.5, '#f8fafc');
+    this.drawHead(ctx, wallX, floorY - 85, 9);
   }
 }
 

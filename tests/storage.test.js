@@ -166,4 +166,53 @@ describe('Gestionnaire de Stockage Local (storage.js)', () => {
     const invalidEntry3 = storage.addWeightEntry({ weight: 'abc' });
     assert.equal(invalidEntry3, null);
   });
+
+  test('Gestion Multi-Profils : création, basculement et isolation des données', () => {
+    // 1. Profil par défaut
+    assert.equal(storage.getProfiles().length, 1);
+    assert.equal(storage.getActiveProfileId(), 'default');
+
+    // Ajouter une séance sur le profil par défaut
+    storage.addWorkoutSession({ durationSeconds: 600, rounds: 2, completed: true });
+    assert.equal(storage.getTotalWorkouts(), 1);
+
+    // 2. Créer un second profil
+    const sarahProfile = storage.createProfile({
+      name: 'Sarah',
+      avatar: '🏋️‍♀️',
+      level: 'beginner',
+      initialWeight: 62
+    });
+
+    assert.ok(sarahProfile.id);
+    assert.equal(sarahProfile.name, 'Sarah');
+    assert.equal(sarahProfile.level, 'beginner');
+    assert.equal(storage.getProfiles().length, 2);
+
+    // 3. Basculer sur le profil de Sarah
+    storage.switchProfile(sarahProfile.id);
+    assert.equal(storage.getActiveProfileId(), sarahProfile.id);
+    assert.equal(storage.prefs.userName, 'Sarah');
+    assert.equal(storage.prefs.userLevel, 'beginner');
+    assert.equal(storage.prefs.initialWeight, 62);
+
+    // L'historique de Sarah doit être vierge (isolation)
+    assert.equal(storage.getTotalWorkouts(), 0);
+    assert.equal(storage.history.length, 0);
+
+    // Enregistrer une séance pour Sarah
+    storage.addWorkoutSession({ durationSeconds: 900, rounds: 2, completed: true, level: 'beginner' });
+    assert.equal(storage.getTotalWorkouts(), 1);
+
+    // 4. Rebasculer sur le profil par défaut
+    storage.switchProfile('default');
+    assert.equal(storage.getActiveProfileId(), 'default');
+    assert.equal(storage.getTotalWorkouts(), 1); // Sa séance originale
+    assert.equal(storage.history[0].durationSeconds, 600);
+
+    // 5. Suppression de profil
+    const deleted = storage.deleteProfile(sarahProfile.id);
+    assert.equal(deleted, true);
+    assert.equal(storage.getProfiles().length, 1);
+  });
 });

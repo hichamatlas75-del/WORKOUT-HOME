@@ -108,6 +108,7 @@ class WorkoutMusicEngine {
     this.stepIndex = 0;
 
     const ctx = this.soundEngine.audioCtx;
+    if (!ctx) return;
     this.nextNoteTime = ctx.currentTime + 0.05;
 
     this.schedulerLoop();

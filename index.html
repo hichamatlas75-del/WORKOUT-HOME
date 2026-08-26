@@ -75,13 +75,23 @@
            ------------------------------------------------------------------ -->
       <section id="view-home" class="view active">
         
+        <!-- Sélecteur rapide de profil actif -->
+        <div class="profile-quick-switch-bar" onclick="openProfileDrawer()" title="Gérer ou changer de profil utilisateur">
+          <div class="user-chip">
+            <span class="user-chip-avatar" id="home-user-avatar">🦁</span>
+            <span class="user-chip-name" id="home-user-name">Moi</span>
+            <span class="user-chip-level-badge" id="home-user-level-badge">Intermédiaire</span>
+          </div>
+          <span class="profile-switch-action">Changer ▾</span>
+        </div>
+
         <!-- Carte Hero avec Heure Cible 17:00 -->
         <div class="hero-card">
           <div class="hero-status-row">
             <div class="status-pill" id="home-streak-pill">
               <span class="pulse-dot"></span> Prêt pour la séance
             </div>
-            <div class="status-pill" style="background: rgba(255,255,255,0.06); color: var(--text-secondary); border-color: var(--border-subtle);">
+            <div class="status-pill" id="home-duration-pill" style="background: rgba(255,255,255,0.06); color: var(--text-secondary); border-color: var(--border-subtle);">
               18-22 min
             </div>
           </div>
@@ -93,17 +103,39 @@
 
           <div class="hero-specs-grid">
             <div class="spec-item">
-              <span class="spec-value">8</span>
+              <span class="spec-value" id="home-spec-count">8</span>
               <span class="spec-label">Exercices</span>
             </div>
             <div class="spec-item">
-              <span class="spec-value">40s / 20s</span>
+              <span class="spec-value" id="home-spec-workrest">40s / 20s</span>
               <span class="spec-label">Effort / Repos</span>
             </div>
             <div class="spec-item">
-              <span class="spec-value">3 Séries</span>
+              <span class="spec-value" id="home-spec-rounds">3 Séries</span>
               <span class="spec-label">Progression</span>
             </div>
+          </div>
+        </div>
+
+        <!-- Sélecteur de Niveau de Difficulté -->
+        <div class="level-selector-card">
+          <div class="level-selector-title">
+            <span>🎯 Niveau de séance</span>
+            <button class="btn-text-action" onclick="openCustomExercisesModal()">⚙️ Personnaliser</button>
+          </div>
+          <div class="level-pills-row" id="home-level-pills">
+            <button class="level-pill-btn" data-level="beginner" onclick="setUserLevel('beginner')" title="Routine adaptée & progressive">
+              <span class="level-pill-icon">🟢</span>
+              <span class="level-pill-name">Débutant</span>
+            </button>
+            <button class="level-pill-btn active" data-level="intermediate" onclick="setUserLevel('intermediate')" title="Routine Full Body équilibrée">
+              <span class="level-pill-icon">🟡</span>
+              <span class="level-pill-name">Intermédiaire</span>
+            </button>
+            <button class="level-pill-btn" data-level="advanced" onclick="setUserLevel('advanced')" title="Routine haute intensité">
+              <span class="level-pill-icon">🔴</span>
+              <span class="level-pill-name">Avancé</span>
+            </button>
           </div>
         </div>
 
@@ -116,15 +148,22 @@
         </button>
 
         <!-- Liste de la Routine du jour -->
-        <div class="section-header" style="margin-top: 28px;">
-          <h2 class="section-title">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-work)" stroke-width="2.5">
-              <path d="M9 11l3 3L22 4"/>
-              <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
-            </svg>
-            Programme du Jour
-          </h2>
-          <span class="section-subtitle">7 exercices (3 séries) + Étirements (1 série finale)</span>
+        <div class="section-header" style="margin-top: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <div>
+              <h2 class="section-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-work)" stroke-width="2.5">
+                  <path d="M9 11l3 3L22 4"/>
+                  <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+                </svg>
+                Programme du Jour
+              </h2>
+              <span class="section-subtitle" id="home-routine-subtitle">8 exercices (3 séries) + Étirements</span>
+            </div>
+            <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.72rem; border-radius: var(--radius-sm); width: auto;" onclick="openCustomExercisesModal()">
+              Modifier ✏️
+            </button>
+          </div>
         </div>
 
         <div class="exercise-list" id="home-exercise-list">
@@ -1004,6 +1043,110 @@
   </div>
 
   <!-- ====================================================================
+       MODALE DE CRÉATION DE NOUVEAU PROFIL (MULTI-UTILISATEURS)
+       ==================================================================== -->
+  <div id="new-profile-modal" class="confirm-modal-backdrop" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="new-prof-title" onclick="if(event.target === this) closeNewProfileModal()">
+    <div class="confirm-modal-card" style="max-width: 420px; text-align: left;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 class="confirm-modal-title" id="new-prof-title" style="margin: 0; font-size: 1.15rem;">👤 Nouveau Profil</h3>
+        <button class="icon-btn" onclick="closeNewProfileModal()" aria-label="Fermer">✕</button>
+      </div>
+      
+      <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 14px;">
+        Créez un profil autonome avec son propre historique, streak, badges et routine personnalisée.
+      </p>
+
+      <div style="margin-bottom: 12px;">
+        <label for="new-prof-name" style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px;">Nom de l'utilisateur</label>
+        <input type="text" id="new-prof-name" class="styled-input" placeholder="ex: Sarah, Marc, Papa..." maxlength="25">
+      </div>
+
+      <div style="margin-bottom: 12px;">
+        <label style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px;">Choisir un Avatar</label>
+        <div class="avatar-picker-grid" id="new-prof-avatar-grid" style="grid-template-columns: repeat(6, 1fr); gap: 6px;">
+          <button type="button" class="avatar-opt active" data-avatar="⚡" onclick="selectNewProfileAvatar('⚡')">⚡</button>
+          <button type="button" class="avatar-opt" data-avatar="🦁" onclick="selectNewProfileAvatar('🦁')">🦁</button>
+          <button type="button" class="avatar-opt" data-avatar="🏋️‍♀️" onclick="selectNewProfileAvatar('🏋️‍♀️')">🏋️‍♀️</button>
+          <button type="button" class="avatar-opt" data-avatar="🏃‍♀️" onclick="selectNewProfileAvatar('🏃‍♀️')">🏃‍♀️</button>
+          <button type="button" class="avatar-opt" data-avatar="🥋" onclick="selectNewProfileAvatar('🥋')">🥋</button>
+          <button type="button" class="avatar-opt" data-avatar="🧘‍♂️" onclick="selectNewProfileAvatar('🧘‍♂️')">🧘‍♂️</button>
+          <button type="button" class="avatar-opt" data-avatar="🔥" onclick="selectNewProfileAvatar('🔥')">🔥</button>
+          <button type="button" class="avatar-opt" data-avatar="🐺" onclick="selectNewProfileAvatar('🐺')">🐺</button>
+          <button type="button" class="avatar-opt" data-avatar="🥊" onclick="selectNewProfileAvatar('🥊')">🥊</button>
+          <button type="button" class="avatar-opt" data-avatar="👑" onclick="selectNewProfileAvatar('👑')">👑</button>
+          <button type="button" class="avatar-opt" data-avatar="🚀" onclick="selectNewProfileAvatar('🚀')">🚀</button>
+          <button type="button" class="avatar-opt" data-avatar="⭐" onclick="selectNewProfileAvatar('⭐')">⭐</button>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px;">Niveau initial</label>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;" id="new-prof-level-grid">
+          <button type="button" class="level-pill-btn" data-level="beginner" onclick="selectNewProfileLevel('beginner')">
+            <span>🟢</span>
+            <span style="font-size: 0.72rem;">Débutant</span>
+          </button>
+          <button type="button" class="level-pill-btn active" data-level="intermediate" onclick="selectNewProfileLevel('intermediate')">
+            <span>🟡</span>
+            <span style="font-size: 0.72rem;">Intermédiaire</span>
+          </button>
+          <button type="button" class="level-pill-btn" data-level="advanced" onclick="selectNewProfileLevel('advanced')">
+            <span>🔴</span>
+            <span style="font-size: 0.72rem;">Avancé</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="confirm-modal-actions">
+        <button class="btn-secondary" onclick="closeNewProfileModal()">Annuler</button>
+        <button class="btn-primary" onclick="confirmCreateNewProfile()">Créer le profil</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       MODALE DE SÉLECTION PERSONNALISÉE DES EXERCICES (ROUTINE SUR MESURE)
+       ==================================================================== -->
+  <div id="custom-exercises-modal" class="confirm-modal-backdrop" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="custom-ex-title" onclick="if(event.target === this) closeCustomExercisesModal()">
+    <div class="confirm-modal-card" style="max-width: 480px; text-align: left; max-height: 88vh; display: flex; flex-direction: column;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <div>
+          <h3 class="confirm-modal-title" id="custom-ex-title" style="margin: 0; font-size: 1.15rem;">⚙️ Choisir mes Exercices</h3>
+          <span style="font-size: 0.72rem; color: var(--text-secondary);" id="custom-ex-selection-summary">8 exercices sélectionnés</span>
+        </div>
+        <button class="icon-btn" onclick="closeCustomExercisesModal()" aria-label="Fermer">✕</button>
+      </div>
+
+      <!-- Filtres par catégorie / niveau -->
+      <div class="custom-ex-filter-bar" id="custom-ex-filter-bar">
+        <button class="filter-pill-opt active" data-filter="all" onclick="filterCustomExercisesList('all')">Tous (20)</button>
+        <button class="filter-pill-opt" data-filter="beginner" onclick="filterCustomExercisesList('beginner')">🟢 Débutant</button>
+        <button class="filter-pill-opt" data-filter="intermediate" onclick="filterCustomExercisesList('intermediate')">🟡 Intermédiaire</button>
+        <button class="filter-pill-opt" data-filter="advanced" onclick="filterCustomExercisesList('advanced')">🔴 Avancé</button>
+        <button class="filter-pill-opt" data-filter="cardio" onclick="filterCustomExercisesList('cardio')">🫀 Cardio</button>
+        <button class="filter-pill-opt" data-filter="core" onclick="filterCustomExercisesList('core')">🧱 Abdos</button>
+        <button class="filter-pill-opt" data-filter="upper_body" onclick="filterCustomExercisesList('upper_body')">💪 Haut</button>
+        <button class="filter-pill-opt" data-filter="lower_body" onclick="filterCustomExercisesList('lower_body')">🦵 Bas</button>
+      </div>
+
+      <!-- Liste scrollable des 20 exercices -->
+      <div class="exercise-picker-list" id="custom-exercise-picker-list">
+        <!-- Rendu dynamique par js/app.js -->
+      </div>
+
+      <!-- Actions de validation -->
+      <div style="display: flex; gap: 8px; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border-subtle);">
+        <button class="btn-secondary" style="padding: 10px; font-size: 0.78rem; width: auto;" onclick="resetRoutineToActiveLevel()" title="Rétablir les exercices par défaut du niveau">
+          ↺ Réinitialiser
+        </button>
+        <button class="btn-primary" style="flex: 1; padding: 10px; font-size: 0.85rem;" onclick="saveCustomWorkoutSelection()">
+          💾 Valider ma Routine
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================
        TIROIR LATÉRAL MENU BURGER & PROFIL AVATAR (PROFILE DRAWER)
        ==================================================================== -->
   <div id="profile-drawer-overlay" class="drawer-overlay" style="display: none;" onclick="if(event.target === this) closeProfileDrawer()">
@@ -1023,9 +1166,20 @@
       </div>
 
       <div class="drawer-body">
-        <!-- 1. Choix de l'Avatar -->
+        <!-- 0. Multi-Utilisateurs & Profils -->
         <div class="drawer-section">
-          <div class="drawer-section-title">🎭 Choisir mon Avatar</div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div class="drawer-section-title" style="margin: 0;">👥 Profils Utilisateurs</div>
+            <button class="btn-text-action" onclick="openNewProfileModal()">+ Nouveau</button>
+          </div>
+          <div class="profiles-list-container" id="drawer-profiles-list">
+            <!-- Rendu dynamique des profils -->
+          </div>
+        </div>
+
+        <!-- 1. Choix de l'Avatar du profil actif -->
+        <div class="drawer-section">
+          <div class="drawer-section-title">🎭 Avatar du Profil Actif</div>
           <div class="avatar-picker-grid" id="avatar-picker-grid">
             <button class="avatar-opt" data-avatar="🦁" onclick="selectAvatar('🦁')">🦁</button>
             <button class="avatar-opt" data-avatar="⚡" onclick="selectAvatar('⚡')">⚡</button>
@@ -1044,7 +1198,7 @@
 
         <!-- 2. Connexion / Profil Cloud -->
         <div class="drawer-section">
-          <div class="drawer-section-title">👤 Profil &amp; Synchronisation</div>
+          <div class="drawer-section-title">👤 Synchronisation Cloud</div>
 
           <!-- Vue Profil Connecté (affichée quand le profil est actif) -->
           <div id="drawer-connected-view" style="display: none;">
@@ -1077,7 +1231,7 @@
           <!-- Vue Formulaire de Connexion (affichée si non connecté) -->
           <div id="drawer-login-view">
             <div class="drawer-field">
-              <label for="drawer-input-user">Nom de Profil</label>
+              <label for="drawer-input-user">Nom de Profil Cloud</label>
               <input type="text" id="drawer-input-user" class="styled-input" placeholder="ex: hicham" maxlength="30" style="text-transform: lowercase;">
             </div>
             <div class="drawer-field" style="margin-top: 8px;">

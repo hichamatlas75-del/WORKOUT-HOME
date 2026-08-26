@@ -1,9 +1,11 @@
 /**
  * FULL BODY 17 — GESTIONNAIRE DU STOCKAGE LOCAL (LOCALSTORAGE)
- * Sauvegarde de l'historique des séances, calcul des séries (streaks) et réglages.
+ * Support Multi-Utilisateurs, Sauvegarde de l'historique des séances, séries (streaks), poids et réglages.
  */
 
 const STORAGE_KEYS = {
+  PROFILES: 'fb17_profiles',
+  ACTIVE_PROFILE: 'fb17_active_profile_id',
   PREFS: 'fb17_preferences',
   HISTORY: 'fb17_workout_history',
   BADGES: 'fb17_unlocked_badges',
@@ -11,6 +13,10 @@ const STORAGE_KEYS = {
 };
 
 const DEFAULT_PREFERENCES = {
+  userName: "Moi",
+  userAvatar: "🦁",
+  userLevel: "intermediate", // "beginner" | "intermediate" | "advanced" | "custom"
+  customExerciseIds: null, // Tableau d'IDs d'exercices si mode personnalisé
   rounds: 3,
   workDuration: 40,
   restDuration: 20,
@@ -30,24 +36,213 @@ const DEFAULT_PREFERENCES = {
   firebaseAuthToken: "",
   syncUserId: "",
   syncUserPin: "",
-  userAvatar: "🦁",
   syncAutoEnabled: true,
   syncLastTime: null
 };
 
 class AppStorage {
   constructor() {
+    this.profiles = this.loadProfiles();
+    this.activeProfileId = this.loadActiveProfileId();
+    this.ensureActiveProfileExists();
+
     this.prefs = this.loadPreferences();
     this.history = this.loadHistory();
     this.badges = this.loadBadges();
     this.weightHistory = this.loadWeightHistory();
   }
 
+  // --- Gestion des Clés Multi-Profils ---
+  getPrefKey(profileId = this.activeProfileId) {
+    return (!profileId || profileId === 'default') ? STORAGE_KEYS.PREFS : `fb17_prof_${profileId}_preferences`;
+  }
+
+  getHistoryKey(profileId = this.activeProfileId) {
+    return (!profileId || profileId === 'default') ? STORAGE_KEYS.HISTORY : `fb17_prof_${profileId}_history`;
+  }
+
+  getBadgesKey(profileId = this.activeProfileId) {
+    return (!profileId || profileId === 'default') ? STORAGE_KEYS.BADGES : `fb17_prof_${profileId}_badges`;
+  }
+
+  getWeightKey(profileId = this.activeProfileId) {
+    return (!profileId || profileId === 'default') ? STORAGE_KEYS.WEIGHT : `fb17_prof_${profileId}_weight`;
+  }
+
+  // --- Gestion Multi-Profils ---
+  loadProfiles() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.PROFILES);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('Erreur lecture profiles:', e);
+    }
+
+    // Profil par défaut initialisé avec les données existantes s'il y en a
+    const defaultProfile = {
+      id: 'default',
+      name: 'Moi',
+      avatar: '🦁',
+      level: 'intermediate',
+      createdAt: Date.now()
+    };
+    return [defaultProfile];
+  }
+
+  saveProfiles() {
+    try {
+      localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(this.profiles));
+    } catch (e) {
+      console.error('Erreur sauvegarde profils:', e);
+    }
+  }
+
+  loadActiveProfileId() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.ACTIVE_PROFILE);
+      return stored || 'default';
+    } catch (e) {
+      return 'default';
+    }
+  }
+
+  ensureActiveProfileExists() {
+    const exists = this.profiles.some(p => p.id === this.activeProfileId);
+    if (!exists) {
+      this.activeProfileId = this.profiles[0] ? this.profiles[0].id : 'default';
+      try {
+        localStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE, this.activeProfileId);
+      } catch (e) {}
+    }
+  }
+
+  getProfiles() {
+    return [...this.profiles];
+  }
+
+  getActiveProfileId() {
+    return this.activeProfileId;
+  }
+
+  getActiveProfile() {
+    return this.profiles.find(p => p.id === this.activeProfileId) || this.profiles[0];
+  }
+
+  createProfile({ name = 'Nouvel Utilisateur', avatar = '⚡', level = 'intermediate', initialWeight = null, targetWeight = null, heightCm = null }) {
+    const id = 'user_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    const newProfile = {
+      id,
+      name: (name || '').trim() || 'Utilisateur',
+      avatar: avatar || '⚡',
+      level: level || 'intermediate',
+      createdAt: Date.now()
+    };
+
+    this.profiles.push(newProfile);
+    this.saveProfiles();
+
+    // Initialiser les préférences spécifiques du nouveau profil
+    const newPrefs = {
+      ...DEFAULT_PREFERENCES,
+      userName: newProfile.name,
+      userAvatar: newProfile.avatar,
+      userLevel: newProfile.level,
+      initialWeight: initialWeight !== null ? initialWeight : null,
+      targetWeight: targetWeight !== null ? targetWeight : null,
+      heightCm: heightCm !== null ? heightCm : null
+    };
+
+    try {
+      localStorage.setItem(this.getPrefKey(id), JSON.stringify(newPrefs));
+      localStorage.setItem(this.getHistoryKey(id), JSON.stringify([]));
+      localStorage.setItem(this.getBadgesKey(id), JSON.stringify([]));
+      localStorage.setItem(this.getWeightKey(id), JSON.stringify([]));
+    } catch (e) {
+      console.error('Erreur initialisation stockage profil:', e);
+    }
+
+    return newProfile;
+  }
+
+  switchProfile(profileId) {
+    const target = this.profiles.find(p => p.id === profileId);
+    if (!target) return null;
+
+    this.activeProfileId = profileId;
+    try {
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE, this.activeProfileId);
+    } catch (e) {}
+
+    // Recharger toutes les données en mémoire
+    this.prefs = this.loadPreferences();
+    this.history = this.loadHistory();
+    this.badges = this.loadBadges();
+    this.weightHistory = this.loadWeightHistory();
+
+    return target;
+  }
+
+  updateProfile(profileId, updateData = {}) {
+    const index = this.profiles.findIndex(p => p.id === profileId);
+    if (index < 0) return null;
+
+    this.profiles[index] = { ...this.profiles[index], ...updateData };
+    this.saveProfiles();
+
+    // Synchroniser avec les prefs si c'est le profil actif
+    if (profileId === this.activeProfileId) {
+      const syncPrefs = {};
+      if (updateData.name) syncPrefs.userName = updateData.name;
+      if (updateData.avatar) syncPrefs.userAvatar = updateData.avatar;
+      if (updateData.level) syncPrefs.userLevel = updateData.level;
+      if (Object.keys(syncPrefs).length > 0) {
+        this.savePreferences(syncPrefs);
+      }
+    }
+
+    return this.profiles[index];
+  }
+
+  deleteProfile(profileId) {
+    if (this.profiles.length <= 1) {
+      console.warn('Impossible de supprimer le seul profil existant.');
+      return false;
+    }
+
+    const wasActive = this.activeProfileId === profileId;
+    this.profiles = this.profiles.filter(p => p.id !== profileId);
+    this.saveProfiles();
+
+    // Supprimer les données du profil dans localStorage
+    try {
+      localStorage.removeItem(this.getPrefKey(profileId));
+      localStorage.removeItem(this.getHistoryKey(profileId));
+      localStorage.removeItem(this.getBadgesKey(profileId));
+      localStorage.removeItem(this.getWeightKey(profileId));
+    } catch (e) {}
+
+    if (wasActive) {
+      this.switchProfile(this.profiles[0].id);
+    }
+
+    return true;
+  }
+
   // --- Préférences ---
   loadPreferences() {
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.PREFS);
-      return stored ? { ...DEFAULT_PREFERENCES, ...JSON.parse(stored) } : { ...DEFAULT_PREFERENCES };
+      const stored = localStorage.getItem(this.getPrefKey());
+      const activeProf = this.getActiveProfile();
+      const baseDefaults = {
+        ...DEFAULT_PREFERENCES,
+        userName: activeProf ? activeProf.name : DEFAULT_PREFERENCES.userName,
+        userAvatar: activeProf ? activeProf.avatar : DEFAULT_PREFERENCES.userAvatar,
+        userLevel: activeProf ? (activeProf.level || 'intermediate') : DEFAULT_PREFERENCES.userLevel
+      };
+      return stored ? { ...baseDefaults, ...JSON.parse(stored) } : { ...baseDefaults };
     } catch (e) {
       console.warn('Erreur lecture prefs:', e);
       return { ...DEFAULT_PREFERENCES };
@@ -57,7 +252,26 @@ class AppStorage {
   savePreferences(newPrefs) {
     this.prefs = { ...this.prefs, ...newPrefs };
     try {
-      localStorage.setItem(STORAGE_KEYS.PREFS, JSON.stringify(this.prefs));
+      localStorage.setItem(this.getPrefKey(), JSON.stringify(this.prefs));
+
+      // Mettre à jour l'objet profil courant si nom, avatar ou niveau changent
+      const activeProf = this.getActiveProfile();
+      if (activeProf) {
+        let changed = false;
+        if (newPrefs.userName && activeProf.name !== newPrefs.userName) {
+          activeProf.name = newPrefs.userName;
+          changed = true;
+        }
+        if (newPrefs.userAvatar && activeProf.avatar !== newPrefs.userAvatar) {
+          activeProf.avatar = newPrefs.userAvatar;
+          changed = true;
+        }
+        if (newPrefs.userLevel && activeProf.level !== newPrefs.userLevel) {
+          activeProf.level = newPrefs.userLevel;
+          changed = true;
+        }
+        if (changed) this.saveProfiles();
+      }
     } catch (e) {
       console.error('Erreur sauvegarde prefs:', e);
     }
@@ -66,7 +280,7 @@ class AppStorage {
   // --- Historique des séances ---
   loadHistory() {
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.HISTORY);
+      const stored = localStorage.getItem(this.getHistoryKey());
       return stored ? JSON.parse(stored) : [];
     } catch (e) {
       console.warn('Erreur lecture historique:', e);
@@ -84,12 +298,13 @@ class AppStorage {
       rounds: sessionData.rounds || 2,
       completed: sessionData.completed !== undefined ? sessionData.completed : true,
       exercisesCount: sessionData.exercisesCount || 8,
+      level: sessionData.level || this.prefs.userLevel || 'intermediate',
       caloriesEstimated: Math.round(((sessionData.durationSeconds || 960) / 60) * 8.5)
     };
 
     this.history.unshift(session);
     try {
-      localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(this.history));
+      localStorage.setItem(this.getHistoryKey(), JSON.stringify(this.history));
     } catch (e) {
       console.error('Erreur enregistrement séance:', e);
     }
@@ -99,7 +314,7 @@ class AppStorage {
   // --- Badges ---
   loadBadges() {
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.BADGES);
+      const stored = localStorage.getItem(this.getBadgesKey());
       return stored ? JSON.parse(stored) : [];
     } catch (e) {
       return [];
@@ -110,7 +325,7 @@ class AppStorage {
     if (!this.badges.includes(badgeId)) {
       this.badges.push(badgeId);
       try {
-        localStorage.setItem(STORAGE_KEYS.BADGES, JSON.stringify(this.badges));
+        localStorage.setItem(this.getBadgesKey(), JSON.stringify(this.badges));
       } catch (e) {
         console.error('Erreur unlock badge:', e);
       }
@@ -224,7 +439,7 @@ class AppStorage {
   // --- Suivi du Poids (Module Prise / Perte de Poids) ---
   loadWeightHistory() {
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.WEIGHT);
+      const stored = localStorage.getItem(this.getWeightKey());
       const parsed = stored ? JSON.parse(stored) : [];
       // Tri chronologique croissant par date
       return parsed.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -264,7 +479,7 @@ class AppStorage {
     this.weightHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     try {
-      localStorage.setItem(STORAGE_KEYS.WEIGHT, JSON.stringify(this.weightHistory));
+      localStorage.setItem(this.getWeightKey(), JSON.stringify(this.weightHistory));
     } catch (e) {
       console.error('Erreur sauvegarde poids:', e);
     }
@@ -275,7 +490,7 @@ class AppStorage {
   deleteWeightEntry(id) {
     this.weightHistory = this.weightHistory.filter(w => w.id !== id);
     try {
-      localStorage.setItem(STORAGE_KEYS.WEIGHT, JSON.stringify(this.weightHistory));
+      localStorage.setItem(this.getWeightKey(), JSON.stringify(this.weightHistory));
     } catch (e) {
       console.error('Erreur suppression poids:', e);
     }
@@ -367,8 +582,10 @@ class AppStorage {
   exportJSON() {
     const backup = {
       app: 'FULL_BODY_17',
-      version: '2.0.0',
+      version: '2.4.0',
       exportedAt: new Date().toISOString(),
+      profiles: this.profiles,
+      activeProfileId: this.activeProfileId,
       prefs: this.prefs,
       history: this.history,
       badges: this.badges,
@@ -380,7 +597,6 @@ class AppStorage {
   importJSON(jsonString) {
     try {
       const data = JSON.parse(jsonString);
-      // Validation de la structure du fichier de sauvegarde
       if (!data || typeof data !== 'object' || !data.app || !data.history) {
         console.error('Import invalide : structure du fichier incorrecte.');
         return false;
@@ -394,17 +610,15 @@ class AppStorage {
         return false;
       }
 
-      // Validation de chaque session de l'historique
       const validHistory = data.history.filter(session => {
         return session
           && typeof session.id === 'string'
           && typeof session.date === 'string'
           && typeof session.durationSeconds === 'number'
           && session.durationSeconds >= 0
-          && session.durationSeconds <= 36000; // Max 10h
+          && session.durationSeconds <= 36000;
       });
 
-      // Validation de l'historique du poids
       let validWeightHistory = [];
       if (Array.isArray(data.weightHistory)) {
         validWeightHistory = data.weightHistory.filter(entry => {
@@ -416,6 +630,11 @@ class AppStorage {
         });
       }
 
+      if (Array.isArray(data.profiles) && data.profiles.length > 0) {
+        this.profiles = data.profiles;
+        this.saveProfiles();
+      }
+
       if (data.prefs && typeof data.prefs === 'object') {
         this.prefs = { ...DEFAULT_PREFERENCES, ...data.prefs };
       }
@@ -425,10 +644,10 @@ class AppStorage {
         this.badges = data.badges.filter(b => typeof b === 'string');
       }
 
-      localStorage.setItem(STORAGE_KEYS.PREFS, JSON.stringify(this.prefs));
-      localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(this.history));
-      localStorage.setItem(STORAGE_KEYS.BADGES, JSON.stringify(this.badges));
-      localStorage.setItem(STORAGE_KEYS.WEIGHT, JSON.stringify(this.weightHistory));
+      localStorage.setItem(this.getPrefKey(), JSON.stringify(this.prefs));
+      localStorage.setItem(this.getHistoryKey(), JSON.stringify(this.history));
+      localStorage.setItem(this.getBadgesKey(), JSON.stringify(this.badges));
+      localStorage.setItem(this.getWeightKey(), JSON.stringify(this.weightHistory));
       return true;
     } catch (e) {
       console.error('Erreur importation JSON:', e);
@@ -452,9 +671,8 @@ class AppStorage {
           updated = true;
         }
       });
-      // Tri par horodatage décroissant
       this.history.sort((a, b) => (b.timestamp || new Date(b.date).getTime()) - (a.timestamp || new Date(a.date).getTime()));
-      localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(this.history));
+      localStorage.setItem(this.getHistoryKey(), JSON.stringify(this.history));
     }
 
     // 2. Fusion des pesées
@@ -475,7 +693,7 @@ class AppStorage {
         }
       });
       this.weightHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
-      localStorage.setItem(STORAGE_KEYS.WEIGHT, JSON.stringify(this.weightHistory));
+      localStorage.setItem(this.getWeightKey(), JSON.stringify(this.weightHistory));
     }
 
     // 3. Fusion des badges
@@ -483,7 +701,7 @@ class AppStorage {
       const mergedBadges = Array.from(new Set([...this.badges, ...remoteData.badges]));
       if (mergedBadges.length !== this.badges.length) {
         this.badges = mergedBadges;
-        localStorage.setItem(STORAGE_KEYS.BADGES, JSON.stringify(this.badges));
+        localStorage.setItem(this.getBadgesKey(), JSON.stringify(this.badges));
         updated = true;
       }
     }
@@ -492,7 +710,7 @@ class AppStorage {
     if (remoteData.prefs && typeof remoteData.prefs === 'object') {
       const { syncUserId, syncUserPin, syncAutoEnabled, syncLastTime, ...cleanRemotePrefs } = remoteData.prefs;
       this.prefs = { ...this.prefs, ...cleanRemotePrefs };
-      localStorage.setItem(STORAGE_KEYS.PREFS, JSON.stringify(this.prefs));
+      localStorage.setItem(this.getPrefKey(), JSON.stringify(this.prefs));
       updated = true;
     }
 
@@ -500,10 +718,14 @@ class AppStorage {
   }
 
   clearAllData() {
+    localStorage.removeItem(STORAGE_KEYS.PROFILES);
+    localStorage.removeItem(STORAGE_KEYS.ACTIVE_PROFILE);
     localStorage.removeItem(STORAGE_KEYS.PREFS);
     localStorage.removeItem(STORAGE_KEYS.HISTORY);
     localStorage.removeItem(STORAGE_KEYS.BADGES);
     localStorage.removeItem(STORAGE_KEYS.WEIGHT);
+    this.profiles = [{ id: 'default', name: 'Moi', avatar: '🦁', level: 'intermediate', createdAt: Date.now() }];
+    this.activeProfileId = 'default';
     this.prefs = { ...DEFAULT_PREFERENCES };
     this.history = [];
     this.badges = [];

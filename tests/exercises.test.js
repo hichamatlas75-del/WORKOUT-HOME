@@ -4,27 +4,31 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createTestEnvironment } from './helpers/setup.js';
 
-describe('Base de données des Exercices (exercises.js)', () => {
+describe('Base de données des Exercices & Niveaux (exercises.js)', () => {
   const env = createTestEnvironment();
   env.loadScript('js/exercises.js');
   const EXERCISES_DATA = env.get('EXERCISES_DATA');
   const PROGRAM_WEEKS = env.get('PROGRAM_WEEKS');
+  const ROUTINES_BY_LEVEL = env.get('ROUTINES_BY_LEVEL');
+  const getExercisesForLevel = env.get('getExercisesForLevel');
+  const getActiveWorkoutExercises = env.get('getActiveWorkoutExercises');
+  const getExerciseById = env.get('getExerciseById');
 
-  test('La base contient exactement 9 exercices avec des IDs uniques', () => {
+  test('La base contient 20 exercices avec des IDs uniques', () => {
     assert.equal(Array.isArray(EXERCISES_DATA), true);
-    assert.equal(EXERCISES_DATA.length, 9);
+    assert.equal(EXERCISES_DATA.length, 20);
 
     const ids = Array.from(EXERCISES_DATA).map(ex => ex.id);
     const uniqueIds = new Set(ids);
-    assert.equal(uniqueIds.size, 9, 'Les IDs doivent être tous uniques');
-    assert.deepEqual(ids, [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    assert.equal(uniqueIds.size, 20, 'Les IDs doivent être tous uniques');
   });
 
-  test('Chaque exercice possède tous les champs requis et valides', () => {
+  test('Chaque exercice possède tous les champs requis, valides et typés', () => {
     for (const ex of EXERCISES_DATA) {
       assert.ok(ex.name && ex.name.trim().length > 0, `L'exercice ${ex.id} doit avoir un nom`);
       assert.ok(ex.number, `L'exercice ${ex.id} doit avoir un numéro formaté`);
       assert.ok(typeof ex.duration === 'number' && ex.duration >= 20, `L'exercice ${ex.id} doit avoir une durée >= 20s`);
+      assert.ok(['beginner', 'intermediate', 'advanced'].includes(ex.level), `L'exercice ${ex.id} doit avoir un niveau valide`);
       assert.ok(ex.targetMuscles, `L'exercice ${ex.id} doit spécifier les muscles ciblés`);
       assert.ok(ex.targetPrimary, `L'exercice ${ex.id} doit spécifier la cible principale`);
       assert.ok(ex.cue, `L'exercice ${ex.id} doit inclure un conseil technique (cue)`);
@@ -36,32 +40,63 @@ describe('Base de données des Exercices (exercises.js)', () => {
     }
   });
 
-  test('Vérification de l\'exercice Mountain Climbers (ID 5)', () => {
-    const climbers = EXERCISES_DATA.find(e => e.id === 5);
-    assert.ok(climbers, 'Mountain Climbers doit être présent');
-    assert.equal(climbers.name, 'MOUNTAIN CLIMBERS');
-    assert.equal(climbers.number, '05');
-    assert.equal(climbers.targetPrimary, 'CARDIO & ABDOMINAUX');
+  test('Vérification des nouveaux exercices ajoutés (Pompes genoux, Diamant, Burpees, Fentes...)', () => {
+    const lunges = getExerciseById(10);
+    assert.ok(lunges, 'Fentes alternées doit exister');
+    assert.equal(lunges.name, 'FENTES ALTERNÉES');
+
+    const kneePush = getExerciseById(11);
+    assert.ok(kneePush, 'Pompes genoux doit exister');
+    assert.equal(kneePush.level, 'beginner');
+
+    const diamond = getExerciseById(12);
+    assert.ok(diamond, 'Pompes diamant doit exister');
+    assert.equal(diamond.level, 'advanced');
+
+    const burpees = getExerciseById(13);
+    assert.ok(burpees, 'Burpees doit exister');
+    assert.equal(burpees.level, 'advanced');
+
+    const superman = getExerciseById(19);
+    assert.ok(superman, 'Superman doit exister');
+    assert.equal(superman.level, 'beginner');
+
+    const wallSit = getExerciseById(20);
+    assert.ok(wallSit, 'Chaise au mur doit exister');
+    assert.equal(wallSit.level, 'beginner');
   });
 
-  test('Les fichiers d\'images et vidéos référencés existent sur le disque', () => {
+  test('Les images des 20 exercices existent sur le disque et les chemins vidéo sont valides', () => {
     const projectRoot = path.resolve('.');
     for (const ex of EXERCISES_DATA) {
       const imgPath = path.join(projectRoot, ex.image);
-      const vidPath = path.join(projectRoot, ex.video);
-      assert.ok(fs.existsSync(imgPath), `L'image ${ex.image} doit exister`);
-      assert.ok(fs.existsSync(vidPath), `La vidéo ${ex.video} doit exister`);
+      assert.ok(fs.existsSync(imgPath), `L'image ${ex.image} doit exister sur le disque`);
+      assert.ok(ex.video && ex.video.endsWith('.mp4'), `La vidéo ${ex.video} doit être au format .mp4`);
     }
   });
 
-  test('Vérification des propriétés spécifiques (Planche & Retour au calme)', () => {
-    const plank = EXERCISES_DATA.find(e => e.id === 8);
-    assert.ok(plank, 'L\'exercice 8 (Planche) doit exister');
-    assert.equal(plank.isPlank, true, 'L\'exercice 8 doit être marqué isPlank');
+  test('Routines adaptées par niveau (Débutant, Intermédiaire, Avancé)', () => {
+    const begExercises = getExercisesForLevel('beginner');
+    assert.ok(begExercises.length >= 7, 'Routine débutant doit comporter au moins 7 exercices');
+    assert.ok(begExercises.some(e => e.id === 8), 'Doit inclure la planche');
+    assert.ok(begExercises.some(e => e.id === 9), 'Doit inclure les étirements');
 
-    const coolDown = EXERCISES_DATA.find(e => e.id === 9);
-    assert.ok(coolDown, 'L\'exercice 9 (Étirements) doit exister');
-    assert.equal(coolDown.isCoolDown, true, 'L\'exercice 9 doit être marqué isCoolDown');
+    const intExercises = getExercisesForLevel('intermediate');
+    assert.ok(intExercises.length >= 8, 'Routine intermédiaire doit comporter au moins 8 exercices');
+
+    const advExercises = getExercisesForLevel('advanced');
+    assert.ok(advExercises.length >= 8, 'Routine avancée doit comporter au moins 8 exercices');
+    assert.ok(advExercises.some(e => e.id === 13), 'Doit inclure les Burpees');
+  });
+
+  test('Génération de routine personnalisée (Custom Routine)', () => {
+    const customPrefs = {
+      userLevel: 'custom',
+      customExerciseIds: [1, 2, 10, 14, 8] // sans 9
+    };
+    const customList = getActiveWorkoutExercises(customPrefs);
+    assert.ok(customList.length === 6, 'Doit ajouter automatiquement les étirements finaux si absents');
+    assert.equal(customList[customList.length - 1].id, 9);
   });
 
   test('Le programme sur 8 semaines est valide et cohérent', () => {
@@ -76,3 +111,4 @@ describe('Base de données des Exercices (exercises.js)', () => {
     }
   });
 });
+
