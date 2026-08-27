@@ -228,12 +228,21 @@ function setUserLevel(level) {
 // --------------------------------------------------------------------------
 // MODALE DÉTAILLÉE D'UN EXERCICE
 // --------------------------------------------------------------------------
+let _activeModalExerciseId = null;
+
 function openExerciseModal(exerciseId) {
   const all = typeof window.getAllExercises === 'function' ? window.getAllExercises() : (window.EXERCISES_DATA || []);
   const ex = all.find(e => e.id === Number(exerciseId));
   if (!ex) return;
 
-  const prefs = window.appStorage.prefs;
+  _activeModalExerciseId = ex.id;
+  const prefs = window.appStorage ? window.appStorage.prefs : {};
+  const currentExercises = typeof window.getActiveWorkoutExercises === 'function'
+    ? window.getActiveWorkoutExercises(prefs)
+    : (window.EXERCISES_DATA || []);
+
+  const isIncluded = currentExercises.some(e => e.id === ex.id);
+
   const durationDisplay = ex.isPlank 
     ? (prefs.plankDuration == 120 ? '2 minutes' : `${prefs.plankDuration || 45} sec`)
     : `${ex.duration} sec`;
@@ -246,6 +255,7 @@ function openExerciseModal(exerciseId) {
   const breathingEl = document.getElementById('modal-ex-breathing');
   const adaptEl = document.getElementById('modal-ex-adapt');
   const svgEl = document.getElementById('modal-ex-svg-box');
+  const toggleBtn = document.getElementById('modal-ex-toggle-btn');
 
   if (titleEl) titleEl.textContent = ex.name;
   const totalExFormatted = String(EXERCISES_DATA.length).padStart(2, '0');
@@ -257,8 +267,63 @@ function openExerciseModal(exerciseId) {
   if (adaptEl) adaptEl.textContent = ex.adaptation;
   if (svgEl) svgEl.innerHTML = ex.illustrationHtml;
 
+  if (toggleBtn) {
+    if (ex.isCoolDown) {
+      toggleBtn.style.display = 'none';
+    } else {
+      toggleBtn.style.display = 'block';
+      toggleBtn.textContent = isIncluded ? "➖ Retirer du programme" : "➕ Ajouter au programme";
+      toggleBtn.style.borderColor = isIncluded ? "rgba(239, 68, 68, 0.4)" : "var(--accent-work)";
+      toggleBtn.style.color = isIncluded ? "var(--accent-danger)" : "var(--accent-work)";
+    }
+  }
+
   const backdrop = document.getElementById('exercise-modal-sheet');
   if (backdrop) backdrop.classList.add('active');
+}
+
+function toggleCurrentExerciseInWorkout() {
+  if (!_activeModalExerciseId || !window.appStorage) return;
+  const exId = _activeModalExerciseId;
+  const ex = (window.EXERCISES_DATA || []).find(e => e.id === exId);
+  if (!ex || ex.isCoolDown) return;
+
+  const prefs = window.appStorage.prefs;
+  const currentExercises = typeof window.getActiveWorkoutExercises === 'function'
+    ? window.getActiveWorkoutExercises(prefs)
+    : (window.EXERCISES_DATA || []);
+
+  let activeIds = currentExercises.filter(e => !e.isCoolDown).map(e => e.id);
+  const exists = activeIds.includes(exId);
+
+  if (exists) {
+    if (activeIds.length <= 1) {
+      if (typeof showToast === 'function') showToast("⚠️ Vous devez garder au moins 1 exercice dans votre séance.", true);
+      return;
+    }
+    activeIds = activeIds.filter(id => id !== exId);
+  } else {
+    activeIds.push(exId);
+  }
+
+  window.appStorage.savePreferences({
+    userLevel: 'custom',
+    customExerciseIds: activeIds
+  });
+
+  renderHomeExercisesList();
+
+  const toggleBtn = document.getElementById('modal-ex-toggle-btn');
+  if (toggleBtn) {
+    const isNowIncluded = !exists;
+    toggleBtn.textContent = isNowIncluded ? "➖ Retirer du programme" : "➕ Ajouter au programme";
+    toggleBtn.style.borderColor = isNowIncluded ? "rgba(239, 68, 68, 0.4)" : "var(--accent-work)";
+    toggleBtn.style.color = isNowIncluded ? "var(--accent-danger)" : "var(--accent-work)";
+  }
+
+  if (typeof showToast === 'function') {
+    showToast(exists ? `Exercice retiré du programme (${activeIds.length} restants)` : `✨ Exercice ajouté au programme (${activeIds.length} au total) !`);
+  }
 }
 
 function closeExerciseModal() {
@@ -1600,6 +1665,28 @@ function saveCustomWorkoutSelection() {
   }
 }
 
+function loadPresetIntoCustom(preset) {
+  if (preset === 'all') {
+    const all = typeof window.getAllExercises === 'function' ? window.getAllExercises() : (window.EXERCISES_DATA || []);
+    _customSelectedExerciseIds = all.filter(e => !e.isCoolDown).map(e => e.id);
+  } else {
+    const levelExercises = typeof window.getExercisesForLevel === 'function'
+      ? window.getExercisesForLevel(preset)
+      : (window.EXERCISES_DATA || []);
+    _customSelectedExerciseIds = levelExercises.filter(e => !e.isCoolDown).map(e => e.id);
+  }
+  renderCustomExercisesPickerList();
+  const names = {
+    beginner: '🟢 Débutant (6 ex)',
+    intermediate: '🟡 Intermédiaire (8 ex)',
+    advanced: '🔴 Avancé (8 ex)',
+    all: '⚡ Tous les 19 exercices'
+  };
+  if (typeof showToast === 'function') {
+    showToast(`Base ${names[preset] || preset} chargée dans votre sélection !`);
+  }
+}
+
 // Exports globaux
 window.openProfileDrawer = openProfileDrawer;
 window.closeProfileDrawer = closeProfileDrawer;
@@ -1622,6 +1709,8 @@ window.openCustomExercisesModal = openCustomExercisesModal;
 window.closeCustomExercisesModal = closeCustomExercisesModal;
 window.filterCustomExercisesList = filterCustomExercisesList;
 window.toggleCustomExerciseSelection = toggleCustomExerciseSelection;
+window.loadPresetIntoCustom = loadPresetIntoCustom;
+window.toggleCurrentExerciseInWorkout = toggleCurrentExerciseInWorkout;
 window.resetRoutineToActiveLevel = resetRoutineToActiveLevel;
 window.saveCustomWorkoutSelection = saveCustomWorkoutSelection;
 window.reInitAppState = reInitAppState;

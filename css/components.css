@@ -2534,6 +2534,39 @@ input:checked + .slider:before {
 }
 
 /* 4. Modale de Sélection Personnalisée d'Exercices */
+.custom-preset-quick-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+  scrollbar-width: none;
+}
+
+.custom-preset-quick-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.btn-preset-chip {
+  white-space: nowrap;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  color: var(--text-primary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.btn-preset-chip:hover {
+  border-color: var(--accent-work);
+  background: var(--accent-work-bg);
+  color: var(--accent-work);
+}
+
 .custom-ex-filter-bar {
   display: flex;
   gap: 6px;
