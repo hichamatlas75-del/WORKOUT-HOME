@@ -1114,50 +1114,38 @@
   </div>
 
   <!-- ====================================================================
-       MODALE DE SÉLECTION PERSONNALISÉE DES EXERCICES (ROUTINE SUR MESURE)
+       MODALE DE SÉLECTION PERSONNALISÉE & CLASSEMENT DES EXERCICES
        ==================================================================== -->
   <div id="custom-exercises-modal" class="confirm-modal-backdrop" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="custom-ex-title" onclick="if(event.target === this) closeCustomExercisesModal()">
-    <div class="confirm-modal-card" style="max-width: 480px; text-align: left; max-height: 88vh; display: flex; flex-direction: column;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+    <div class="confirm-modal-card" style="max-width: 480px; text-align: left; max-height: 90vh; display: flex; flex-direction: column;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
         <div>
-          <h3 class="confirm-modal-title" id="custom-ex-title" style="margin: 0; font-size: 1.15rem;">⚙️ Choisir mes Exercices</h3>
+          <h3 class="confirm-modal-title" id="custom-ex-title" style="margin: 0; font-size: 1.15rem;">⚙️ Choisir &amp; Classer mes Exercices</h3>
           <span style="font-size: 0.72rem; color: var(--text-secondary);" id="custom-ex-selection-summary">8 exercices sélectionnés</span>
         </div>
         <button class="icon-btn" onclick="closeCustomExercisesModal()" aria-label="Fermer">✕</button>
       </div>
 
-      <!-- Bases de routines rapides (Presets) -->
-      <div class="custom-preset-quick-bar" id="custom-preset-quick-bar">
-        <button type="button" class="btn-preset-chip" onclick="loadPresetIntoCustom('beginner')" title="Charger les 6 exercices du niveau Débutant">🟢 Base Débutant</button>
-        <button type="button" class="btn-preset-chip" onclick="loadPresetIntoCustom('intermediate')" title="Charger les 8 exercices du niveau Intermédiaire">🟡 Base Intermédiaire</button>
-        <button type="button" class="btn-preset-chip" onclick="loadPresetIntoCustom('advanced')" title="Charger les 8 exercices du niveau Avancé">🔴 Base Avancée</button>
-        <button type="button" class="btn-preset-chip" onclick="loadPresetIntoCustom('all')" title="Sélectionner tous les exercices du catalogue">⚡ Tout cocher</button>
+      <!-- Presets de départ simples -->
+      <div class="custom-preset-quick-bar" id="custom-preset-quick-bar" style="margin-bottom: 10px;">
+        <button type="button" class="btn-preset-chip" onclick="loadPresetIntoCustom('beginner')">🟢 Débutant</button>
+        <button type="button" class="btn-preset-chip" onclick="loadPresetIntoCustom('intermediate')">🟡 Intermédiaire</button>
+        <button type="button" class="btn-preset-chip" onclick="loadPresetIntoCustom('advanced')">🔴 Avancé</button>
+        <button type="button" class="btn-preset-chip" onclick="loadPresetIntoCustom('all')">⚡ Tout cocher</button>
       </div>
 
-      <!-- Filtres par catégorie / niveau -->
-      <div class="custom-ex-filter-bar" id="custom-ex-filter-bar">
-        <button class="filter-pill-opt active" data-filter="all" onclick="filterCustomExercisesList('all')">Tous (20)</button>
-        <button class="filter-pill-opt" data-filter="beginner" onclick="filterCustomExercisesList('beginner')">🟢 Débutant</button>
-        <button class="filter-pill-opt" data-filter="intermediate" onclick="filterCustomExercisesList('intermediate')">🟡 Intermédiaire</button>
-        <button class="filter-pill-opt" data-filter="advanced" onclick="filterCustomExercisesList('advanced')">🔴 Avancé</button>
-        <button class="filter-pill-opt" data-filter="cardio" onclick="filterCustomExercisesList('cardio')">🫀 Cardio</button>
-        <button class="filter-pill-opt" data-filter="core" onclick="filterCustomExercisesList('core')">🧱 Abdos</button>
-        <button class="filter-pill-opt" data-filter="upper_body" onclick="filterCustomExercisesList('upper_body')">💪 Haut</button>
-        <button class="filter-pill-opt" data-filter="lower_body" onclick="filterCustomExercisesList('lower_body')">🦵 Bas</button>
-      </div>
-
-      <!-- Liste scrollable des 20 exercices -->
+      <!-- Liste scrollable des exercices avec boutons de classement ⬆️ / ⬇️ -->
       <div class="exercise-picker-list" id="custom-exercise-picker-list">
         <!-- Rendu dynamique par js/app.js -->
       </div>
 
-      <!-- Actions de validation -->
-      <div style="display: flex; gap: 8px; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border-subtle);">
-        <button class="btn-secondary" style="padding: 10px; font-size: 0.78rem; width: auto;" onclick="resetRoutineToActiveLevel()" title="Rétablir les exercices par défaut du niveau">
+      <!-- Action de validation principale -->
+      <div style="display: flex; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-subtle);">
+        <button class="btn-secondary" style="padding: 10px; font-size: 0.78rem; width: auto;" onclick="resetRoutineToActiveLevel()" title="Rétablir le niveau sélectionné">
           ↺ Réinitialiser
         </button>
-        <button class="btn-primary" style="flex: 1; padding: 10px; font-size: 0.85rem;" onclick="saveCustomWorkoutSelection()">
-          💾 Valider ma Routine
+        <button class="btn-primary" style="flex: 1; padding: 12px; font-size: 0.9rem; font-weight: 800;" onclick="saveCustomWorkoutSelection()">
+          💾 Valider mon programme
         </button>
       </div>
     </div>

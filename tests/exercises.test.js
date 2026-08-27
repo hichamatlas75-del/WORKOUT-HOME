@@ -89,14 +89,19 @@ describe('Base de données des Exercices & Niveaux (exercises.js)', () => {
     assert.ok(advExercises.some(e => e.id === 13), 'Doit inclure les Burpees');
   });
 
-  test('Génération de routine personnalisée (Custom Routine)', () => {
+  test('Génération de routine personnalisée et respect de l ordre (Custom Routine & Ordering)', () => {
     const customPrefs = {
       userLevel: 'custom',
-      customExerciseIds: [1, 2, 10, 14, 8] // sans 9
+      customExerciseIds: [14, 10, 2, 1, 8] // ordre personnalisé
     };
     const customList = getActiveWorkoutExercises(customPrefs);
-    assert.ok(customList.length === 6, 'Doit ajouter automatiquement les étirements finaux si absents');
-    assert.equal(customList[customList.length - 1].id, 9);
+    assert.equal(customList.length, 6, 'Doit comporter les 5 exercices choisis + étirements');
+    assert.equal(customList[0].id, 14, 'Le premier exercice doit être Russian Twists (14)');
+    assert.equal(customList[1].id, 10, 'Le deuxième exercice doit être Fentes (10)');
+    assert.equal(customList[2].id, 2, 'Le troisième exercice doit être Squats (2)');
+    assert.equal(customList[3].id, 1, 'Le quatrième exercice doit être Jumping Jack (1)');
+    assert.equal(customList[4].id, 8, 'Le cinquième exercice doit être Planche (8)');
+    assert.equal(customList[5].id, 9, 'Le dernier exercice doit être Étirements (9)');
   });
 
   test('Le programme sur 8 semaines est valide et cohérent', () => {

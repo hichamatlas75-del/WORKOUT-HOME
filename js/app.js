@@ -1521,10 +1521,9 @@ function reInitAppState() {
 }
 
 // --------------------------------------------------------------------------
-// SÉLECTION PERSONNALISÉE DES EXERCICES (ROUTINE SUR MESURE)
+// SÉLECTION PERSONNALISÉE ET CLASSEMENT DES EXERCICES
 // --------------------------------------------------------------------------
 let _customSelectedExerciseIds = [];
-let _activePickerFilter = 'all';
 
 function openCustomExercisesModal() {
   const modal = document.getElementById('custom-exercises-modal');
@@ -1540,11 +1539,6 @@ function openCustomExercisesModal() {
     _customSelectedExerciseIds = currentExercises.filter(e => !e.isCoolDown).map(e => e.id);
   }
 
-  _activePickerFilter = 'all';
-  document.querySelectorAll('#custom-ex-filter-bar .filter-pill-opt').forEach(btn => {
-    btn.classList.toggle('active', btn.getAttribute('data-filter') === 'all');
-  });
-
   renderCustomExercisesPickerList();
   modal.style.display = 'flex';
   document.body.style.overflow = 'hidden';
@@ -1556,14 +1550,6 @@ function closeCustomExercisesModal() {
   document.body.style.overflow = '';
 }
 
-function filterCustomExercisesList(filter) {
-  _activePickerFilter = filter;
-  document.querySelectorAll('#custom-ex-filter-bar .filter-pill-opt').forEach(btn => {
-    btn.classList.toggle('active', btn.getAttribute('data-filter') === filter);
-  });
-  renderCustomExercisesPickerList();
-}
-
 function renderCustomExercisesPickerList() {
   const container = document.getElementById('custom-exercise-picker-list');
   const summaryEl = document.getElementById('custom-ex-selection-summary');
@@ -1572,38 +1558,38 @@ function renderCustomExercisesPickerList() {
   const allExercises = typeof window.getAllExercises === 'function' ? window.getAllExercises() : (window.EXERCISES_DATA || []);
   const pickerCandidates = allExercises.filter(e => !e.isCoolDown);
 
-  let filtered = pickerCandidates;
-  if (_activePickerFilter !== 'all') {
-    if (['beginner', 'intermediate', 'advanced'].includes(_activePickerFilter)) {
-      filtered = pickerCandidates.filter(e => e.level === _activePickerFilter);
-    } else {
-      filtered = pickerCandidates.filter(e => e.category === _activePickerFilter);
-    }
-  }
+  // Séparer les exercices sélectionnés (dans leur ordre exact) et les non sélectionnés
+  const selected = _customSelectedExerciseIds.map(id => pickerCandidates.find(e => e.id === id)).filter(Boolean);
+  const unselected = pickerCandidates.filter(e => !_customSelectedExerciseIds.includes(e.id));
+  const listToRender = [...selected, ...unselected];
 
   if (summaryEl) {
-    summaryEl.textContent = `${_customSelectedExerciseIds.length} exercice(s) dans le circuit (+ Étirements)`;
+    summaryEl.textContent = `${_customSelectedExerciseIds.length} exercice(s) sélectionnés dans l'ordre`;
   }
 
-  container.innerHTML = filtered.map(ex => {
+  container.innerHTML = listToRender.map(ex => {
     const isSelected = _customSelectedExerciseIds.includes(ex.id);
-    const levelClass = ex.level || 'intermediate';
+    const orderIndex = _customSelectedExerciseIds.indexOf(ex.id);
+    const isFirst = orderIndex === 0;
+    const isLast = orderIndex === _customSelectedExerciseIds.length - 1;
 
     return `
-      <div class="exercise-picker-item ${isSelected ? 'selected' : ''}" data-ex-id="${ex.id}" onclick="toggleCustomExerciseSelection(${ex.id})">
-        <div class="picker-item-left">
+      <div class="exercise-picker-item ${isSelected ? 'selected' : ''}" data-ex-id="${ex.id}">
+        <div class="picker-item-left" onclick="toggleCustomExerciseSelection(${ex.id})">
+          <span class="picker-item-rank">${isSelected ? '#' + (orderIndex + 1) : '—'}</span>
           <input type="checkbox" class="picker-item-checkbox" ${isSelected ? 'checked' : ''} tabindex="-1">
           <div class="picker-item-info">
             <div class="picker-item-name">${ex.number}. ${ex.name}</div>
-            <div class="picker-item-sub">${ex.subtitle}</div>
-            <div class="picker-item-tags">
-              <span class="badge-tag-level ${levelClass}">${ex.levelLabel || 'Standard'}</span>
-              <span class="badge-tag-level" style="background: rgba(255,255,255,0.06); color: var(--text-secondary);">${ex.targetPrimary}</span>
-            </div>
+            <div class="picker-item-sub">${ex.targetPrimary || ex.targetMuscles} • ${ex.duration}s</div>
           </div>
         </div>
-        <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted);">
-          ${ex.duration}s
+        <div class="picker-item-reorder">
+          <button type="button" class="btn-reorder" onclick="event.stopPropagation(); moveCustomExercise(${ex.id}, -1)" title="Monter dans le programme" ${!isSelected || isFirst ? 'disabled' : ''}>
+            ⬆️
+          </button>
+          <button type="button" class="btn-reorder" onclick="event.stopPropagation(); moveCustomExercise(${ex.id}, 1)" title="Descendre dans le programme" ${!isSelected || isLast ? 'disabled' : ''}>
+            ⬇️
+          </button>
         </div>
       </div>
     `;
@@ -1622,6 +1608,22 @@ function toggleCustomExerciseSelection(exerciseId) {
   } else {
     _customSelectedExerciseIds.push(id);
   }
+  renderCustomExercisesPickerList();
+}
+
+function moveCustomExercise(exerciseId, direction) {
+  const id = Number(exerciseId);
+  const index = _customSelectedExerciseIds.indexOf(id);
+  if (index < 0) return;
+
+  const targetIndex = index + direction;
+  if (targetIndex < 0 || targetIndex >= _customSelectedExerciseIds.length) return;
+
+  // Intervertir les deux exercices
+  const temp = _customSelectedExerciseIds[index];
+  _customSelectedExerciseIds[index] = _customSelectedExerciseIds[targetIndex];
+  _customSelectedExerciseIds[targetIndex] = temp;
+
   renderCustomExercisesPickerList();
 }
 
@@ -1661,7 +1663,7 @@ function saveCustomWorkoutSelection() {
     updateProfileDrawerData();
   }
   if (typeof showToast === 'function') {
-    showToast(`✨ Routine sur-mesure validée (${cleanIds.length} exercices) !`);
+    showToast(`✨ Programme personnalisé validé (${cleanIds.length} exercices) !`);
   }
 }
 
@@ -1683,7 +1685,7 @@ function loadPresetIntoCustom(preset) {
     all: '⚡ Tous les 19 exercices'
   };
   if (typeof showToast === 'function') {
-    showToast(`Base ${names[preset] || preset} chargée dans votre sélection !`);
+    showToast(`Base ${names[preset] || preset} chargée !`);
   }
 }
 
@@ -1707,8 +1709,8 @@ window.switchUserProfile = switchUserProfile;
 window.deleteUserProfile = deleteUserProfile;
 window.openCustomExercisesModal = openCustomExercisesModal;
 window.closeCustomExercisesModal = closeCustomExercisesModal;
-window.filterCustomExercisesList = filterCustomExercisesList;
 window.toggleCustomExerciseSelection = toggleCustomExerciseSelection;
+window.moveCustomExercise = moveCustomExercise;
 window.loadPresetIntoCustom = loadPresetIntoCustom;
 window.toggleCurrentExerciseInWorkout = toggleCurrentExerciseInWorkout;
 window.resetRoutineToActiveLevel = resetRoutineToActiveLevel;
