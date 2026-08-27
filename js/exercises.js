@@ -486,18 +486,17 @@ function getExercisesForLevel(level = 'intermediate') {
 function getActiveWorkoutExercises(prefs = {}) {
   const userLevel = prefs.userLevel || 'intermediate';
   if (userLevel === 'custom' && Array.isArray(prefs.customExerciseIds) && prefs.customExerciseIds.length > 0) {
-    let exercises = prefs.customExerciseIds.map(id => getExerciseById(id)).filter(Boolean);
-    // S'assurer qu'il y a au moins 1 exercice et que les étirements (ID 9) sont inclus à la fin si non présents
-    if (exercises.length === 0) {
-      exercises = getExercisesForLevel('intermediate');
-    } else {
-      const hasCoolDown = exercises.some(e => e.isCoolDown);
-      if (!hasCoolDown) {
-        const coolDown = getExerciseById(9);
-        if (coolDown) exercises.push(coolDown);
-      }
+    const list = prefs.customExerciseIds.map(id => getExerciseById(id)).filter(Boolean);
+    if (list.length === 0) {
+      return getExercisesForLevel('intermediate');
     }
-    return exercises;
+    // Isoler le circuit principal et toujours positionner le retour au calme (ID 9) en étape finale
+    const mainCircuit = list.filter(e => !e.isCoolDown);
+    const coolDown = getExerciseById(9);
+    if (coolDown) {
+      return [...mainCircuit, coolDown];
+    }
+    return mainCircuit;
   }
   return getExercisesForLevel(userLevel);
 }

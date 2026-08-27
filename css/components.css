@@ -2410,8 +2410,14 @@ input:checked + .slider:before {
 
 .level-pills-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+@media (max-width: 360px) {
+  .level-pills-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .level-pill-btn {
@@ -2603,6 +2609,7 @@ input:checked + .slider:before {
   border-radius: 6px;
   accent-color: var(--accent-work);
   cursor: pointer;
+  pointer-events: none;
 }
 
 .picker-item-info {

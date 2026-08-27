@@ -131,12 +131,18 @@ function renderHomeExercisesList() {
   const userAvatarEl = document.getElementById('home-user-avatar');
   const userNameEl = document.getElementById('home-user-name');
   const userLevelBadge = document.getElementById('home-user-level-badge');
+  const mainCount = activeExercises.filter(e => !e.isCoolDown).length;
 
   if (userAvatarEl && activeProf) userAvatarEl.textContent = activeProf.avatar || '🦁';
   if (userNameEl && activeProf) userNameEl.textContent = activeProf.name || 'Moi';
   if (userLevelBadge) {
     const level = prefs.userLevel || 'intermediate';
-    const levelNames = { beginner: '🟢 Débutant', intermediate: '🟡 Intermédiaire', advanced: '🔴 Avancé', custom: '✨ Sur-mesure' };
+    const levelNames = {
+      beginner: '🟢 Débutant',
+      intermediate: '🟡 Intermédiaire',
+      advanced: '🔴 Avancé',
+      custom: `✨ Sur-mesure (${mainCount} ex)`
+    };
     userLevelBadge.textContent = levelNames[level] || 'Intermédiaire';
   }
 
@@ -147,7 +153,6 @@ function renderHomeExercisesList() {
   const durationPill = document.getElementById('home-duration-pill');
   const routineSubtitle = document.getElementById('home-routine-subtitle');
 
-  const mainCount = activeExercises.filter(e => !e.isCoolDown).length;
   const rounds = prefs.rounds || 3;
   const workSec = prefs.workDuration || 40;
   const restSec = prefs.restDuration || 20;
@@ -158,7 +163,9 @@ function renderHomeExercisesList() {
   if (specWorkRest) specWorkRest.textContent = `${workSec}s / ${restSec}s`;
   if (durationPill) durationPill.textContent = `${estMinutes - 2}-${estMinutes + 2} min`;
   if (routineSubtitle) {
-    routineSubtitle.textContent = `${mainCount} exercices (${rounds} séries) + Étirements (1 série finale)`;
+    const customPrefix = (prefs.userLevel === 'custom') ? '✨ ' : '';
+    const customSuffix = (prefs.userLevel === 'custom') ? ' sur-mesure' : '';
+    routineSubtitle.textContent = `${customPrefix}${mainCount} exercices${customSuffix} (${rounds} séries) + Étirements (1 série finale)`;
   }
 
   // 3. Mettre à jour les boutons de niveau actif
@@ -203,6 +210,10 @@ function renderHomeExercisesList() {
 
 function setUserLevel(level) {
   if (!window.appStorage) return;
+  if (level === 'custom') {
+    openCustomExercisesModal();
+    return;
+  }
   window.appStorage.savePreferences({
     userLevel: level,
     customExerciseIds: null
@@ -1455,12 +1466,19 @@ function openCustomExercisesModal() {
   if (!modal || !window.appStorage) return;
 
   const prefs = window.appStorage.prefs;
-  const currentExercises = typeof window.getActiveWorkoutExercises === 'function'
-    ? window.getActiveWorkoutExercises(prefs)
-    : (window.EXERCISES_DATA || []);
+  if (Array.isArray(prefs.customExerciseIds) && prefs.customExerciseIds.length > 0) {
+    _customSelectedExerciseIds = [...prefs.customExerciseIds].filter(id => id !== 9);
+  } else {
+    const currentExercises = typeof window.getActiveWorkoutExercises === 'function'
+      ? window.getActiveWorkoutExercises(prefs)
+      : (window.EXERCISES_DATA || []);
+    _customSelectedExerciseIds = currentExercises.filter(e => !e.isCoolDown).map(e => e.id);
+  }
 
-  _customSelectedExerciseIds = currentExercises.map(e => e.id);
   _activePickerFilter = 'all';
+  document.querySelectorAll('#custom-ex-filter-bar .filter-pill-opt').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-filter') === 'all');
+  });
 
   renderCustomExercisesPickerList();
   modal.style.display = 'flex';
@@ -1487,18 +1505,19 @@ function renderCustomExercisesPickerList() {
   if (!container) return;
 
   const allExercises = typeof window.getAllExercises === 'function' ? window.getAllExercises() : (window.EXERCISES_DATA || []);
-  
-  let filtered = allExercises;
+  const pickerCandidates = allExercises.filter(e => !e.isCoolDown);
+
+  let filtered = pickerCandidates;
   if (_activePickerFilter !== 'all') {
     if (['beginner', 'intermediate', 'advanced'].includes(_activePickerFilter)) {
-      filtered = allExercises.filter(e => e.level === _activePickerFilter);
+      filtered = pickerCandidates.filter(e => e.level === _activePickerFilter);
     } else {
-      filtered = allExercises.filter(e => e.category === _activePickerFilter);
+      filtered = pickerCandidates.filter(e => e.category === _activePickerFilter);
     }
   }
 
   if (summaryEl) {
-    summaryEl.textContent = `${_customSelectedExerciseIds.length} exercice(s) sélectionné(s)`;
+    summaryEl.textContent = `${_customSelectedExerciseIds.length} exercice(s) dans le circuit (+ Étirements)`;
   }
 
   container.innerHTML = filtered.map(ex => {
@@ -1506,9 +1525,9 @@ function renderCustomExercisesPickerList() {
     const levelClass = ex.level || 'intermediate';
 
     return `
-      <div class="exercise-picker-item ${isSelected ? 'selected' : ''}" onclick="toggleCustomExerciseSelection(${ex.id})">
+      <div class="exercise-picker-item ${isSelected ? 'selected' : ''}" data-ex-id="${ex.id}" onclick="toggleCustomExerciseSelection(${ex.id})">
         <div class="picker-item-left">
-          <input type="checkbox" class="picker-item-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleCustomExerciseSelection(${ex.id})">
+          <input type="checkbox" class="picker-item-checkbox" ${isSelected ? 'checked' : ''} tabindex="-1">
           <div class="picker-item-info">
             <div class="picker-item-name">${ex.number}. ${ex.name}</div>
             <div class="picker-item-sub">${ex.subtitle}</div>
@@ -1548,7 +1567,7 @@ function resetRoutineToActiveLevel() {
     ? window.getExercisesForLevel(currentLevel)
     : (window.EXERCISES_DATA || []);
 
-  _customSelectedExerciseIds = levelExercises.map(e => e.id);
+  _customSelectedExerciseIds = levelExercises.filter(e => !e.isCoolDown).map(e => e.id);
   renderCustomExercisesPickerList();
   if (typeof showToast === 'function') showToast(`Réinitialisé sur le niveau ${currentLevel}`);
 }
@@ -1559,15 +1578,25 @@ function saveCustomWorkoutSelection() {
     return;
   }
 
+  const cleanIds = [...new Set(_customSelectedExerciseIds.map(Number))].filter(id => id >= 1 && id <= 20 && id !== 9);
+
+  if (cleanIds.length === 0) {
+    if (typeof showToast === 'function') showToast("⚠️ Veuillez sélectionner au moins 1 exercice.", true);
+    return;
+  }
+
   window.appStorage.savePreferences({
     userLevel: 'custom',
-    customExerciseIds: [..._customSelectedExerciseIds]
+    customExerciseIds: cleanIds
   });
 
   closeCustomExercisesModal();
   renderHomeExercisesList();
+  if (typeof updateProfileDrawerData === 'function') {
+    updateProfileDrawerData();
+  }
   if (typeof showToast === 'function') {
-    showToast(`✨ Routine sur-mesure enregistrée (${_customSelectedExerciseIds.length} exercices) !`);
+    showToast(`✨ Routine sur-mesure validée (${cleanIds.length} exercices) !`);
   }
 }
 
