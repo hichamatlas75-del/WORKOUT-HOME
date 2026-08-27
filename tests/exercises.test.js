@@ -83,6 +83,7 @@ describe('Base de données des Exercices & Niveaux (exercises.js)', () => {
 
     const intExercises = getExercisesForLevel('intermediate');
     assert.ok(intExercises.length >= 8, 'Routine intermédiaire doit comporter au moins 8 exercices');
+    assert.ok(intExercises.some(e => e.id === 18), 'Routine intermédiaire doit inclure les Montées de genoux (18)');
 
     const advExercises = getExercisesForLevel('advanced');
     assert.ok(advExercises.length >= 8, 'Routine avancée doit comporter au moins 8 exercices');
