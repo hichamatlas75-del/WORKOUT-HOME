@@ -725,7 +725,11 @@ class AppStorage {
     // 4. Fusion des réglages (sauf identifiants de synchro locaux si déjà présents)
     if (remoteData.prefs && typeof remoteData.prefs === 'object') {
       const { syncUserId, syncUserPin, syncAutoEnabled, syncLastTime, ...cleanRemotePrefs } = remoteData.prefs;
+      if (cleanRemotePrefs.workDuration === 40) cleanRemotePrefs.workDuration = 30;
+      if (cleanRemotePrefs.restDuration === 20) cleanRemotePrefs.restDuration = 10;
       this.prefs = { ...this.prefs, ...cleanRemotePrefs };
+      if (this.prefs.workDuration === 40) this.prefs.workDuration = 30;
+      if (this.prefs.restDuration === 20) this.prefs.restDuration = 10;
       localStorage.setItem(this.getPrefKey(), JSON.stringify(this.prefs));
       updated = true;
     }

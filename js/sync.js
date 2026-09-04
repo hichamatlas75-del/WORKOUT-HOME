@@ -259,15 +259,22 @@ class ProfileSyncManager {
         }
       }
 
-      // 2. Fusionner avec les données locales
+      // 2. Fusionner avec les données locales (avec migration 30s/10s si anciennes valeurs)
       if (remoteData) {
+        if (remoteData.prefs) {
+          if (remoteData.prefs.workDuration === 40) remoteData.prefs.workDuration = 30;
+          if (remoteData.prefs.restDuration === 20) remoteData.prefs.restDuration = 10;
+        }
         window.appStorage.mergeData(remoteData);
       }
+
+      if (window.appStorage.prefs.workDuration === 40) window.appStorage.prefs.workDuration = 30;
+      if (window.appStorage.prefs.restDuration === 20) window.appStorage.prefs.restDuration = 10;
 
       // 3. Préparer le paquet complet
       const fullLocalData = {
         app: 'FULL_BODY_17',
-        version: '2.0.0',
+        version: '2.3.7',
         syncedAt: Date.now(),
         prefs: window.appStorage.prefs,
         history: window.appStorage.history,
@@ -325,7 +332,35 @@ class ProfileSyncManager {
       }
 
       const remoteData = await this.decryptPayload(remoteEnvelope, config.userId, config.password);
+      if (remoteData && remoteData.prefs) {
+        if (remoteData.prefs.workDuration === 40) remoteData.prefs.workDuration = 30;
+        if (remoteData.prefs.restDuration === 20) remoteData.prefs.restDuration = 10;
+      }
       const hasChanges = window.appStorage.mergeData(remoteData);
+      if (window.appStorage.prefs.workDuration === 40) window.appStorage.prefs.workDuration = 30;
+      if (window.appStorage.prefs.restDuration === 20) window.appStorage.prefs.restDuration = 10;
+      window.appStorage.savePreferences({
+        workDuration: window.appStorage.prefs.workDuration || 30,
+        restDuration: window.appStorage.prefs.restDuration || 10
+      });
+
+      // Mettre à jour immédiatement la sauvegarde cloud pour écraser l'ancien 40/20 sur le serveur
+      try {
+        const fullLocalData = {
+          app: 'FULL_BODY_17',
+          version: '2.3.7',
+          syncedAt: Date.now(),
+          prefs: window.appStorage.prefs,
+          history: window.appStorage.history,
+          badges: window.appStorage.badges,
+          weightHistory: window.appStorage.weightHistory
+        };
+        const envelope = await this.encryptPayload(fullLocalData, config.userId, config.password);
+        await cloudSyncRequest(userHash, 'PUT', envelope);
+      } catch (cloudErr) {
+        console.warn('Erreur mise à jour cloud:', cloudErr);
+      }
+
       const nowStr = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
       window.appStorage.savePreferences({ syncLastTime: nowStr });
 
