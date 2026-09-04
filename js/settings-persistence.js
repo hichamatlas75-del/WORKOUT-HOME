@@ -138,8 +138,8 @@ class SettingsPersistenceManager {
 
       const saveSuccess = window.appStorage.savePreferences(newPrefs);
 
-      if (!saveSuccess) {
-        throw new Error('savePreferences returned false or undefined');
+      if (saveSuccess === false) {
+        throw new Error('localStorage.setItem failed');
       }
 
       // Update UI

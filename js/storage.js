@@ -272,8 +272,10 @@ class AppStorage {
         }
         if (changed) this.saveProfiles();
       }
+      return true;
     } catch (e) {
       console.error('Erreur sauvegarde prefs:', e);
+      return false;
     }
   }
 
