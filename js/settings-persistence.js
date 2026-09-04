@@ -18,9 +18,15 @@ class SettingsPersistenceManager {
    * @private
    */
   initSettingsListeners() {
-    document.addEventListener('DOMContentLoaded', () => {
+    // Handle both cases: script loads before or after DOMContentLoaded
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => this._attachListeners(), 100);
+      });
+    } else {
+      // DOM already loaded, attach immediately
       setTimeout(() => this._attachListeners(), 100);
-    });
+    }
   }
 
   /**
@@ -69,6 +75,12 @@ class SettingsPersistenceManager {
         this._markFormModified(true);
       });
     });
+
+    // Initialize lastSavedValues with current form state
+    const result = this._collectFormValues();
+    if (result.success) {
+      this.lastSavedValues = { ...result.prefs };
+    }
 
     console.log('[Settings] Event listeners attached to all form elements');
   }
