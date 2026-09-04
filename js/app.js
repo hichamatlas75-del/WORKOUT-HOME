@@ -581,11 +581,9 @@ function initSettingsAutoSave() {
     el.addEventListener('change', () => {
       saveSettings({ silent: true });
     });
-    if (el.type === 'number' || el.type === 'range') {
-      el.addEventListener('input', () => {
-        saveSettings({ silent: true });
-      });
-    }
+    el.addEventListener('blur', () => {
+      saveSettings({ silent: true });
+    });
   });
 
   _settingsListenersAttached = true;

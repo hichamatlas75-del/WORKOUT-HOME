@@ -23,6 +23,7 @@ class PWAManager {
         navigator.serviceWorker.register('./service-worker.js')
           .then((registration) => {
             console.log('[PWA] ServiceWorker actif:', registration.scope);
+            try { registration.update(); } catch (e) {}
           })
           .catch((err) => {
             console.warn('[PWA] Erreur ServiceWorker:', err);
