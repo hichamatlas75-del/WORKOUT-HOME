@@ -26,16 +26,20 @@ describe('Gestionnaire de Stockage Local (storage.js)', () => {
   });
 
   test('Sauvegarde et persistance des préférences', () => {
-    storage.savePreferences({ theme: 'light', rounds: 2, targetTime: '18:30' });
+    storage.savePreferences({ theme: 'light', rounds: 2, targetTime: '18:30', workDuration: 45, restDuration: 15 });
     assert.equal(storage.prefs.theme, 'light');
     assert.equal(storage.prefs.rounds, 2);
     assert.equal(storage.prefs.targetTime, '18:30');
+    assert.equal(storage.prefs.workDuration, 45);
+    assert.equal(storage.prefs.restDuration, 15);
 
     // Vérifier rechargement depuis localStorage
     const storage2 = new AppStorage();
     assert.equal(storage2.prefs.theme, 'light');
     assert.equal(storage2.prefs.rounds, 2);
     assert.equal(storage2.prefs.targetTime, '18:30');
+    assert.equal(storage2.prefs.workDuration, 45);
+    assert.equal(storage2.prefs.restDuration, 15);
   });
 
   test('Enregistrement d\'une séance d\'entraînement et estimation des calories', () => {

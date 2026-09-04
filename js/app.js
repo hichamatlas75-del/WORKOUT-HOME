@@ -179,7 +179,7 @@ function renderHomeExercisesList() {
   container.innerHTML = activeExercises.map((ex, index) => {
     const durationDisplay = ex.isPlank 
       ? (prefs.plankDuration == 120 ? '2 min' : `${prefs.plankDuration || 45}s`)
-      : `${ex.duration}s`;
+      : `${prefs.workDuration || ex.duration || 40}s`;
 
     const numDisplay = String(index + 1).padStart(2, '0');
     const levelClass = ex.level || 'intermediate';
@@ -245,7 +245,7 @@ function openExerciseModal(exerciseId) {
 
   const durationDisplay = ex.isPlank 
     ? (prefs.plankDuration == 120 ? '2 minutes' : `${prefs.plankDuration || 45} sec`)
-    : `${ex.duration} sec`;
+    : `${prefs.workDuration || ex.duration || 40} sec`;
 
   const titleEl = document.getElementById('modal-ex-title');
   const numberEl = document.getElementById('modal-ex-num');
@@ -365,6 +365,10 @@ function switchTab(tabName) {
     window.dashboardManager.renderDashboard();
   } else if (tabName === 'badges') {
     window.motivationManager.renderBadgesView();
+  } else if (tabName === 'settings') {
+    loadSettingsForm();
+  } else if (tabName === 'home') {
+    renderHomeExercisesList();
   }
 }
 
@@ -382,10 +386,11 @@ function startWorkoutSession() {
   // Intercepter le bouton Retour Android
   history.pushState({ workout: true }, '', '');
 
+  const prefs = (window.appStorage && window.appStorage.prefs) ? window.appStorage.prefs : {};
   window.workoutEngine.startWorkout({
-    rounds: parseInt(window.appStorage.prefs.rounds) || 3,
-    workDuration: Math.min(90, Math.max(20, parseInt(window.appStorage.prefs.workDuration) || 40)),
-    restDuration: Math.min(60, Math.max(10, parseInt(window.appStorage.prefs.restDuration) || 20))
+    rounds: parseInt(prefs.rounds, 10) || 3,
+    workDuration: Math.min(300, Math.max(5, parseInt(prefs.workDuration, 10) || 40)),
+    restDuration: Math.min(300, Math.max(0, parseInt(prefs.restDuration, 10) !== undefined && !isNaN(parseInt(prefs.restDuration, 10)) ? parseInt(prefs.restDuration, 10) : 20))
   });
 }
 
@@ -543,8 +548,51 @@ function closeCelebration() {
 // --------------------------------------------------------------------------
 // GESTION DU FORMULAIRE DE RÉGLAGES
 // --------------------------------------------------------------------------
+// GESTION DU FORMULAIRE DE RÉGLAGES & AUTO-SAUVEGARDE
+// --------------------------------------------------------------------------
+let _settingsListenersAttached = false;
+
+function initSettingsAutoSave() {
+  if (_settingsListenersAttached) return;
+  const settingIds = [
+    'setting-target-time',
+    'setting-rounds',
+    'setting-plank-duration',
+    'setting-work-duration',
+    'setting-rest-duration',
+    'setting-sound',
+    'setting-voice',
+    'setting-music',
+    'setting-music-style',
+    'setting-music-volume',
+    'setting-reminder',
+    'setting-theme',
+    'setting-initial-weight',
+    'setting-target-weight',
+    'setting-height-cm',
+    'sync-user-id',
+    'sync-user-pin',
+    'sync-auto-enabled'
+  ];
+
+  settingIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('change', () => {
+      saveSettings({ silent: true });
+    });
+    if (el.type === 'number' || el.type === 'range') {
+      el.addEventListener('input', () => {
+        saveSettings({ silent: true });
+      });
+    }
+  });
+
+  _settingsListenersAttached = true;
+}
+
 function loadSettingsForm() {
-  const prefs = window.appStorage.prefs;
+  const prefs = (window.appStorage && window.appStorage.prefs) ? window.appStorage.prefs : {};
 
   const timeInput = document.getElementById('setting-target-time');
   const roundsInput = document.getElementById('setting-rounds');
@@ -569,8 +617,8 @@ function loadSettingsForm() {
   if (timeInput) timeInput.value = prefs.targetTime || "17:00";
   if (roundsInput) roundsInput.value = prefs.rounds || 3;
   if (plankInput) plankInput.value = prefs.plankDuration || 45;
-  if (workInput) workInput.value = prefs.workDuration || 40;
-  if (restInput) restInput.value = prefs.restDuration || 20;
+  if (workInput) workInput.value = (prefs.workDuration !== undefined) ? prefs.workDuration : 40;
+  if (restInput) restInput.value = (prefs.restDuration !== undefined) ? prefs.restDuration : 20;
   if (soundSwitch) soundSwitch.checked = prefs.soundEnabled !== false;
   if (voiceSwitch) voiceSwitch.checked = prefs.voiceEnabled !== false;
   if (musicSwitch) musicSwitch.checked = prefs.musicEnabled !== false;
@@ -604,9 +652,12 @@ function loadSettingsForm() {
   if (window.syncManager) {
     window.syncManager.updateStatusUI();
   }
+
+  initSettingsAutoSave();
 }
 
-function saveSettings() {
+function saveSettings(options = {}) {
+  const silent = (options && options.silent === true);
   const timeInput = document.getElementById('setting-target-time');
   const roundsInput = document.getElementById('setting-rounds');
   const plankInput = document.getElementById('setting-plank-duration');
@@ -627,26 +678,33 @@ function saveSettings() {
   const syncPinInput = document.getElementById('sync-user-pin');
   const syncAutoSwitch = document.getElementById('sync-auto-enabled');
 
+  const currentPrefs = (window.appStorage && window.appStorage.prefs) ? window.appStorage.prefs : {};
+
+  const parsedRounds = roundsInput ? parseInt(roundsInput.value, 10) : null;
+  const parsedPlank = plankInput ? parseInt(plankInput.value, 10) : null;
+  const parsedWork = workInput && workInput.value !== '' ? parseInt(workInput.value, 10) : null;
+  const parsedRest = restInput && restInput.value !== '' ? parseInt(restInput.value, 10) : null;
+
   const newPrefs = {
-    targetTime: timeInput ? timeInput.value : "17:00",
-    rounds: roundsInput ? Math.min(4, Math.max(2, parseInt(roundsInput.value) || 3)) : 3,
-    plankDuration: plankInput ? parseInt(plankInput.value) : 45,
-    workDuration: workInput ? Math.min(90, Math.max(20, parseInt(workInput.value) || 40)) : 40,
-    restDuration: restInput ? Math.min(60, Math.max(10, parseInt(restInput.value) || 20)) : 20,
-    soundEnabled: soundSwitch ? soundSwitch.checked : true,
-    voiceEnabled: voiceSwitch ? voiceSwitch.checked : true,
-    musicEnabled: musicSwitch ? musicSwitch.checked : true,
-    musicStyle: musicStyleSelect ? musicStyleSelect.value : "synthwave",
-    musicVolume: musicVolumeSlider ? (parseInt(musicVolumeSlider.value) / 100) : 0.6,
-    reminderActive: reminderSwitch ? reminderSwitch.checked : true,
-    theme: themeSelect ? themeSelect.value : "dark",
+    targetTime: timeInput ? timeInput.value : (currentPrefs.targetTime || "17:00"),
+    rounds: (parsedRounds !== null && !isNaN(parsedRounds)) ? Math.min(10, Math.max(1, parsedRounds)) : (currentPrefs.rounds || 3),
+    plankDuration: (parsedPlank !== null && !isNaN(parsedPlank)) ? parsedPlank : (currentPrefs.plankDuration || 45),
+    workDuration: (parsedWork !== null && !isNaN(parsedWork)) ? Math.min(300, Math.max(5, parsedWork)) : (currentPrefs.workDuration !== undefined ? currentPrefs.workDuration : 40),
+    restDuration: (parsedRest !== null && !isNaN(parsedRest)) ? Math.min(300, Math.max(0, parsedRest)) : (currentPrefs.restDuration !== undefined ? currentPrefs.restDuration : 20),
+    soundEnabled: soundSwitch ? soundSwitch.checked : (currentPrefs.soundEnabled !== false),
+    voiceEnabled: voiceSwitch ? voiceSwitch.checked : (currentPrefs.voiceEnabled !== false),
+    musicEnabled: musicSwitch ? musicSwitch.checked : (currentPrefs.musicEnabled !== false),
+    musicStyle: musicStyleSelect ? musicStyleSelect.value : (currentPrefs.musicStyle || "synthwave"),
+    musicVolume: musicVolumeSlider ? (parseInt(musicVolumeSlider.value, 10) / 100) : (currentPrefs.musicVolume !== undefined ? currentPrefs.musicVolume : 0.6),
+    reminderActive: reminderSwitch ? reminderSwitch.checked : (currentPrefs.reminderActive !== false),
+    theme: themeSelect ? themeSelect.value : (currentPrefs.theme || "dark"),
     initialWeight: initWeightInput && initWeightInput.value ? parseFloat(initWeightInput.value) : null,
     targetWeight: targetWeightInput && targetWeightInput.value ? parseFloat(targetWeightInput.value) : null,
-    heightCm: heightInput && heightInput.value ? parseInt(heightInput.value) : null,
-    firebaseUrl: firebaseUrlInput ? firebaseUrlInput.value.trim() : (window.appStorage.prefs.firebaseUrl || ""),
-    syncUserId: syncIdInput ? syncIdInput.value.trim().toLowerCase() : "",
-    syncUserPin: syncPinInput ? syncPinInput.value.trim() : "",
-    syncAutoEnabled: syncAutoSwitch ? syncAutoSwitch.checked : true
+    heightCm: heightInput && heightInput.value ? parseInt(heightInput.value, 10) : null,
+    firebaseUrl: firebaseUrlInput ? firebaseUrlInput.value.trim() : (currentPrefs.firebaseUrl || ""),
+    syncUserId: syncIdInput ? syncIdInput.value.trim().toLowerCase() : (currentPrefs.syncUserId || ""),
+    syncUserPin: syncPinInput ? syncPinInput.value.trim() : (currentPrefs.syncUserPin || ""),
+    syncAutoEnabled: syncAutoSwitch ? syncAutoSwitch.checked : (currentPrefs.syncAutoEnabled !== false)
   };
 
   window.appStorage.savePreferences(newPrefs);
@@ -685,7 +743,9 @@ function saveSettings() {
   renderHomeExercisesList();
   if (window.dashboardManager) window.dashboardManager.renderDashboard();
 
-  showToast("✅ Réglages enregistrés avec succès !");
+  if (!silent) {
+    showToast("✅ Réglages enregistrés avec succès !");
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -1567,11 +1627,16 @@ function renderCustomExercisesPickerList() {
     summaryEl.textContent = `${_customSelectedExerciseIds.length} exercice(s) sélectionnés dans l'ordre`;
   }
 
+  const prefs = (window.appStorage && window.appStorage.prefs) ? window.appStorage.prefs : {};
+
   container.innerHTML = listToRender.map(ex => {
     const isSelected = _customSelectedExerciseIds.includes(ex.id);
     const orderIndex = _customSelectedExerciseIds.indexOf(ex.id);
     const isFirst = orderIndex === 0;
     const isLast = orderIndex === _customSelectedExerciseIds.length - 1;
+    const exDuration = ex.isPlank
+      ? (prefs.plankDuration == 120 ? '2 min' : `${prefs.plankDuration || 45}s`)
+      : `${prefs.workDuration || ex.duration || 40}s`;
 
     return `
       <div class="exercise-picker-item ${isSelected ? 'selected' : ''}" data-ex-id="${ex.id}">
@@ -1580,7 +1645,7 @@ function renderCustomExercisesPickerList() {
           <input type="checkbox" class="picker-item-checkbox" ${isSelected ? 'checked' : ''} tabindex="-1">
           <div class="picker-item-info">
             <div class="picker-item-name">${ex.number}. ${ex.name}</div>
-            <div class="picker-item-sub">${ex.targetPrimary || ex.targetMuscles} • ${ex.duration}s</div>
+            <div class="picker-item-sub">${ex.targetPrimary || ex.targetMuscles} • ${exDuration}</div>
           </div>
         </div>
         <div class="picker-item-reorder">

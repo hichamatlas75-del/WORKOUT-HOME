@@ -218,20 +218,20 @@ class WorkoutEngine {
       const isLastOfCircuit = this.currentExerciseIndex === mainCount - 1;
       const isLastRound = this.currentRound === this.totalRounds;
 
-      // Passage en Récupération (20s)
+      // Passage en Récupération
       this.setPhase(WORKOUT_STATES.REST, this.restDuration);
       window.audioEngine.playRestTone();
 
       // Déterminer le prochain exercice pour l'annonce vocale
       if (isLastOfCircuit) {
         if (isLastRound) {
-          window.audioEngine.speak(`${this.totalRounds} séries terminées ! Repos 20 secondes. Place au retour au calme : Étirements.`);
+          window.audioEngine.speak(`${this.totalRounds} séries terminées ! Repos ${this.restDuration} secondes. Place au retour au calme : Étirements.`);
         } else {
-          window.audioEngine.speak(`Fin du tour ${this.currentRound}. Repos 20 secondes. Préparez-vous pour le tour ${this.currentRound + 1}.`);
+          window.audioEngine.speak(`Fin du tour ${this.currentRound}. Repos ${this.restDuration} secondes. Préparez-vous pour le tour ${this.currentRound + 1}.`);
         }
       } else {
         const nextEx = list[this.currentExerciseIndex + 1] || { name: 'Suivant' };
-        window.audioEngine.speak(`Récupération 20 secondes. Prochain exercice : ${nextEx.name}`);
+        window.audioEngine.speak(`Récupération ${this.restDuration} secondes. Prochain exercice : ${nextEx.name}`);
       }
       return;
     }
