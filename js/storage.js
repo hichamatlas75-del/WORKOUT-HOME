@@ -242,7 +242,23 @@ class AppStorage {
         userAvatar: activeProf ? activeProf.avatar : DEFAULT_PREFERENCES.userAvatar,
         userLevel: activeProf ? (activeProf.level || 'intermediate') : DEFAULT_PREFERENCES.userLevel
       };
-      return stored ? { ...baseDefaults, ...JSON.parse(stored) } : { ...baseDefaults };
+      let prefs = stored ? { ...baseDefaults, ...JSON.parse(stored) } : { ...baseDefaults };
+
+      // Migration automatique des anciennes valeurs par défaut (40s effort -> 30s, 20s repos -> 10s)
+      if (prefs.workDuration === 40 || prefs.restDuration === 20 || !localStorage.getItem('fb17_durations_30_10_migrated')) {
+        if (prefs.workDuration === 40 || !prefs.workDuration) {
+          prefs.workDuration = 30;
+        }
+        if (prefs.restDuration === 20 || !prefs.restDuration) {
+          prefs.restDuration = 10;
+        }
+        try {
+          localStorage.setItem(this.getPrefKey(), JSON.stringify(prefs));
+          localStorage.setItem('fb17_durations_30_10_migrated', 'true');
+        } catch (e) {}
+      }
+
+      return prefs;
     } catch (e) {
       console.warn('Erreur lecture prefs:', e);
       return { ...DEFAULT_PREFERENCES };
