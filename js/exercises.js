@@ -465,7 +465,7 @@ const EXERCISES_DATA = [
 // Routines prédéfinies par niveau d'utilisateur
 const ROUTINES_BY_LEVEL = {
   beginner: [1, 2, 11, 6, 19, 20, 8, 9], // 7 exercices adaptés + étirements
-  intermediate: [1, 2, 3, 4, 18, 5, 16, 8, 9], // 8 exercices équilibrés (Montées de genoux incluses) + étirements
+  intermediate: [1, 2, 3, 4, 6, 5, 16, 8, 9], // 8 exercices équilibrés (Pont fessier inclus) + étirements
   advanced: [18, 2, 12, 13, 14, 5, 15, 8, 9] // 8 exercices intensifs + étirements
 };
 
