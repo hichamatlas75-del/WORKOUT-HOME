@@ -55,8 +55,8 @@ class WorkoutEngine {
   startWorkout(options = {}) {
     const prefs = window.appStorage ? window.appStorage.prefs : {};
     this.totalRounds = options.rounds || prefs.rounds || 2;
-    this.workDuration = options.workDuration || prefs.workDuration || 40;
-    this.restDuration = options.restDuration || prefs.restDuration || 20;
+    this.workDuration = options.workDuration || prefs.workDuration || 30;
+    this.restDuration = options.restDuration || prefs.restDuration || 10;
 
     // Récupération des exercices de la séance selon le niveau ou la sélection
     if (options.exercises && Array.isArray(options.exercises) && options.exercises.length > 0) {

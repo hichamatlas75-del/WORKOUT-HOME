@@ -17,8 +17,8 @@ describe('Gestionnaire de Stockage Local (storage.js)', () => {
 
   test('Initialisation avec les préférences par défaut', () => {
     assert.equal(storage.prefs.rounds, 3);
-    assert.equal(storage.prefs.workDuration, 40);
-    assert.equal(storage.prefs.restDuration, 20);
+    assert.equal(storage.prefs.workDuration, 30);
+    assert.equal(storage.prefs.restDuration, 10);
     assert.equal(storage.prefs.plankDuration, 45);
     assert.equal(storage.prefs.targetTime, '17:00');
     assert.equal(storage.prefs.theme, 'dark');

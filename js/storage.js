@@ -18,8 +18,8 @@ const DEFAULT_PREFERENCES = {
   userLevel: "intermediate", // "beginner" | "intermediate" | "advanced" | "custom"
   customExerciseIds: null, // Tableau d'IDs d'exercices si mode personnalisé
   rounds: 3,
-  workDuration: 40,
-  restDuration: 20,
+  workDuration: 30,
+  restDuration: 10,
   plankDuration: 45, // 30, 45, 60, 120 (2 min)
   targetTime: "17:00",
   targetWeight: null, // Poids cible en kg

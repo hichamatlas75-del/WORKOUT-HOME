@@ -154,8 +154,8 @@ function renderHomeExercisesList() {
   const routineSubtitle = document.getElementById('home-routine-subtitle');
 
   const rounds = prefs.rounds || 3;
-  const workSec = prefs.workDuration || 40;
-  const restSec = prefs.restDuration || 20;
+  const workSec = prefs.workDuration !== undefined ? prefs.workDuration : 30;
+  const restSec = prefs.restDuration !== undefined ? prefs.restDuration : 10;
   const estMinutes = Math.round((rounds * mainCount * (workSec + restSec) + 60) / 60);
 
   if (specCount) specCount.textContent = activeExercises.length;
@@ -179,7 +179,7 @@ function renderHomeExercisesList() {
   container.innerHTML = activeExercises.map((ex, index) => {
     const durationDisplay = ex.isPlank 
       ? (prefs.plankDuration == 120 ? '2 min' : `${prefs.plankDuration || 45}s`)
-      : `${prefs.workDuration || ex.duration || 40}s`;
+      : `${prefs.workDuration !== undefined ? prefs.workDuration : (ex.duration || 30)}s`;
 
     const numDisplay = String(index + 1).padStart(2, '0');
     const levelClass = ex.level || 'intermediate';
@@ -245,7 +245,7 @@ function openExerciseModal(exerciseId) {
 
   const durationDisplay = ex.isPlank 
     ? (prefs.plankDuration == 120 ? '2 minutes' : `${prefs.plankDuration || 45} sec`)
-    : `${prefs.workDuration || ex.duration || 40} sec`;
+    : `${prefs.workDuration !== undefined ? prefs.workDuration : (ex.duration || 30)} sec`;
 
   const titleEl = document.getElementById('modal-ex-title');
   const numberEl = document.getElementById('modal-ex-num');
@@ -389,8 +389,8 @@ function startWorkoutSession() {
   const prefs = (window.appStorage && window.appStorage.prefs) ? window.appStorage.prefs : {};
   window.workoutEngine.startWorkout({
     rounds: parseInt(prefs.rounds, 10) || 3,
-    workDuration: Math.min(300, Math.max(5, parseInt(prefs.workDuration, 10) || 40)),
-    restDuration: Math.min(300, Math.max(0, parseInt(prefs.restDuration, 10) !== undefined && !isNaN(parseInt(prefs.restDuration, 10)) ? parseInt(prefs.restDuration, 10) : 20))
+    workDuration: Math.min(300, Math.max(5, parseInt(prefs.workDuration, 10) || 30)),
+    restDuration: Math.min(300, Math.max(0, parseInt(prefs.restDuration, 10) !== undefined && !isNaN(parseInt(prefs.restDuration, 10)) ? parseInt(prefs.restDuration, 10) : 10))
   });
 }
 
@@ -615,8 +615,8 @@ function loadSettingsForm() {
   if (timeInput) timeInput.value = prefs.targetTime || "17:00";
   if (roundsInput) roundsInput.value = prefs.rounds || 3;
   if (plankInput) plankInput.value = prefs.plankDuration || 45;
-  if (workInput) workInput.value = (prefs.workDuration !== undefined) ? prefs.workDuration : 40;
-  if (restInput) restInput.value = (prefs.restDuration !== undefined) ? prefs.restDuration : 20;
+  if (workInput) workInput.value = (prefs.workDuration !== undefined) ? prefs.workDuration : 30;
+  if (restInput) restInput.value = (prefs.restDuration !== undefined) ? prefs.restDuration : 10;
   if (soundSwitch) soundSwitch.checked = prefs.soundEnabled !== false;
   if (voiceSwitch) voiceSwitch.checked = prefs.voiceEnabled !== false;
   if (musicSwitch) musicSwitch.checked = prefs.musicEnabled !== false;
@@ -687,8 +687,8 @@ function saveSettings(options = {}) {
     targetTime: timeInput ? timeInput.value : (currentPrefs.targetTime || "17:00"),
     rounds: (parsedRounds !== null && !isNaN(parsedRounds)) ? Math.min(10, Math.max(1, parsedRounds)) : (currentPrefs.rounds || 3),
     plankDuration: (parsedPlank !== null && !isNaN(parsedPlank)) ? parsedPlank : (currentPrefs.plankDuration || 45),
-    workDuration: (parsedWork !== null && !isNaN(parsedWork)) ? Math.min(300, Math.max(5, parsedWork)) : (currentPrefs.workDuration !== undefined ? currentPrefs.workDuration : 40),
-    restDuration: (parsedRest !== null && !isNaN(parsedRest)) ? Math.min(300, Math.max(0, parsedRest)) : (currentPrefs.restDuration !== undefined ? currentPrefs.restDuration : 20),
+    workDuration: (parsedWork !== null && !isNaN(parsedWork)) ? Math.min(300, Math.max(5, parsedWork)) : (currentPrefs.workDuration !== undefined ? currentPrefs.workDuration : 30),
+    restDuration: (parsedRest !== null && !isNaN(parsedRest)) ? Math.min(300, Math.max(0, parsedRest)) : (currentPrefs.restDuration !== undefined ? currentPrefs.restDuration : 10),
     soundEnabled: soundSwitch ? soundSwitch.checked : (currentPrefs.soundEnabled !== false),
     voiceEnabled: voiceSwitch ? voiceSwitch.checked : (currentPrefs.voiceEnabled !== false),
     musicEnabled: musicSwitch ? musicSwitch.checked : (currentPrefs.musicEnabled !== false),
@@ -1634,7 +1634,7 @@ function renderCustomExercisesPickerList() {
     const isLast = orderIndex === _customSelectedExerciseIds.length - 1;
     const exDuration = ex.isPlank
       ? (prefs.plankDuration == 120 ? '2 min' : `${prefs.plankDuration || 45}s`)
-      : `${prefs.workDuration || ex.duration || 40}s`;
+      : `${prefs.workDuration !== undefined ? prefs.workDuration : (ex.duration || 30)}s`;
 
     return `
       <div class="exercise-picker-item ${isSelected ? 'selected' : ''}" data-ex-id="${ex.id}">

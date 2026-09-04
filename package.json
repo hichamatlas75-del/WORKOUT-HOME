@@ -1,6 +1,6 @@
 {
   "name": "fullbody17-workout",
-  "version": "2.3.4",
+  "version": "2.3.5",
   "description": "Routine quotidienne Full Body 15-20 min - Tests Unitaires",
   "type": "module",
   "scripts": {
