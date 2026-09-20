@@ -551,6 +551,8 @@ function closeCelebration() {
 // GESTION DU FORMULAIRE DE RÉGLAGES & AUTO-SAUVEGARDE
 // --------------------------------------------------------------------------
 let _settingsListenersAttached = false;
+let _autoSaveDebounceTimer = null;
+let _syncDebounceTimer = null;
 
 function initSettingsAutoSave() {
   if (_settingsListenersAttached) return;
@@ -584,6 +586,14 @@ function initSettingsAutoSave() {
     el.addEventListener('blur', () => {
       saveSettings({ silent: true });
     });
+    if (el.tagName === 'INPUT' && (el.type === 'number' || el.type === 'text')) {
+      el.addEventListener('input', () => {
+        clearTimeout(_autoSaveDebounceTimer);
+        _autoSaveDebounceTimer = setTimeout(() => {
+          saveSettings({ silent: true });
+        }, 600);
+      });
+    }
   });
 
   _settingsListenersAttached = true;
@@ -612,32 +622,34 @@ function loadSettingsForm() {
   const syncPinInput = document.getElementById('sync-user-pin');
   const syncAutoSwitch = document.getElementById('sync-auto-enabled');
 
-  if (timeInput) timeInput.value = prefs.targetTime || "17:00";
-  if (roundsInput) roundsInput.value = prefs.rounds || 3;
-  if (plankInput) plankInput.value = prefs.plankDuration || 45;
-  if (workInput) workInput.value = (prefs.workDuration !== undefined) ? prefs.workDuration : 30;
-  if (restInput) restInput.value = (prefs.restDuration !== undefined) ? prefs.restDuration : 10;
-  if (soundSwitch) soundSwitch.checked = prefs.soundEnabled !== false;
-  if (voiceSwitch) voiceSwitch.checked = prefs.voiceEnabled !== false;
-  if (musicSwitch) musicSwitch.checked = prefs.musicEnabled !== false;
-  if (musicStyleSelect) musicStyleSelect.value = prefs.musicStyle || "synthwave";
-  if (musicVolumeSlider) {
+  const activeEl = document.activeElement;
+
+  if (timeInput && activeEl !== timeInput) timeInput.value = prefs.targetTime || "17:00";
+  if (roundsInput && activeEl !== roundsInput) roundsInput.value = String(prefs.rounds || 3);
+  if (plankInput && activeEl !== plankInput) plankInput.value = String(prefs.plankDuration || 45);
+  if (workInput && activeEl !== workInput) workInput.value = (prefs.workDuration !== undefined) ? prefs.workDuration : 30;
+  if (restInput && activeEl !== restInput) restInput.value = (prefs.restDuration !== undefined) ? prefs.restDuration : 10;
+  if (soundSwitch && activeEl !== soundSwitch) soundSwitch.checked = prefs.soundEnabled !== false;
+  if (voiceSwitch && activeEl !== voiceSwitch) voiceSwitch.checked = prefs.voiceEnabled !== false;
+  if (musicSwitch && activeEl !== musicSwitch) musicSwitch.checked = prefs.musicEnabled !== false;
+  if (musicStyleSelect && activeEl !== musicStyleSelect) musicStyleSelect.value = prefs.musicStyle || "synthwave";
+  if (musicVolumeSlider && activeEl !== musicVolumeSlider) {
     const volPct = Math.round((prefs.musicVolume !== undefined ? prefs.musicVolume : 0.6) * 100);
     musicVolumeSlider.value = volPct;
     if (musicVolumeLbl) musicVolumeLbl.textContent = volPct + '%';
   }
-  if (reminderSwitch) reminderSwitch.checked = prefs.reminderActive !== false;
+  if (reminderSwitch && activeEl !== reminderSwitch) reminderSwitch.checked = prefs.reminderActive !== false;
   const reminderStatusDesc = document.getElementById('setting-reminder-status-desc');
   if (reminderStatusDesc && window.notificationManager) {
     reminderStatusDesc.textContent = `Statut : ${window.notificationManager.getPermissionStatus()}`;
   }
-  if (initWeightInput) initWeightInput.value = prefs.initialWeight || "";
-  if (targetWeightInput) targetWeightInput.value = prefs.targetWeight || "";
-  if (heightInput) heightInput.value = prefs.heightCm || "";
-  if (firebaseUrlInput) firebaseUrlInput.value = prefs.firebaseUrl || "";
-  if (syncIdInput) syncIdInput.value = prefs.syncUserId || "";
-  if (syncPinInput) syncPinInput.value = prefs.syncUserPin || "";
-  if (syncAutoSwitch) syncAutoSwitch.checked = prefs.syncAutoEnabled !== false;
+  if (initWeightInput && activeEl !== initWeightInput) initWeightInput.value = prefs.initialWeight || "";
+  if (targetWeightInput && activeEl !== targetWeightInput) targetWeightInput.value = prefs.targetWeight || "";
+  if (heightInput && activeEl !== heightInput) heightInput.value = prefs.heightCm || "";
+  if (firebaseUrlInput && activeEl !== firebaseUrlInput) firebaseUrlInput.value = prefs.firebaseUrl || "";
+  if (syncIdInput && activeEl !== syncIdInput) syncIdInput.value = prefs.syncUserId || "";
+  if (syncPinInput && activeEl !== syncPinInput) syncPinInput.value = prefs.syncUserPin || "";
+  if (syncAutoSwitch && activeEl !== syncAutoSwitch) syncAutoSwitch.checked = prefs.syncAutoEnabled !== false;
 
   window.audioEngine.soundEnabled = prefs.soundEnabled !== false;
   window.audioEngine.voiceEnabled = prefs.voiceEnabled !== false;
@@ -722,7 +734,10 @@ function saveSettings(options = {}) {
   if (window.syncManager) {
     window.syncManager.updateStatusUI();
     if (newPrefs.syncUserId && newPrefs.syncUserPin && newPrefs.syncAutoEnabled) {
-      window.syncManager.sync({ silent: true });
+      clearTimeout(_syncDebounceTimer);
+      _syncDebounceTimer = setTimeout(() => {
+        window.syncManager.sync({ silent: true, preferLocalPrefs: true });
+      }, silent ? 1500 : 0);
     }
   }
 

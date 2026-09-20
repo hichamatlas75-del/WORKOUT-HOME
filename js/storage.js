@@ -244,8 +244,8 @@ class AppStorage {
       };
       let prefs = stored ? { ...baseDefaults, ...JSON.parse(stored) } : { ...baseDefaults };
 
-      // Migration automatique des anciennes valeurs par défaut (40s effort -> 30s, 20s repos -> 10s)
-      if (prefs.workDuration === 40 || prefs.restDuration === 20 || !localStorage.getItem('fb17_durations_30_10_migrated')) {
+      // Migration automatique des anciennes valeurs par défaut une seule fois si non migré
+      if (!localStorage.getItem('fb17_durations_30_10_migrated')) {
         if (prefs.workDuration === 40 || !prefs.workDuration) {
           prefs.workDuration = 30;
         }
@@ -266,7 +266,7 @@ class AppStorage {
   }
 
   savePreferences(newPrefs) {
-    this.prefs = { ...this.prefs, ...newPrefs };
+    this.prefs = { ...this.prefs, ...newPrefs, updatedAt: Date.now() };
     try {
       localStorage.setItem(this.getPrefKey(), JSON.stringify(this.prefs));
 
@@ -672,7 +672,7 @@ class AppStorage {
   }
 
   // --- Fusion intelligente des données locales et Cloud (Multi-Appareils) ---
-  mergeData(remoteData) {
+  mergeData(remoteData, options = {}) {
     if (!remoteData || typeof remoteData !== 'object') return false;
 
     let updated = false;
@@ -725,11 +725,16 @@ class AppStorage {
     // 4. Fusion des réglages (sauf identifiants de synchro locaux si déjà présents)
     if (remoteData.prefs && typeof remoteData.prefs === 'object') {
       const { syncUserId, syncUserPin, syncAutoEnabled, syncLastTime, ...cleanRemotePrefs } = remoteData.prefs;
-      if (cleanRemotePrefs.workDuration === 40) cleanRemotePrefs.workDuration = 30;
-      if (cleanRemotePrefs.restDuration === 20) cleanRemotePrefs.restDuration = 10;
-      this.prefs = { ...this.prefs, ...cleanRemotePrefs };
-      if (this.prefs.workDuration === 40) this.prefs.workDuration = 30;
-      if (this.prefs.restDuration === 20) this.prefs.restDuration = 10;
+      const remoteUpdatedAt = Number(cleanRemotePrefs.updatedAt || remoteData.syncedAt || 0);
+      const localUpdatedAt = Number(this.prefs.updatedAt || 0);
+
+      // Si preferLocalPrefs est actif ou si les réglages locaux sont plus récents, priorité au local
+      if (options.preferLocalPrefs || localUpdatedAt >= remoteUpdatedAt) {
+        this.prefs = { ...cleanRemotePrefs, ...this.prefs };
+      } else {
+        this.prefs = { ...this.prefs, ...cleanRemotePrefs };
+      }
+
       localStorage.setItem(this.getPrefKey(), JSON.stringify(this.prefs));
       updated = true;
     }

@@ -54,7 +54,7 @@ class WorkoutEngine {
   // Démarrer une nouvelle séance
   startWorkout(options = {}) {
     const prefs = window.appStorage ? window.appStorage.prefs : {};
-    this.totalRounds = options.rounds || prefs.rounds || 2;
+    this.totalRounds = options.rounds || prefs.rounds || 3;
     this.workDuration = options.workDuration || prefs.workDuration || 30;
     this.restDuration = options.restDuration || prefs.restDuration || 10;
 

@@ -28,7 +28,18 @@ const ASSETS_TO_CACHE = [
   './images/ex_5_bridge.jpg',
   './images/ex_6_hip_ext.jpg',
   './images/ex_7_plank.jpg',
-  './images/ex_8_stretching.jpg'
+  './images/ex_8_stretching.jpg',
+  './images/ex_10_lunges.jpg',
+  './images/ex_11_knee_pushups.jpg',
+  './images/ex_12_diamond_pushups.jpg',
+  './images/ex_13_burpees.jpg',
+  './images/ex_14_russian_twists.jpg',
+  './images/ex_15_side_plank.jpg',
+  './images/ex_16_chair_dips.jpg',
+  './images/ex_17_bicycle_crunches.jpg',
+  './images/ex_18_high_knees.jpg',
+  './images/ex_19_superman.jpg',
+  './images/ex_20_wall_sit.jpg'
 ];
 
 // État mémoire synchronisé pour les rappels

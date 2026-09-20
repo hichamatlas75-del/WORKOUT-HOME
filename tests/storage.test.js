@@ -219,4 +219,43 @@ describe('Gestionnaire de Stockage Local (storage.js)', () => {
     assert.equal(deleted, true);
     assert.equal(storage.getProfiles().length, 1);
   });
+
+  test('Persistance garantie des réglages personnalisés (effort 40s, repos 20s, gainage 60s, séries 4) et priorité au local lors de mergeData', () => {
+    // 1. Sauvegarder les 4 réglages personnalisés
+    storage.savePreferences({
+      workDuration: 40,
+      restDuration: 20,
+      plankDuration: 60,
+      rounds: 4
+    });
+
+    assert.equal(storage.prefs.workDuration, 40);
+    assert.equal(storage.prefs.restDuration, 20);
+    assert.equal(storage.prefs.plankDuration, 60);
+    assert.equal(storage.prefs.rounds, 4);
+
+    // 2. Vérifier qu'un rechargement du stockage ne les écrase pas (pas de retour forcé à 30/10)
+    const storageReloaded = new AppStorage();
+    assert.equal(storageReloaded.prefs.workDuration, 40);
+    assert.equal(storageReloaded.prefs.restDuration, 20);
+    assert.equal(storageReloaded.prefs.plankDuration, 60);
+    assert.equal(storageReloaded.prefs.rounds, 4);
+
+    // 3. Vérifier que la fusion avec un snapshot distant (mergeData avec preferLocalPrefs: true) ne les écrase pas
+    const oldRemoteData = {
+      prefs: {
+        workDuration: 30,
+        restDuration: 10,
+        plankDuration: 45,
+        rounds: 3,
+        updatedAt: Date.now() - 100000
+      }
+    };
+    storage.mergeData(oldRemoteData, { preferLocalPrefs: true });
+
+    assert.equal(storage.prefs.workDuration, 40);
+    assert.equal(storage.prefs.restDuration, 20);
+    assert.equal(storage.prefs.plankDuration, 60);
+    assert.equal(storage.prefs.rounds, 4);
+  });
 });

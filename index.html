@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
 
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' data: blob: https:; font-src 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://workout-home.pages.dev https://*.firebasedatabase.app https://workout-homefb17-default-rtdb.europe-west1.firebasedatabase.app;">
 
   <!-- Prévention du flash de thème (FOUC) -->
   <script>
@@ -42,7 +42,7 @@
         <div class="brand-info">
           <div class="brand-title-wrap">
             <span class="brand-title">FULL BODY 17</span>
-            <span class="version-tag">v2.3.7</span>
+            <span class="version-tag">v2.3.8</span>
           </div>
           <span class="brand-subtitle">Routine Quotidienne</span>
         </div>
@@ -391,9 +391,11 @@
             </div>
             <label for="setting-rounds" class="sr-only">Nombre de séries</label>
             <select id="setting-rounds" class="styled-input">
-              <option value="3" selected>3 séries (Standard)</option>
+              <option value="1">1 série (Express)</option>
               <option value="2">2 séries (Reprise)</option>
+              <option value="3" selected>3 séries (Standard)</option>
               <option value="4">4 séries (Intense)</option>
+              <option value="5">5 séries (Expert)</option>
             </select>
           </div>
 
@@ -407,6 +409,7 @@
               <option value="30">30 s (Débutant)</option>
               <option value="45" selected>45 s (Standard)</option>
               <option value="60">60 s (Intermédiaire)</option>
+              <option value="90">90 s (Avancé)</option>
               <option value="120">2 min / 120 s (Défi)</option>
             </select>
           </div>

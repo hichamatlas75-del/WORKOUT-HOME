@@ -357,7 +357,7 @@ class AppStorage {
     let tempStreak = 0;
     let lastDate = null;
 
-    [...this.history].reverse().forEach(session => {
+    for (const session of [...this.history].reverse()) {
       const sessionDate = session.date;
       if (!lastDate) {
         if (sessionDate === today) {
@@ -378,7 +378,7 @@ class AppStorage {
         }
       }
       lastDate = sessionDate;
-    });
+    }
 
     if (doneToday) {
       currentStreak = tempStreak;

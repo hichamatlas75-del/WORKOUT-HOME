@@ -259,22 +259,15 @@ class ProfileSyncManager {
         }
       }
 
-      // 2. Fusionner avec les données locales (avec migration 30s/10s si anciennes valeurs)
+      // 2. Fusionner avec les données locales (les réglages locaux sont prioritaires lors d'une synchronisation automatique)
       if (remoteData) {
-        if (remoteData.prefs) {
-          if (remoteData.prefs.workDuration === 40) remoteData.prefs.workDuration = 30;
-          if (remoteData.prefs.restDuration === 20) remoteData.prefs.restDuration = 10;
-        }
-        window.appStorage.mergeData(remoteData);
+        window.appStorage.mergeData(remoteData, { preferLocalPrefs: options.preferLocalPrefs !== false });
       }
-
-      if (window.appStorage.prefs.workDuration === 40) window.appStorage.prefs.workDuration = 30;
-      if (window.appStorage.prefs.restDuration === 20) window.appStorage.prefs.restDuration = 10;
 
       // 3. Préparer le paquet complet
       const fullLocalData = {
         app: 'FULL_BODY_17',
-        version: '2.3.7',
+        version: '2.3.8',
         syncedAt: Date.now(),
         prefs: window.appStorage.prefs,
         history: window.appStorage.history,
@@ -332,23 +325,13 @@ class ProfileSyncManager {
       }
 
       const remoteData = await this.decryptPayload(remoteEnvelope, config.userId, config.password);
-      if (remoteData && remoteData.prefs) {
-        if (remoteData.prefs.workDuration === 40) remoteData.prefs.workDuration = 30;
-        if (remoteData.prefs.restDuration === 20) remoteData.prefs.restDuration = 10;
-      }
-      const hasChanges = window.appStorage.mergeData(remoteData);
-      if (window.appStorage.prefs.workDuration === 40) window.appStorage.prefs.workDuration = 30;
-      if (window.appStorage.prefs.restDuration === 20) window.appStorage.prefs.restDuration = 10;
-      window.appStorage.savePreferences({
-        workDuration: window.appStorage.prefs.workDuration || 30,
-        restDuration: window.appStorage.prefs.restDuration || 10
-      });
+      const hasChanges = window.appStorage.mergeData(remoteData, { preferLocalPrefs: false });
 
-      // Mettre à jour immédiatement la sauvegarde cloud pour écraser l'ancien 40/20 sur le serveur
+      // Mettre à jour immédiatement la sauvegarde cloud si nécessaire
       try {
         const fullLocalData = {
           app: 'FULL_BODY_17',
-          version: '2.3.7',
+          version: '2.3.8',
           syncedAt: Date.now(),
           prefs: window.appStorage.prefs,
           history: window.appStorage.history,
