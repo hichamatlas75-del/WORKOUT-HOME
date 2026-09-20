@@ -247,11 +247,12 @@ class WorkoutMusicEngine {
     this.noiseBuffer = null;
     this.activeNodes = new Set();
 
-    // Piste locale
+    // Piste locale & Ducking multi-raisons
     this.localAudioElement = null;
-    this.mediaSourceNode = null;
     this.currentBlobUrl = null;
     this.duckMultiplier = 1.0;
+    this.duckReasons = new Map(); // Map<string, number> (ex: 'voice' => 0.15, 'countdown' => 0.20, 'tone' => 0.20)
+    this._localVolRampTimer = null;
   }
 
   // Création du buffer de bruit blanc pour percussions
@@ -276,18 +277,10 @@ class WorkoutMusicEngine {
       this.duckGain = ctx.createGain();
 
       this.masterMusicGain.gain.setValueAtTime(this.volume, ctx.currentTime);
-      this.duckGain.gain.setValueAtTime(1.0, ctx.currentTime);
+      this.duckGain.gain.setValueAtTime(this.duckMultiplier, ctx.currentTime);
 
       this.masterMusicGain.connect(this.duckGain);
       this.duckGain.connect(ctx.destination);
-    }
-    if (this.localAudioElement && !this.mediaSourceNode && typeof ctx.createMediaElementSource === 'function') {
-      try {
-        this.mediaSourceNode = ctx.createMediaElementSource(this.localAudioElement);
-        this.mediaSourceNode.connect(this.masterMusicGain);
-      } catch (e) {
-        // Ignorer si déjà raccordé ou non supporté
-      }
     }
     this.initNoiseBuffer();
   }
@@ -307,18 +300,45 @@ class WorkoutMusicEngine {
         }
       });
     }
-    this.ensureAudioGraph();
-    this.updateLocalAudioVolume();
+    this.updateLocalAudioVolume(0);
     return this.localAudioElement;
   }
 
-  updateLocalAudioVolume() {
+  smoothSetLocalAudioVolume(targetVolume, durationMs = 120) {
     if (!this.localAudioElement) return;
-    if (!this.mediaSourceNode) {
-      this.localAudioElement.volume = Math.max(0, Math.min(1, this.volume * this.duckMultiplier));
-    } else {
-      this.localAudioElement.volume = 1.0;
+    if (this._localVolRampTimer) {
+      clearInterval(this._localVolRampTimer);
+      this._localVolRampTimer = null;
     }
+    const endVol = Math.max(0, Math.min(1, targetVolume));
+    const startVol = (typeof this.localAudioElement.volume === 'number' && !isNaN(this.localAudioElement.volume))
+      ? this.localAudioElement.volume
+      : endVol;
+
+    if (durationMs <= 20 || Math.abs(endVol - startVol) < 0.02) {
+      this.localAudioElement.volume = endVol;
+      return;
+    }
+
+    const steps = 8;
+    const stepTime = Math.max(10, Math.floor(durationMs / steps));
+    let step = 0;
+    this._localVolRampTimer = setInterval(() => {
+      step++;
+      const current = startVol + (endVol - startVol) * (step / steps);
+      this.localAudioElement.volume = Math.max(0, Math.min(1, current));
+      if (step >= steps) {
+        clearInterval(this._localVolRampTimer);
+        this._localVolRampTimer = null;
+        this.localAudioElement.volume = endVol;
+      }
+    }, stepTime);
+  }
+
+  updateLocalAudioVolume(durationMs = 120) {
+    if (!this.localAudioElement) return;
+    const target = this.volume * this.duckMultiplier;
+    this.smoothSetLocalAudioVolume(target, durationMs);
   }
 
   setVolume(val) {
@@ -328,7 +348,7 @@ class WorkoutMusicEngine {
       this.masterMusicGain.gain.cancelScheduledValues(t);
       this.masterMusicGain.gain.linearRampToValueAtTime(this.volume, t + 0.05);
     }
-    this.updateLocalAudioVolume();
+    this.updateLocalAudioVolume(60);
   }
 
   setStyle(style) {
@@ -366,27 +386,87 @@ class WorkoutMusicEngine {
     }
   }
 
-  // Baisse temporaire du volume pendant la voix (Ducking)
-  duck(targetGain = 0.18, durationMs = 120) {
-    this.duckMultiplier = targetGain;
-    if (this.duckGain && this.soundEngine.audioCtx) {
-      const ctx = this.soundEngine.audioCtx;
-      const t = ctx.currentTime;
-      this.duckGain.gain.cancelScheduledValues(t);
-      this.duckGain.gain.linearRampToValueAtTime(targetGain, t + durationMs / 1000);
+  // Baisse temporaire du volume pendant la voix ou le décompte (Ducking multi-raisons)
+  duck(targetGain = 0.18, durationMs = 120, reason = 'default') {
+    if (typeof targetGain === 'string') {
+      const tmp = reason;
+      reason = targetGain;
+      targetGain = typeof durationMs === 'number' ? durationMs : 0.18;
+      durationMs = typeof tmp === 'number' ? tmp : 120;
     }
-    this.updateLocalAudioVolume();
+
+    this.duckReasons.set(reason, targetGain);
+
+    let minGain = 1.0;
+    for (const gain of this.duckReasons.values()) {
+      if (gain < minGain) minGain = gain;
+    }
+    this.duckMultiplier = minGain;
+
+    if (this.duckGain && this.soundEngine.audioCtx) {
+      try {
+        const ctx = this.soundEngine.audioCtx;
+        const t = ctx.currentTime;
+        this.duckGain.gain.cancelScheduledValues(t);
+        this.duckGain.gain.linearRampToValueAtTime(minGain, t + durationMs / 1000);
+      } catch (e) {}
+    }
+    this.updateLocalAudioVolume(durationMs);
   }
 
-  unduck(durationMs = 400) {
+  unduck(durationMs = 400, reason = 'default') {
+    if (typeof durationMs === 'string') {
+      const tmp = reason;
+      reason = durationMs;
+      durationMs = typeof tmp === 'number' ? tmp : 400;
+    }
+
+    this.duckReasons.delete(reason);
+
+    if (this.duckReasons.size > 0) {
+      // D'autres raisons de ducking restent actives (ex: coach vocal encore en train de parler)
+      let minGain = 1.0;
+      for (const gain of this.duckReasons.values()) {
+        if (gain < minGain) minGain = gain;
+      }
+      this.duckMultiplier = minGain;
+      if (this.duckGain && this.soundEngine.audioCtx) {
+        try {
+          const ctx = this.soundEngine.audioCtx;
+          const t = ctx.currentTime;
+          this.duckGain.gain.cancelScheduledValues(t);
+          this.duckGain.gain.linearRampToValueAtTime(minGain, t + durationMs / 1000);
+        } catch (e) {}
+      }
+      this.updateLocalAudioVolume(durationMs);
+      return;
+    }
+
+    // Plus aucune raison active -> retour fluide au volume normal
     this.duckMultiplier = 1.0;
     if (this.duckGain && this.soundEngine.audioCtx) {
-      const ctx = this.soundEngine.audioCtx;
-      const t = ctx.currentTime;
-      this.duckGain.gain.cancelScheduledValues(t);
-      this.duckGain.gain.linearRampToValueAtTime(1.0, t + durationMs / 1000);
+      try {
+        const ctx = this.soundEngine.audioCtx;
+        const t = ctx.currentTime;
+        this.duckGain.gain.cancelScheduledValues(t);
+        this.duckGain.gain.linearRampToValueAtTime(1.0, t + durationMs / 1000);
+      } catch (e) {}
     }
-    this.updateLocalAudioVolume();
+    this.updateLocalAudioVolume(durationMs);
+  }
+
+  stopAllDucking(durationMs = 150) {
+    this.duckReasons.clear();
+    this.duckMultiplier = 1.0;
+    if (this.duckGain && this.soundEngine.audioCtx) {
+      try {
+        const ctx = this.soundEngine.audioCtx;
+        const t = ctx.currentTime;
+        this.duckGain.gain.cancelScheduledValues(t);
+        this.duckGain.gain.linearRampToValueAtTime(1.0, t + durationMs / 1000);
+      } catch (e) {}
+    }
+    this.updateLocalAudioVolume(durationMs);
   }
 
   // Démarrer la musique
@@ -859,14 +939,22 @@ class SoundEngine {
     }
   }
 
-  // Bip discret de compte à rebours (3, 2, 1)
+  // Bip de compte à rebours (3, 2, 1) avec baisse continue du volume de musique
   playCountdownBeep(num) {
     if (!this.soundEnabled) return;
     this.initContext();
     if (!this.audioCtx) return;
 
     try {
-      this.musicEngine.duck(0.3, 80);
+      // Baisse le volume pour le décompte 3s et le maintient abaissé tout le long
+      this.musicEngine.duck(0.20, 80, 'countdown');
+
+      // Renouvelle le timer de sécurité (1.7s max sans nouveau bip avant restauration auto)
+      if (this._countdownUnduckTimer) clearTimeout(this._countdownUnduckTimer);
+      this._countdownUnduckTimer = setTimeout(() => {
+        this.musicEngine.unduck(300, 'countdown');
+      }, 1700);
+
       const osc = this.audioCtx.createOscillator();
       const gain = this.audioCtx.createGain();
 
@@ -874,16 +962,14 @@ class SoundEngine {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(baseFreq, this.audioCtx.currentTime);
 
-      gain.gain.setValueAtTime(0.25, this.audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + 0.18);
+      gain.gain.setValueAtTime(0.30, this.audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + 0.20);
 
       osc.connect(gain);
       gain.connect(this.audioCtx.destination);
 
       osc.start();
-      osc.stop(this.audioCtx.currentTime + 0.18);
-
-      setTimeout(() => this.musicEngine.unduck(200), 220);
+      osc.stop(this.audioCtx.currentTime + 0.20);
     } catch (e) {
       console.warn('Audio play error:', e);
     }
@@ -896,7 +982,13 @@ class SoundEngine {
     if (!this.audioCtx) return;
 
     try {
-      this.musicEngine.duck(0.25, 80);
+      if (this._countdownUnduckTimer) {
+        clearTimeout(this._countdownUnduckTimer);
+        this._countdownUnduckTimer = null;
+      }
+      this.musicEngine.unduck(60, 'countdown');
+      this.musicEngine.duck(0.20, 60, 'tone');
+
       const now = this.audioCtx.currentTime;
       const osc = this.audioCtx.createOscillator();
       const gain = this.audioCtx.createGain();
@@ -914,7 +1006,7 @@ class SoundEngine {
       osc.start(now);
       osc.stop(now + 0.35);
 
-      setTimeout(() => this.musicEngine.unduck(300), 380);
+      setTimeout(() => this.musicEngine.unduck(300, 'tone'), 380);
     } catch (e) {
       console.warn('Audio play error:', e);
     }
@@ -927,7 +1019,13 @@ class SoundEngine {
     if (!this.audioCtx) return;
 
     try {
-      this.musicEngine.duck(0.25, 80);
+      if (this._countdownUnduckTimer) {
+        clearTimeout(this._countdownUnduckTimer);
+        this._countdownUnduckTimer = null;
+      }
+      this.musicEngine.unduck(60, 'countdown');
+      this.musicEngine.duck(0.20, 60, 'tone');
+
       const now = this.audioCtx.currentTime;
       const osc = this.audioCtx.createOscillator();
       const gain = this.audioCtx.createGain();
@@ -945,7 +1043,7 @@ class SoundEngine {
       osc.start(now);
       osc.stop(now + 0.4);
 
-      setTimeout(() => this.musicEngine.unduck(300), 420);
+      setTimeout(() => this.musicEngine.unduck(300, 'tone'), 420);
     } catch (e) {
       console.warn('Audio play error:', e);
     }
@@ -958,6 +1056,7 @@ class SoundEngine {
     if (!this.audioCtx) return;
 
     try {
+      this.musicEngine.duck(0.20, 60, 'tone');
       const now = this.audioCtx.currentTime;
       const osc = this.audioCtx.createOscillator();
       const gain = this.audioCtx.createGain();
@@ -972,6 +1071,8 @@ class SoundEngine {
 
       osc.start(now);
       osc.stop(now + 0.2);
+
+      setTimeout(() => this.musicEngine.unduck(300, 'tone'), 300);
     } catch (e) {
       console.warn('Audio play error:', e);
     }
@@ -1013,12 +1114,19 @@ class SoundEngine {
     });
   }
 
-  // Annonce vocale par synthèse vocale en français avec ducking de musique
+  // Annonce vocale par synthèse vocale en français avec ducking prioritaire de musique
   speak(text) {
     if (!this.voiceEnabled || !this.speechSynth) return;
 
     try {
-      this.musicEngine.duck(0.18, 100);
+      // Ducking prioritaire : la musique descend à 15% pour laisser la voix parfaitement claire
+      this.musicEngine.duck(0.15, 80, 'voice');
+
+      if (this._voiceUnduckTimer) {
+        clearTimeout(this._voiceUnduckTimer);
+        this._voiceUnduckTimer = null;
+      }
+
       this.speechSynth.cancel(); // Annule la phrase précédente
 
       const utterance = new SpeechSynthesisUtterance(text);
@@ -1032,24 +1140,35 @@ class SoundEngine {
         utterance.voice = frVoice;
       }
 
+      const onVoiceFinished = () => {
+        if (this._voiceUnduckTimer) {
+          clearTimeout(this._voiceUnduckTimer);
+          this._voiceUnduckTimer = null;
+        }
+        // Légère pause après la voix avant de remonter la musique
+        setTimeout(() => {
+          this.musicEngine.unduck(400, 'voice');
+        }, 120);
+      };
+
       utterance.onend = () => {
-        this.musicEngine.unduck(350);
+        onVoiceFinished();
       };
 
-      utterance.onerror = () => {
-        this.musicEngine.unduck(300);
+      utterance.onerror = (err) => {
+        // Ignorer l'erreur 'canceled' provoquée par une nouvelle annonce consécutive
+        if (err && err.error === 'canceled') return;
+        onVoiceFinished();
       };
 
-      // Fallback sécurité si onend n'est pas déclenché
-      const estimatedDurationMs = Math.max(1500, text.length * 75);
-      setTimeout(() => {
-        this.musicEngine.unduck(350);
-      }, estimatedDurationMs + 400);
+      // Fallback sécurité si onend n'est pas déclenché (protection mobile)
+      const estimatedDurationMs = Math.max(1600, text.length * 85);
+      this._voiceUnduckTimer = setTimeout(onVoiceFinished, estimatedDurationMs + 500);
 
       this.speechSynth.speak(utterance);
     } catch (e) {
       console.warn('Speech synthesis error:', e);
-      this.musicEngine.unduck(200);
+      this.musicEngine.unduck(200, 'voice');
     }
   }
 }

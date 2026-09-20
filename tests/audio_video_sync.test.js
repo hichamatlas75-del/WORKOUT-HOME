@@ -115,5 +115,34 @@ describe('Synchronisation Audio & Vidéos (audio.js, workout.js, exercises.js)',
     audioEngine.musicEngine.setStyle('synthwave');
     assert.equal(audioEngine.musicEngine.style, 'synthwave');
   });
+
+  test('Baisse du volume sonore (ducking) garantie pendant le décompte 3s et les annonces vocales', () => {
+    // Vérification initiale : volume normal 100%
+    audioEngine.musicEngine.stopAllDucking();
+    assert.equal(audioEngine.musicEngine.duckMultiplier, 1.0);
+
+    // 1. Décompte 3s : le premier bip déclenche le ducking countdown à 20%
+    audioEngine.musicEngine.duck(0.20, 80, 'countdown');
+    assert.equal(audioEngine.musicEngine.duckMultiplier, 0.20, 'Le volume doit baisser à 20% dès le top 3s');
+
+    // Le 2e et 3e bip maintiennent le ducking
+    audioEngine.musicEngine.duck(0.20, 80, 'countdown');
+    assert.equal(audioEngine.musicEngine.duckMultiplier, 0.20, 'Le volume reste à 20% pendant les bips suivants');
+
+    // 2. Le coach vocal commence à parler pendant que le signal GO retentit
+    audioEngine.musicEngine.duck(0.15, 80, 'voice');
+    // Le volume baisse encore plus bas (15%) pour privilégier la voix
+    assert.equal(audioEngine.musicEngine.duckMultiplier, 0.15, 'Le volume baisse à 15% pour la voix du coach');
+
+    // 3. Le décompte et le bip se terminent
+    audioEngine.musicEngine.unduck(60, 'countdown');
+    // La voix est encore en cours : le volume NE DOIT PAS remonter
+    assert.equal(audioEngine.musicEngine.duckMultiplier, 0.15, 'Le volume reste abaissé tant que la voix parle');
+
+    // 4. La voix se termine
+    audioEngine.musicEngine.unduck(400, 'voice');
+    // Maintenant que toutes les raisons sont levées, le volume remonte à 100%
+    assert.equal(audioEngine.musicEngine.duckMultiplier, 1.0, 'Le volume remonte à 100% une fois la voix terminée');
+  });
 });
 
