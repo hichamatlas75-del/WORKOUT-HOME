@@ -94,4 +94,26 @@ describe('Synchronisation Audio & Vidéos (audio.js, workout.js, exercises.js)',
 
     workoutEngine.quitWorkout();
   });
+
+  test('Support de la Musique Locale du Téléphone (LocalMusicManager & style local)', () => {
+    assert.ok(audioEngine.localMusicManager, 'localMusicManager doit être instancié');
+    assert.equal(audioEngine.localMusicManager.playlist.length, 0, 'La playlist locale démarre vide par défaut');
+    assert.equal(audioEngine.localMusicManager.getCurrentTrack(), null);
+
+    // Test acceptation du style 'local'
+    audioEngine.musicEngine.setStyle('local');
+    assert.equal(audioEngine.musicEngine.style, 'local');
+
+    // Ducking et Unducking
+    audioEngine.musicEngine.duck(0.2, 50);
+    assert.equal(audioEngine.musicEngine.duckMultiplier, 0.2);
+
+    audioEngine.musicEngine.unduck(50);
+    assert.equal(audioEngine.musicEngine.duckMultiplier, 1.0);
+
+    // Revenir à synthwave
+    audioEngine.musicEngine.setStyle('synthwave');
+    assert.equal(audioEngine.musicEngine.style, 'synthwave');
+  });
 });
+

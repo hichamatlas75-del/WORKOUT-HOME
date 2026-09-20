@@ -633,6 +633,7 @@ function loadSettingsForm() {
   if (voiceSwitch && activeEl !== voiceSwitch) voiceSwitch.checked = prefs.voiceEnabled !== false;
   if (musicSwitch && activeEl !== musicSwitch) musicSwitch.checked = prefs.musicEnabled !== false;
   if (musicStyleSelect && activeEl !== musicStyleSelect) musicStyleSelect.value = prefs.musicStyle || "synthwave";
+  onMusicStyleChange(prefs.musicStyle || "synthwave");
   if (musicVolumeSlider && activeEl !== musicVolumeSlider) {
     const volPct = Math.round((prefs.musicVolume !== undefined ? prefs.musicVolume : 0.6) * 100);
     musicVolumeSlider.value = volPct;
@@ -798,6 +799,95 @@ function updateWorkoutMusicBtnState() {
 
 window.toggleWorkoutMusic = toggleWorkoutMusic;
 window.updateWorkoutMusicBtnState = updateWorkoutMusicBtnState;
+
+// --------------------------------------------------------------------------
+// GESTION DE LA MUSIQUE DU RÉPERTOIRE TÉLÉPHONE (PLAYLIST LOCALE)
+// --------------------------------------------------------------------------
+function onMusicStyleChange(style) {
+  if (typeof document === 'undefined') return;
+  const box = document.getElementById('setting-local-music-box');
+  if (box) {
+    box.style.display = (style === 'local') ? 'flex' : 'none';
+  }
+  if (style === 'local') {
+    updateLocalMusicUI();
+  }
+}
+
+function updateLocalMusicUI() {
+  if (typeof document === 'undefined') return;
+  const countDesc = document.getElementById('local-music-count-desc');
+  const playlistContainer = document.getElementById('local-music-playlist-list');
+  const btnClear = document.getElementById('btn-clear-local-music');
+  if (!window.audioEngine || !window.audioEngine.localMusicManager) return;
+
+  const playlist = window.audioEngine.localMusicManager.playlist || [];
+
+  if (countDesc) {
+    if (playlist.length === 0) {
+      countDesc.textContent = "0 morceau sélectionné";
+    } else if (playlist.length === 1) {
+      countDesc.textContent = "1 morceau prêt";
+    } else {
+      countDesc.textContent = `${playlist.length} morceaux prêts`;
+    }
+  }
+
+  if (btnClear) {
+    btnClear.style.display = playlist.length > 0 ? 'inline-block' : 'none';
+  }
+
+  if (playlistContainer) {
+    if (playlist.length === 0) {
+      playlistContainer.innerHTML = '<div style="font-style: italic; color: var(--text-muted); padding: 4px 0;">Appuyez sur « Choisir des musiques » pour sélectionner vos fichiers audio depuis votre téléphone.</div>';
+    } else {
+      playlistContainer.innerHTML = playlist.map((track, idx) => {
+        const sizeMb = track.size ? (track.size / (1024 * 1024)).toFixed(1) + ' Mo' : '';
+        const cleanName = String(track.name || 'Piste audio').replace(/[<>&"]/g, '');
+        return `
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); gap: 6px;">
+            <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">
+              <span style="opacity: 0.7;">🎵</span>
+              <span style="font-size: 0.8rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${cleanName}">${idx + 1}. ${cleanName}</span>
+              ${sizeMb ? `<span style="font-size: 0.7rem; opacity: 0.6; flex-shrink: 0;">(${sizeMb})</span>` : ''}
+            </div>
+            <button type="button" onclick="removeLocalTrack('${track.id}')" style="background: transparent; border: none; color: #ff5252; cursor: pointer; padding: 2px 6px; font-size: 0.8rem;" title="Supprimer ce morceau">✕</button>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+}
+
+async function handleLocalMusicFilesSelected(fileList) {
+  if (!fileList || fileList.length === 0) return;
+  if (!window.audioEngine || !window.audioEngine.localMusicManager) return;
+  await window.audioEngine.localMusicManager.addFiles(fileList);
+  updateLocalMusicUI();
+  const inputEl = document.getElementById('input-local-music-files');
+  if (inputEl) inputEl.value = '';
+}
+
+async function clearLocalMusicPlaylist() {
+  if (!window.audioEngine || !window.audioEngine.localMusicManager) return;
+  if (typeof confirm === 'function' && !confirm('Voulez-vous vider la playlist des morceaux du téléphone ?')) {
+    return;
+  }
+  await window.audioEngine.localMusicManager.clearAll();
+  updateLocalMusicUI();
+}
+
+async function removeLocalTrack(id) {
+  if (!window.audioEngine || !window.audioEngine.localMusicManager) return;
+  await window.audioEngine.localMusicManager.removeTrack(id);
+  updateLocalMusicUI();
+}
+
+window.onMusicStyleChange = onMusicStyleChange;
+window.updateLocalMusicUI = updateLocalMusicUI;
+window.handleLocalMusicFilesSelected = handleLocalMusicFilesSelected;
+window.clearLocalMusicPlaylist = clearLocalMusicPlaylist;
+window.removeLocalTrack = removeLocalTrack;
 
 // --------------------------------------------------------------------------
 // SAUVEGARDE & RESTAURATION (EXPORT / IMPORT JSON)

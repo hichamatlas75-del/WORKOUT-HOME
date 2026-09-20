@@ -8,6 +8,223 @@
 // --------------------------------------------------------------------------
 // SYNTHÉTISEUR DE MUSIQUE DE FOND MOTIVANTE (100% WEB AUDIO API, SANS FICHIER LOURD)
 // --------------------------------------------------------------------------
+// GESTIONNAIRE DE MUSIQUE LOCALE (RÉPERTOIRE DU TÉLÉPHONE / DISQUE)
+// Stockage sécurisé et persistant des morceaux audio dans IndexedDB ('fb17_music_db', store 'tracks')
+// Évite la limite de 5 Mo du localStorage et garantit un fonctionnement 100% hors-ligne.
+// --------------------------------------------------------------------------
+class LocalMusicManager {
+  constructor() {
+    this.dbName = 'fb17_music_db';
+    this.dbVersion = 1;
+    this.storeName = 'tracks';
+    this.db = null;
+    this.playlist = []; // [{ id, name, size, type, addedAt }]
+    this.currentIndex = 0;
+    this.isReady = false;
+    this.initPromise = this.initDB()
+      .then(() => this.loadPlaylist())
+      .catch((e) => {
+        console.warn('LocalMusicManager init error:', e);
+        return [];
+      });
+  }
+
+  initDB() {
+    return new Promise((resolve) => {
+      if (typeof indexedDB === 'undefined') {
+        resolve(null);
+        return;
+      }
+      try {
+        const req = indexedDB.open(this.dbName, this.dbVersion);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains(this.storeName)) {
+            db.createObjectStore(this.storeName, { keyPath: 'id' });
+          }
+        };
+        req.onsuccess = (e) => {
+          this.db = e.target.result;
+          this.isReady = true;
+          resolve(this.db);
+        };
+        req.onerror = (e) => {
+          console.warn('IndexedDB open error:', e);
+          resolve(null);
+        };
+      } catch (err) {
+        console.warn('IndexedDB exception:', err);
+        resolve(null);
+      }
+    });
+  }
+
+  loadPlaylist() {
+    return new Promise((resolve) => {
+      if (!this.db) {
+        resolve([]);
+        return;
+      }
+      try {
+        const tx = this.db.transaction(this.storeName, 'readonly');
+        const store = tx.objectStore(this.storeName);
+        const req = store.getAll();
+        req.onsuccess = () => {
+          const items = req.result || [];
+          items.sort((a, b) => (a.addedAt || 0) - (b.addedAt || 0));
+          this.playlist = items.map(item => ({
+            id: item.id,
+            name: item.name,
+            size: item.size,
+            type: item.type,
+            addedAt: item.addedAt
+          }));
+          if (this.currentIndex >= this.playlist.length) {
+            this.currentIndex = 0;
+          }
+          if (typeof window !== 'undefined' && typeof window.updateLocalMusicUI === 'function') {
+            try { window.updateLocalMusicUI(); } catch (e) {}
+          }
+          resolve(this.playlist);
+        };
+        req.onerror = () => {
+          resolve([]);
+        };
+      } catch (err) {
+        console.warn('loadPlaylist error:', err);
+        resolve([]);
+      }
+    });
+  }
+
+  async addFiles(fileList) {
+    if (!fileList || fileList.length === 0) return this.playlist;
+    await this.initPromise;
+    if (!this.db) {
+      console.warn('IndexedDB non disponible pour stocker la musique.');
+      return this.playlist;
+    }
+
+    const files = Array.from(fileList).filter(file => {
+      return (file.type && file.type.startsWith('audio/')) ||
+             /\.(mp3|wav|ogg|m4a|aac|flac|webm|opus)$/i.test(file.name);
+    });
+
+    if (files.length === 0) return this.playlist;
+
+    return new Promise((resolve) => {
+      try {
+        const tx = this.db.transaction(this.storeName, 'readwrite');
+        const store = tx.objectStore(this.storeName);
+
+        files.forEach((file, index) => {
+          const trackRecord = {
+            id: 'track_' + Date.now() + '_' + index + '_' + Math.random().toString(36).substring(2, 7),
+            name: file.name,
+            size: file.size,
+            type: file.type || 'audio/mpeg',
+            blob: file,
+            addedAt: Date.now() + index
+          };
+          store.put(trackRecord);
+        });
+
+        tx.oncomplete = async () => {
+          await this.loadPlaylist();
+          resolve(this.playlist);
+        };
+
+        tx.onerror = (e) => {
+          console.warn('Transaction addFiles error:', e);
+          resolve(this.playlist);
+        };
+      } catch (err) {
+        console.warn('addFiles error:', err);
+        resolve(this.playlist);
+      }
+    });
+  }
+
+  async removeTrack(id) {
+    await this.initPromise;
+    if (!this.db) return this.playlist;
+
+    return new Promise((resolve) => {
+      try {
+        const tx = this.db.transaction(this.storeName, 'readwrite');
+        const store = tx.objectStore(this.storeName);
+        store.delete(id);
+        tx.oncomplete = async () => {
+          await this.loadPlaylist();
+          resolve(this.playlist);
+        };
+        tx.onerror = () => resolve(this.playlist);
+      } catch (err) {
+        console.warn('removeTrack error:', err);
+        resolve(this.playlist);
+      }
+    });
+  }
+
+  async clearAll() {
+    await this.initPromise;
+    this.playlist = [];
+    this.currentIndex = 0;
+    if (!this.db) return [];
+
+    return new Promise((resolve) => {
+      try {
+        const tx = this.db.transaction(this.storeName, 'readwrite');
+        const store = tx.objectStore(this.storeName);
+        store.clear();
+        tx.oncomplete = () => resolve([]);
+        tx.onerror = () => resolve([]);
+      } catch (err) {
+        console.warn('clearAll error:', err);
+        resolve([]);
+      }
+    });
+  }
+
+  async getTrackBlob(id) {
+    await this.initPromise;
+    if (!this.db) return null;
+
+    return new Promise((resolve) => {
+      try {
+        const tx = this.db.transaction(this.storeName, 'readonly');
+        const store = tx.objectStore(this.storeName);
+        const req = store.get(id);
+        req.onsuccess = () => {
+          if (req.result && req.result.blob) {
+            resolve(req.result.blob);
+          } else {
+            resolve(null);
+          }
+        };
+        req.onerror = () => resolve(null);
+      } catch (err) {
+        console.warn('getTrackBlob error:', err);
+        resolve(null);
+      }
+    });
+  }
+
+  getCurrentTrack() {
+    if (this.playlist.length === 0) return null;
+    return this.playlist[this.currentIndex] || this.playlist[0] || null;
+  }
+
+  nextTrack() {
+    if (this.playlist.length === 0) return null;
+    this.currentIndex = (this.currentIndex + 1) % this.playlist.length;
+    return this.playlist[this.currentIndex];
+  }
+}
+
+// --------------------------------------------------------------------------
+// SYNTHÉTISEUR DE MUSIQUE DE FOND MOTIVANTE & LECTEUR DE RÉPERTOIRE LOCAL
+// --------------------------------------------------------------------------
 class WorkoutMusicEngine {
   constructor(soundEngine) {
     this.soundEngine = soundEngine;
@@ -15,7 +232,7 @@ class WorkoutMusicEngine {
     this.isPaused = false;
     this.enabled = true;
     this.volume = 0.6;
-    this.style = 'synthwave'; // 'synthwave' | 'electro' | 'chill'
+    this.style = 'synthwave'; // 'synthwave' | 'electro' | 'chill' | 'local'
     this.currentPhase = 'WORK'; // 'WORK' | 'REST' | 'PREPARE'
 
     this.timerId = null;
@@ -29,6 +246,12 @@ class WorkoutMusicEngine {
     this.duckGain = null;
     this.noiseBuffer = null;
     this.activeNodes = new Set();
+
+    // Piste locale
+    this.localAudioElement = null;
+    this.mediaSourceNode = null;
+    this.currentBlobUrl = null;
+    this.duckMultiplier = 1.0;
   }
 
   // Création du buffer de bruit blanc pour percussions
@@ -58,7 +281,44 @@ class WorkoutMusicEngine {
       this.masterMusicGain.connect(this.duckGain);
       this.duckGain.connect(ctx.destination);
     }
+    if (this.localAudioElement && !this.mediaSourceNode && typeof ctx.createMediaElementSource === 'function') {
+      try {
+        this.mediaSourceNode = ctx.createMediaElementSource(this.localAudioElement);
+        this.mediaSourceNode.connect(this.masterMusicGain);
+      } catch (e) {
+        // Ignorer si déjà raccordé ou non supporté
+      }
+    }
     this.initNoiseBuffer();
+  }
+
+  ensureLocalAudioElement() {
+    if (typeof window === 'undefined' || typeof Audio === 'undefined') return null;
+    if (!this.localAudioElement) {
+      this.localAudioElement = new Audio();
+      this.localAudioElement.preload = 'auto';
+      this.localAudioElement.addEventListener('ended', () => {
+        this.playNextLocalTrack();
+      });
+      this.localAudioElement.addEventListener('error', (e) => {
+        console.warn('Erreur lecture piste audio locale, passage à la suivante:', e);
+        if (this.isPlaying && this.style === 'local') {
+          setTimeout(() => this.playNextLocalTrack(), 400);
+        }
+      });
+    }
+    this.ensureAudioGraph();
+    this.updateLocalAudioVolume();
+    return this.localAudioElement;
+  }
+
+  updateLocalAudioVolume() {
+    if (!this.localAudioElement) return;
+    if (!this.mediaSourceNode) {
+      this.localAudioElement.volume = Math.max(0, Math.min(1, this.volume * this.duckMultiplier));
+    } else {
+      this.localAudioElement.volume = 1.0;
+    }
   }
 
   setVolume(val) {
@@ -68,32 +328,65 @@ class WorkoutMusicEngine {
       this.masterMusicGain.gain.cancelScheduledValues(t);
       this.masterMusicGain.gain.linearRampToValueAtTime(this.volume, t + 0.05);
     }
+    this.updateLocalAudioVolume();
   }
 
   setStyle(style) {
-    if (['synthwave', 'electro', 'chill'].includes(style)) {
+    if (['synthwave', 'electro', 'chill', 'local'].includes(style)) {
+      const prevStyle = this.style;
       this.style = style;
       if (style === 'electro') this.tempo = 128;
       else if (style === 'synthwave') this.tempo = 124;
       else if (style === 'chill') this.tempo = 100;
+
+      if (this.isPlaying) {
+        if (prevStyle === 'local' && style !== 'local') {
+          if (this.localAudioElement) {
+            try { this.localAudioElement.pause(); } catch (e) {}
+          }
+          this.soundEngine.initContext();
+          this.ensureAudioGraph();
+          const ctx = this.soundEngine.audioCtx;
+          if (ctx) {
+            this.nextNoteTime = ctx.currentTime + 0.05;
+            this.schedulerLoop();
+          }
+        } else if (prevStyle !== 'local' && style === 'local') {
+          if (this.timerId) {
+            clearTimeout(this.timerId);
+            this.timerId = null;
+          }
+          this.activeNodes.forEach(node => {
+            try { node.stop(); } catch (e) {}
+          });
+          this.activeNodes.clear();
+          this.startLocalMusicPlayback();
+        }
+      }
     }
   }
 
   // Baisse temporaire du volume pendant la voix (Ducking)
   duck(targetGain = 0.18, durationMs = 120) {
-    if (!this.duckGain || !this.soundEngine.audioCtx) return;
-    const ctx = this.soundEngine.audioCtx;
-    const t = ctx.currentTime;
-    this.duckGain.gain.cancelScheduledValues(t);
-    this.duckGain.gain.linearRampToValueAtTime(targetGain, t + durationMs / 1000);
+    this.duckMultiplier = targetGain;
+    if (this.duckGain && this.soundEngine.audioCtx) {
+      const ctx = this.soundEngine.audioCtx;
+      const t = ctx.currentTime;
+      this.duckGain.gain.cancelScheduledValues(t);
+      this.duckGain.gain.linearRampToValueAtTime(targetGain, t + durationMs / 1000);
+    }
+    this.updateLocalAudioVolume();
   }
 
   unduck(durationMs = 400) {
-    if (!this.duckGain || !this.soundEngine.audioCtx) return;
-    const ctx = this.soundEngine.audioCtx;
-    const t = ctx.currentTime;
-    this.duckGain.gain.cancelScheduledValues(t);
-    this.duckGain.gain.linearRampToValueAtTime(1.0, t + durationMs / 1000);
+    this.duckMultiplier = 1.0;
+    if (this.duckGain && this.soundEngine.audioCtx) {
+      const ctx = this.soundEngine.audioCtx;
+      const t = ctx.currentTime;
+      this.duckGain.gain.cancelScheduledValues(t);
+      this.duckGain.gain.linearRampToValueAtTime(1.0, t + durationMs / 1000);
+    }
+    this.updateLocalAudioVolume();
   }
 
   // Démarrer la musique
@@ -107,11 +400,77 @@ class WorkoutMusicEngine {
     this.isPaused = false;
     this.stepIndex = 0;
 
+    if (this.style === 'local') {
+      this.startLocalMusicPlayback();
+      return;
+    }
+
     const ctx = this.soundEngine.audioCtx;
     if (!ctx) return;
     this.nextNoteTime = ctx.currentTime + 0.05;
 
     this.schedulerLoop();
+  }
+
+  async startLocalMusicPlayback() {
+    this.ensureLocalAudioElement();
+    const mgr = this.soundEngine.localMusicManager;
+    if (!mgr) return;
+    await mgr.initPromise;
+
+    if (!mgr.playlist || mgr.playlist.length === 0) {
+      // Si la playlist locale est vide, fallback transparent vers le synthétiseur
+      const ctx = this.soundEngine.audioCtx;
+      if (ctx) {
+        this.nextNoteTime = ctx.currentTime + 0.05;
+        this.schedulerLoop();
+      }
+      return;
+    }
+
+    this.playCurrentLocalTrack();
+  }
+
+  async playCurrentLocalTrack() {
+    if (!this.isPlaying || this.isPaused || !this.enabled) return;
+    this.ensureLocalAudioElement();
+    if (!this.localAudioElement) return;
+
+    const mgr = this.soundEngine.localMusicManager;
+    if (!mgr) return;
+    const track = mgr.getCurrentTrack();
+    if (!track) return;
+
+    try {
+      const blob = await mgr.getTrackBlob(track.id);
+      if (!blob) {
+        this.playNextLocalTrack();
+        return;
+      }
+      if (this.currentBlobUrl && typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
+        URL.revokeObjectURL(this.currentBlobUrl);
+      }
+      if (typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
+        this.currentBlobUrl = URL.createObjectURL(blob);
+        this.localAudioElement.src = this.currentBlobUrl;
+        this.updateLocalAudioVolume();
+        const p = this.localAudioElement.play();
+        if (p && typeof p.catch === 'function') {
+          p.catch(err => {
+            console.warn('Lecture musique locale bloquée par le navigateur (autoplay) :', err);
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Erreur lecture piste locale :', e);
+    }
+  }
+
+  playNextLocalTrack() {
+    const mgr = this.soundEngine.localMusicManager;
+    if (!mgr) return;
+    mgr.nextTrack();
+    this.playCurrentLocalTrack();
   }
 
   setPhase(phase) {
@@ -123,6 +482,17 @@ class WorkoutMusicEngine {
       this.isPaused = isPaused;
     } else {
       this.isPaused = !this.isPaused;
+    }
+
+    if (this.style === 'local' && this.localAudioElement) {
+      if (this.isPaused) {
+        try { this.localAudioElement.pause(); } catch (e) {}
+      } else if (this.isPlaying && this.enabled) {
+        try {
+          const p = this.localAudioElement.play();
+          if (p && typeof p.catch === 'function') p.catch(() => {});
+        } catch (e) {}
+      }
     }
   }
 
@@ -137,6 +507,17 @@ class WorkoutMusicEngine {
       try { node.stop(); } catch (e) {}
     });
     this.activeNodes.clear();
+
+    if (this.localAudioElement) {
+      try {
+        this.localAudioElement.pause();
+        this.localAudioElement.currentTime = 0;
+      } catch (e) {}
+    }
+    if (this.currentBlobUrl && typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
+      try { URL.revokeObjectURL(this.currentBlobUrl); } catch (e) {}
+      this.currentBlobUrl = null;
+    }
   }
 
   // Boucle de planification de notes en continu
@@ -458,6 +839,7 @@ class SoundEngine {
       }
     }
 
+    this.localMusicManager = new LocalMusicManager();
     this.musicEngine = new WorkoutMusicEngine(this);
   }
 
