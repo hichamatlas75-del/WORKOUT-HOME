@@ -51,6 +51,9 @@ class SettingsPersistenceManager {
       'setting-target-weight',
       'setting-height-cm',
       'setting-firebase-url',
+      'setting-coach-voice',
+      'setting-coach-speed',
+      'setting-coach-encouragements',
       'sync-user-id',
       'sync-user-pin',
       'sync-auto-enabled'
@@ -192,18 +195,24 @@ class SettingsPersistenceManager {
       const targetWeightInput = document.getElementById('setting-target-weight');
       const heightInput = document.getElementById('setting-height-cm');
       const firebaseUrlInput = document.getElementById('setting-firebase-url');
+      const coachVoiceSelect = document.getElementById('setting-coach-voice');
+      const coachSpeedSelect = document.getElementById('setting-coach-speed');
+      const coachEncouragementsSwitch = document.getElementById('setting-coach-encouragements');
       const syncIdInput = document.getElementById('sync-user-id');
       const syncPinInput = document.getElementById('sync-user-pin');
       const syncAutoSwitch = document.getElementById('sync-auto-enabled');
 
       const prefs = {
         targetTime: timeInput?.value || '17:00',
-        rounds: roundsInput ? Math.min(4, Math.max(2, parseInt(roundsInput.value) || 3)) : 3,
+        rounds: roundsInput ? Math.min(10, Math.max(1, parseInt(roundsInput.value) || 3)) : 3,
         plankDuration: plankInput ? parseInt(plankInput.value) || 45 : 45,
-        workDuration: workInput ? Math.min(90, Math.max(20, parseInt(workInput.value) || 40)) : 40,
-        restDuration: restInput ? Math.min(60, Math.max(10, parseInt(restInput.value) || 20)) : 20,
+        workDuration: workInput ? Math.min(300, Math.max(5, parseInt(workInput.value) || 30)) : 30,
+        restDuration: restInput ? Math.min(300, Math.max(0, parseInt(restInput.value) || 10)) : 10,
         soundEnabled: soundSwitch?.checked ?? true,
         voiceEnabled: voiceSwitch?.checked ?? true,
+        coachVoice: coachVoiceSelect?.value || 'auto',
+        coachSpeed: coachSpeedSelect ? parseFloat(coachSpeedSelect.value) : 1.05,
+        coachEncouragements: coachEncouragementsSwitch?.checked ?? true,
         musicEnabled: musicSwitch?.checked ?? true,
         musicStyle: musicStyleSelect?.value || 'synthwave',
         musicVolume: musicVolumeSlider ? (parseInt(musicVolumeSlider.value) / 100) : 0.6,
@@ -263,6 +272,13 @@ class SettingsPersistenceManager {
     if (window.audioEngine) {
       window.audioEngine.soundEnabled = prefs.soundEnabled ?? true;
       window.audioEngine.voiceEnabled = prefs.voiceEnabled ?? true;
+
+      if (typeof window.audioEngine.setVoiceConfig === 'function') {
+        window.audioEngine.setVoiceConfig({
+          gender: prefs.coachVoice || 'auto',
+          rate: prefs.coachSpeed !== undefined ? prefs.coachSpeed : 1.05
+        });
+      }
 
       if (window.audioEngine.musicEngine) {
         window.audioEngine.musicEngine.enabled = prefs.musicEnabled ?? true;

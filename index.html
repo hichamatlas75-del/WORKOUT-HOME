@@ -143,6 +143,32 @@
           </div>
         </div>
 
+        <!-- Formats Rapides (Presets 1-Clic) -->
+        <div class="level-selector-card" style="margin-top: -6px;">
+          <div class="level-selector-title">
+            <span>⚡ Formats Rapides (1-Clic)</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">Ajuste temps &amp; séries</span>
+          </div>
+          <div class="level-pills-row" id="home-preset-pills">
+            <button type="button" class="level-pill-btn" data-preset="express" onclick="applyWorkoutPreset('express')" title="2 séries, 30s effort / 10s repos">
+              <span class="level-pill-icon">⚡</span>
+              <span class="level-pill-name">Express 12m</span>
+            </button>
+            <button type="button" class="level-pill-btn active" data-preset="standard" onclick="applyWorkoutPreset('standard')" title="3 séries, 30s effort / 10s repos">
+              <span class="level-pill-icon">🎯</span>
+              <span class="level-pill-name">Standard 20m</span>
+            </button>
+            <button type="button" class="level-pill-btn" data-preset="intense" onclick="applyWorkoutPreset('intense')" title="4 séries, 40s effort / 15s repos">
+              <span class="level-pill-icon">🔥</span>
+              <span class="level-pill-name">HIIT 28m</span>
+            </button>
+            <button type="button" class="level-pill-btn" data-preset="gentle" onclick="applyWorkoutPreset('gentle')" title="2 séries, 25s effort / 20s repos">
+              <span class="level-pill-icon">🧘</span>
+              <span class="level-pill-name">Douceur 15m</span>
+            </button>
+          </div>
+        </div>
+
         <!-- Bouton Géant Tactile COMMENCER -->
         <button class="btn-primary" onclick="startWorkoutSession()">
           <svg viewBox="0 0 24 24">
@@ -518,6 +544,43 @@
 
           <div class="setting-row">
             <div class="setting-info">
+              <span class="setting-title">Voix du coach</span>
+              <span class="setting-desc">Tonalité vocale</span>
+            </div>
+            <label for="setting-coach-voice" class="sr-only">Voix du coach</label>
+            <select id="setting-coach-voice" class="styled-input">
+              <option value="auto">Automatique (Système)</option>
+              <option value="female">Voix Féminine</option>
+              <option value="male">Voix Masculine</option>
+            </select>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Débit de diction</span>
+              <span class="setting-desc">Vitesse de parole du coach</span>
+            </div>
+            <label for="setting-coach-speed" class="sr-only">Débit de diction</label>
+            <select id="setting-coach-speed" class="styled-input">
+              <option value="0.9">Posé (0.9x)</option>
+              <option value="1.05" selected>Normal (1.0x)</option>
+              <option value="1.2">Énergique (1.2x)</option>
+            </select>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Encouragements en séance</span>
+              <span class="setting-desc">Alertes motivantes à mi-parcours et à 10s</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="setting-coach-encouragements" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
               <span class="setting-title">Thème visuel</span>
               <span class="setting-desc">Mode sombre ou clair</span>
             </div>
@@ -578,6 +641,27 @@
           </svg>
           Installer l'application sur cet appareil
         </button>
+
+        <!-- Gestionnaire Vidéos Hors-Ligne (40 Mo) -->
+        <div class="settings-group" id="offline-videos-box">
+          <div class="section-header" style="margin-bottom: 6px;">
+            <h3 class="section-title" style="font-size: 0.95rem;">📦 Mode 100% Hors-Ligne (Vidéos)</h3>
+          </div>
+          <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.4;">
+            Téléchargez les 20 vidéos de démonstration d'exercices pour vous entraîner sans aucune connexion Internet (forêt, sous-sol, voyage).
+          </p>
+          <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+              <span id="offline-videos-status" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);">Statut : Vérification du cache...</span>
+              <button type="button" id="btn-preload-videos" class="btn-secondary" style="width: auto; padding: 6px 12px; font-size: 0.75rem;" onclick="preloadAllWorkoutVideos()">
+                📥 Télécharger les 20 vidéos (~40 Mo)
+              </button>
+            </div>
+            <div id="offline-videos-progress-bar-container" style="display: none; width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; margin-top: 4px;">
+              <div id="offline-videos-progress-fill" style="width: 0%; height: 100%; background: var(--accent-work); transition: width 0.2s ease;"></div>
+            </div>
+          </div>
+        </div>
 
         <!-- Profil & Connexion Multi-Appareils -->
         <div class="settings-group sync-cloud-card">
@@ -789,6 +873,15 @@
         </button>
       </div>
 
+      <!-- Mini-Lecteur Musique Live (HUD) -->
+      <div id="workout-music-hud" class="workout-music-hud" style="display: none;">
+        <span class="workout-music-icon">🎵</span>
+        <span id="workout-music-title" class="workout-music-title">Musique en cours...</span>
+        <button type="button" id="btn-workout-music-next" class="workout-music-next-btn" onclick="skipWorkoutMusicTrack()" title="Morceau suivant (Touche N)">
+          ⏭️
+        </button>
+      </div>
+
       <!-- Chronomètre Circulaire Géant SVG -->
       <div class="timer-container">
         <svg class="timer-svg" viewBox="0 0 240 240">
@@ -886,8 +979,13 @@
           🌟 Nouveau badge débloqué !
         </div>
 
+        <button type="button" class="btn-secondary" id="btn-share-victory" style="margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="shareWorkoutVictory()">
+          <span>📸</span>
+          <span>Partager ma victoire (Image)</span>
+        </button>
+
         <button class="btn-primary" onclick="closeCelebration()">
-          Enregistrer & Voir mes progrès
+          Enregistrer &amp; Voir mes progrès
         </button>
       </div>
     </div>

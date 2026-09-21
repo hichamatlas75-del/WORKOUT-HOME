@@ -546,6 +546,42 @@ class WorkoutMusicEngine {
     }
   }
 
+  getCurrentTrackTitle() {
+    if (!this.enabled) return "Musique désactivée";
+    if (this.style === 'local') {
+      const mgr = this.soundEngine.localMusicManager;
+      if (mgr && mgr.playlist && mgr.playlist.length > 0) {
+        const track = mgr.getCurrentTrack();
+        if (track) {
+          const clean = String(track.name || 'Piste audio').replace(/\.[^/.]+$/, "");
+          return `📱 ${clean}`;
+        }
+      }
+      return "📱 Répertoire vide";
+    }
+    if (this.style === 'electro') return "🔥 Électro Energy (128 BPM)";
+    if (this.style === 'chill') return "🧘 Zen Lo-Fi (100 BPM)";
+    return "⚡ Synthwave (124 BPM)";
+  }
+
+  skipToNextTrack() {
+    if (this.style === 'local') {
+      this.playNextLocalTrack();
+    } else {
+      const styles = ['synthwave', 'electro', 'chill'];
+      const nextIdx = (styles.indexOf(this.style) + 1) % styles.length;
+      this.setStyle(styles[nextIdx]);
+      if (window.appStorage) {
+        window.appStorage.savePreferences({ musicStyle: this.style });
+      }
+      const sel = document.getElementById('setting-music-style');
+      if (sel) sel.value = this.style;
+    }
+    if (typeof window !== 'undefined' && typeof window.updateWorkoutMusicHUD === 'function') {
+      try { window.updateWorkoutMusicHUD(); } catch (e) {}
+    }
+  }
+
   playNextLocalTrack() {
     const mgr = this.soundEngine.localMusicManager;
     if (!mgr) return;
@@ -921,6 +957,15 @@ class SoundEngine {
 
     this.localMusicManager = new LocalMusicManager();
     this.musicEngine = new WorkoutMusicEngine(this);
+
+    // Préférences de voix du coach vocal
+    this.voiceRate = 1.05;
+    this.voiceGender = 'auto'; // 'auto' | 'female' | 'male'
+  }
+
+  setVoiceConfig({ gender, rate } = {}) {
+    if (gender !== undefined) this.voiceGender = gender;
+    if (rate !== undefined) this.voiceRate = Math.max(0.7, Math.min(1.5, parseFloat(rate) || 1.05));
   }
 
   // Initialisation sécurisée au premier contact utilisateur
@@ -1131,13 +1176,23 @@ class SoundEngine {
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'fr-FR';
-      utterance.rate = 1.05;
+      utterance.rate = this.voiceRate || 1.05;
       utterance.pitch = 1.0;
 
       const voices = (this.cachedVoices && this.cachedVoices.length > 0) ? this.cachedVoices : this.speechSynth.getVoices();
-      const frVoice = voices.find(v => v.lang && v.lang.startsWith('fr'));
-      if (frVoice) {
-        utterance.voice = frVoice;
+      const frVoices = voices.filter(v => v.lang && v.lang.startsWith('fr'));
+      let chosenVoice = null;
+
+      if (this.voiceGender === 'female') {
+        chosenVoice = frVoices.find(v => /female|femme|amelie|hortense|julie|celine|virginie/i.test(v.name));
+      } else if (this.voiceGender === 'male') {
+        chosenVoice = frVoices.find(v => /male|homme|paul|thomas|nicolas|antoine|mathieu/i.test(v.name));
+      }
+      if (!chosenVoice) {
+        chosenVoice = frVoices[0] || null;
+      }
+      if (chosenVoice) {
+        utterance.voice = chosenVoice;
       }
 
       const onVoiceFinished = () => {

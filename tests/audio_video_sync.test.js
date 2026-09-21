@@ -144,5 +144,57 @@ describe('Synchronisation Audio & Vidéos (audio.js, workout.js, exercises.js)',
     // Maintenant que toutes les raisons sont levées, le volume remonte à 100%
     assert.equal(audioEngine.musicEngine.duckMultiplier, 1.0, 'Le volume remonte à 100% une fois la voix terminée');
   });
+
+  test('Configuration personnalisée de la voix du coach (genre et débit)', () => {
+    assert.equal(typeof audioEngine.setVoiceConfig, 'function');
+    audioEngine.setVoiceConfig({ gender: 'female', rate: 1.2 });
+    assert.equal(audioEngine.voiceGender, 'female');
+    assert.equal(audioEngine.voiceRate, 1.2);
+
+    audioEngine.setVoiceConfig({ gender: 'male', rate: 0.9 });
+    assert.equal(audioEngine.voiceGender, 'male');
+    assert.equal(audioEngine.voiceRate, 0.9);
+
+    audioEngine.setVoiceConfig({ gender: 'auto', rate: 1.05 });
+    assert.equal(audioEngine.voiceGender, 'auto');
+    assert.equal(audioEngine.voiceRate, 1.05);
+  });
+
+  test('Gestion des pistes musicales HUD (titre courant et saut de morceau)', () => {
+    assert.equal(typeof audioEngine.musicEngine.getCurrentTrackTitle, 'function');
+    assert.equal(typeof audioEngine.musicEngine.skipToNextTrack, 'function');
+
+    audioEngine.musicEngine.setStyle('synthwave');
+    const title1 = audioEngine.musicEngine.getCurrentTrackTitle();
+    assert.ok(title1.includes('Synthwave'), 'Le titre synthwave doit mentionner le style');
+
+    audioEngine.musicEngine.skipToNextTrack();
+    const title2 = audioEngine.musicEngine.getCurrentTrackTitle();
+    assert.ok(typeof title2 === 'string' && title2.length > 0);
+  });
+
+  test('Déclenchement des encouragements dynamiques en séance (mi-temps et 10s restantes)', () => {
+    const spokenPhrases = [];
+    const origSpeak = audioEngine.speak.bind(audioEngine);
+    audioEngine.speak = (text) => spokenPhrases.push(text);
+
+    // Initialiser workout avec 40s d'effort et encouragements activés
+    env.get('window.appStorage').prefs.coachEncouragements = true;
+    workoutEngine.startWorkout({ rounds: 1, workDuration: 40, restDuration: 10 });
+    workoutEngine.advanceStep(); // WORK (duration = 40s)
+
+    // Simuler le passage à 20s (mi-parcours 50%)
+    workoutEngine.timeRemaining = 20;
+    workoutEngine.processTimerTick(Date.now(), false);
+    assert.ok(spokenPhrases.some(p => p.includes('mi-parcours')), "Une phrase d'encouragement doit être prononcée à 50% de l'effort");
+
+    // Simuler le passage à 10s restantes
+    workoutEngine.timeRemaining = 10;
+    workoutEngine.processTimerTick(Date.now(), false);
+    assert.ok(spokenPhrases.some(p => p.includes('10 secondes')), "Une annonce motivante doit être prononcée à 10s de la fin");
+
+    workoutEngine.quitWorkout();
+    audioEngine.speak = origSpeak;
+  });
 });
 

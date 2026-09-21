@@ -56,6 +56,12 @@ document.addEventListener('DOMContentLoaded', () => {
       window.syncManager.sync({ silent: true });
     }
   } catch (e) { console.warn('Auto sync error:', e); }
+
+  // 11. Initialiser les raccourcis clavier
+  try { initKeyboardShortcuts(); } catch (e) { console.warn('Shortcuts init error:', e); }
+
+  // 12. Statut initial du cache vidéos hors-ligne
+  try { checkVideosCacheStatus(); } catch (e) { console.warn('Video cache check error:', e); }
 });
 
 // --------------------------------------------------------------------------
@@ -173,6 +179,18 @@ function renderHomeExercisesList() {
   levelBtns.forEach(btn => {
     const btnLevel = btn.getAttribute('data-level');
     btn.classList.toggle('active', btnLevel === (prefs.userLevel || 'intermediate'));
+  });
+
+  // 3b. Mettre à jour les boutons de formats rapides (presets)
+  const presetPills = document.querySelectorAll('#home-preset-pills .level-pill-btn');
+  presetPills.forEach(btn => {
+    const pKey = btn.getAttribute('data-preset');
+    let isMatch = false;
+    if (pKey === 'express' && rounds === 2 && workSec === 30 && restSec === 10) isMatch = true;
+    else if (pKey === 'standard' && rounds === 3 && workSec === 30 && restSec === 10) isMatch = true;
+    else if (pKey === 'intense' && rounds === 4 && workSec === 40 && restSec === 15) isMatch = true;
+    else if (pKey === 'gentle' && rounds === 2 && workSec === 25 && restSec === 20) isMatch = true;
+    btn.classList.toggle('active', isMatch);
   });
 
   // 4. Rendu de la liste d'exercices
@@ -380,6 +398,7 @@ window.switchTab = switchTab;
 function startWorkoutSession() {
   window.audioEngine.initContext();
   updateWorkoutMusicBtnState();
+  updateWorkoutMusicHUD();
   const overlay = document.getElementById('workout-overlay');
   if (overlay) overlay.classList.add('active');
 
@@ -464,11 +483,15 @@ function initWorkoutUI() {
         ? `<svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`
         : `<svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
     }
+
+    updateWorkoutMusicHUD();
   };
 
   // Fin de séance
   window.workoutEngine.onFinish = (session) => {
     if (overlay) overlay.classList.remove('active');
+    const hud = document.getElementById('workout-music-hud');
+    if (hud) hud.style.display = 'none';
 
     // Vérifier les badges débloqués
     const newBadges = window.motivationManager.checkAndUnlockBadges(session);
@@ -534,6 +557,8 @@ function confirmQuitWorkout() {
       window.workoutEngine.quitWorkout();
       const overlay = document.getElementById('workout-overlay');
       if (overlay) overlay.classList.remove('active');
+      const hud = document.getElementById('workout-music-hud');
+      if (hud) hud.style.display = 'none';
     }
   );
 }
@@ -572,6 +597,9 @@ function initSettingsAutoSave() {
     'setting-initial-weight',
     'setting-target-weight',
     'setting-height-cm',
+    'setting-coach-voice',
+    'setting-coach-speed',
+    'setting-coach-encouragements',
     'sync-user-id',
     'sync-user-pin',
     'sync-auto-enabled'
@@ -618,6 +646,9 @@ function loadSettingsForm() {
   const targetWeightInput = document.getElementById('setting-target-weight');
   const heightInput = document.getElementById('setting-height-cm');
   const firebaseUrlInput = document.getElementById('setting-firebase-url');
+  const coachVoiceSelect = document.getElementById('setting-coach-voice');
+  const coachSpeedSelect = document.getElementById('setting-coach-speed');
+  const coachEncouragementsSwitch = document.getElementById('setting-coach-encouragements');
   const syncIdInput = document.getElementById('sync-user-id');
   const syncPinInput = document.getElementById('sync-user-pin');
   const syncAutoSwitch = document.getElementById('sync-auto-enabled');
@@ -631,6 +662,9 @@ function loadSettingsForm() {
   if (restInput && activeEl !== restInput) restInput.value = (prefs.restDuration !== undefined) ? prefs.restDuration : 10;
   if (soundSwitch && activeEl !== soundSwitch) soundSwitch.checked = prefs.soundEnabled !== false;
   if (voiceSwitch && activeEl !== voiceSwitch) voiceSwitch.checked = prefs.voiceEnabled !== false;
+  if (coachVoiceSelect && activeEl !== coachVoiceSelect) coachVoiceSelect.value = prefs.coachVoice || "auto";
+  if (coachSpeedSelect && activeEl !== coachSpeedSelect) coachSpeedSelect.value = String(prefs.coachSpeed !== undefined ? prefs.coachSpeed : "1.05");
+  if (coachEncouragementsSwitch && activeEl !== coachEncouragementsSwitch) coachEncouragementsSwitch.checked = prefs.coachEncouragements !== false;
   if (musicSwitch && activeEl !== musicSwitch) musicSwitch.checked = prefs.musicEnabled !== false;
   if (musicStyleSelect && activeEl !== musicStyleSelect) musicStyleSelect.value = prefs.musicStyle || "synthwave";
   onMusicStyleChange(prefs.musicStyle || "synthwave");
@@ -654,6 +688,12 @@ function loadSettingsForm() {
 
   window.audioEngine.soundEnabled = prefs.soundEnabled !== false;
   window.audioEngine.voiceEnabled = prefs.voiceEnabled !== false;
+  if (window.audioEngine && typeof window.audioEngine.setVoiceConfig === 'function') {
+    window.audioEngine.setVoiceConfig({
+      gender: prefs.coachVoice || "auto",
+      rate: prefs.coachSpeed !== undefined ? parseFloat(prefs.coachSpeed) : 1.05
+    });
+  }
   if (window.audioEngine.musicEngine) {
     window.audioEngine.musicEngine.enabled = prefs.musicEnabled !== false;
     window.audioEngine.musicEngine.setVolume(prefs.musicVolume !== undefined ? prefs.musicVolume : 0.6);
@@ -685,6 +725,9 @@ function saveSettings(options = {}) {
   const targetWeightInput = document.getElementById('setting-target-weight');
   const heightInput = document.getElementById('setting-height-cm');
   const firebaseUrlInput = document.getElementById('setting-firebase-url');
+  const coachVoiceSelect = document.getElementById('setting-coach-voice');
+  const coachSpeedSelect = document.getElementById('setting-coach-speed');
+  const coachEncouragementsSwitch = document.getElementById('setting-coach-encouragements');
   const syncIdInput = document.getElementById('sync-user-id');
   const syncPinInput = document.getElementById('sync-user-pin');
   const syncAutoSwitch = document.getElementById('sync-auto-enabled');
@@ -704,6 +747,9 @@ function saveSettings(options = {}) {
     restDuration: (parsedRest !== null && !isNaN(parsedRest)) ? Math.min(300, Math.max(0, parsedRest)) : (currentPrefs.restDuration !== undefined ? currentPrefs.restDuration : 10),
     soundEnabled: soundSwitch ? soundSwitch.checked : (currentPrefs.soundEnabled !== false),
     voiceEnabled: voiceSwitch ? voiceSwitch.checked : (currentPrefs.voiceEnabled !== false),
+    coachVoice: coachVoiceSelect ? coachVoiceSelect.value : (currentPrefs.coachVoice || "auto"),
+    coachSpeed: coachSpeedSelect ? parseFloat(coachSpeedSelect.value) : (currentPrefs.coachSpeed !== undefined ? currentPrefs.coachSpeed : 1.05),
+    coachEncouragements: coachEncouragementsSwitch ? coachEncouragementsSwitch.checked : (currentPrefs.coachEncouragements !== false),
     musicEnabled: musicSwitch ? musicSwitch.checked : (currentPrefs.musicEnabled !== false),
     musicStyle: musicStyleSelect ? musicStyleSelect.value : (currentPrefs.musicStyle || "synthwave"),
     musicVolume: musicVolumeSlider ? (parseInt(musicVolumeSlider.value, 10) / 100) : (currentPrefs.musicVolume !== undefined ? currentPrefs.musicVolume : 0.6),
@@ -725,6 +771,12 @@ function saveSettings(options = {}) {
   document.documentElement.setAttribute('data-theme', resolvedTheme);
   window.audioEngine.soundEnabled = newPrefs.soundEnabled;
   window.audioEngine.voiceEnabled = newPrefs.voiceEnabled;
+  if (window.audioEngine && typeof window.audioEngine.setVoiceConfig === 'function') {
+    window.audioEngine.setVoiceConfig({
+      gender: newPrefs.coachVoice,
+      rate: newPrefs.coachSpeed
+    });
+  }
   if (window.audioEngine.musicEngine) {
     window.audioEngine.musicEngine.enabled = newPrefs.musicEnabled;
     window.audioEngine.musicEngine.setVolume(newPrefs.musicVolume);
@@ -781,10 +833,12 @@ function toggleWorkoutMusic() {
     if (window.workoutEngine && window.workoutEngine.state !== WORKOUT_STATES.IDLE && window.workoutEngine.state !== WORKOUT_STATES.COMPLETED) {
       musicEngine.start(window.workoutEngine.state);
     }
+    updateWorkoutMusicHUD();
     showToast("🎵 Musique de fond activée");
   } else {
     if (btnMusic) btnMusic.classList.add('muted');
     musicEngine.stop();
+    updateWorkoutMusicHUD();
     showToast("🔇 Musique de fond coupée");
   }
 }
@@ -797,8 +851,40 @@ function updateWorkoutMusicBtnState() {
   }
 }
 
+function updateWorkoutMusicHUD() {
+  const hud = document.getElementById('workout-music-hud');
+  const titleEl = document.getElementById('workout-music-title');
+  if (!hud) return;
+
+  const musicEngine = window.audioEngine ? window.audioEngine.musicEngine : null;
+  const isWorkoutActive = window.workoutEngine && window.workoutEngine.state !== WORKOUT_STATES.IDLE && window.workoutEngine.state !== WORKOUT_STATES.COMPLETED;
+  const isMusicActive = musicEngine && musicEngine.enabled && musicEngine.isPlaying;
+
+  if (isWorkoutActive && isMusicActive) {
+    hud.style.display = 'flex';
+    if (titleEl) {
+      titleEl.textContent = musicEngine.getCurrentTrackTitle();
+    }
+  } else {
+    hud.style.display = 'none';
+  }
+}
+
+function skipWorkoutMusicTrack() {
+  if (window.audioEngine && window.audioEngine.musicEngine) {
+    window.audioEngine.musicEngine.skipToNextTrack();
+    updateWorkoutMusicHUD();
+    const title = window.audioEngine.musicEngine.getCurrentTrackTitle();
+    if (typeof showToast === 'function') {
+      showToast(`⏭️ Morceau suivant : ${title}`);
+    }
+  }
+}
+
 window.toggleWorkoutMusic = toggleWorkoutMusic;
 window.updateWorkoutMusicBtnState = updateWorkoutMusicBtnState;
+window.updateWorkoutMusicHUD = updateWorkoutMusicHUD;
+window.skipWorkoutMusicTrack = skipWorkoutMusicTrack;
 
 // --------------------------------------------------------------------------
 // GESTION DE LA MUSIQUE DU RÉPERTOIRE TÉLÉPHONE (PLAYLIST LOCALE)
@@ -1857,6 +1943,399 @@ function loadPresetIntoCustom(preset) {
   }
 }
 
+// --------------------------------------------------------------------------
+// FORMATS RAPIDES (PRESETS 1-CLIC)
+// --------------------------------------------------------------------------
+function applyWorkoutPreset(presetKey) {
+  const PRESETS = {
+    express: { rounds: 2, workDuration: 30, restDuration: 10, plankDuration: 30, label: 'Express 12m' },
+    standard: { rounds: 3, workDuration: 30, restDuration: 10, plankDuration: 45, label: 'Standard 20m' },
+    intense: { rounds: 4, workDuration: 40, restDuration: 15, plankDuration: 60, label: 'HIIT 28m' },
+    gentle: { rounds: 2, workDuration: 25, restDuration: 20, plankDuration: 30, label: 'Douceur 15m' }
+  };
+
+  const preset = PRESETS[presetKey];
+  if (!preset) return;
+
+  window.appStorage.savePreferences({
+    rounds: preset.rounds,
+    workDuration: preset.workDuration,
+    restDuration: preset.restDuration,
+    plankDuration: preset.plankDuration,
+    activePreset: presetKey
+  });
+
+  const roundsInput = document.getElementById('setting-rounds');
+  const workInput = document.getElementById('setting-work-duration');
+  const restInput = document.getElementById('setting-rest-duration');
+  const plankInput = document.getElementById('setting-plank-duration');
+  if (roundsInput) roundsInput.value = preset.rounds;
+  if (workInput) workInput.value = preset.workDuration;
+  if (restInput) restInput.value = preset.restDuration;
+  if (plankInput) plankInput.value = preset.plankDuration;
+
+  renderHomeExercisesList();
+  if (typeof showToast === 'function') {
+    showToast(`⚡ Format ${preset.label} activé !`);
+  }
+}
+
+// --------------------------------------------------------------------------
+// PARTAGE SOCIAL DE VICTOIRE (CARTE CANVAS 2D HD)
+// --------------------------------------------------------------------------
+function drawRoundedRectPolyfill(ctx, x, y, width, height, radius) {
+  if (typeof ctx.roundRect === 'function') {
+    ctx.beginPath();
+    ctx.roundRect(x, y, width, height, radius);
+    return;
+  }
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+}
+
+function shareWorkoutVictory() {
+  const celebTime = document.getElementById('celeb-time')?.textContent || '20 min';
+  const celebRounds = document.getElementById('celeb-rounds')?.textContent || '3 tours';
+  const celebCalories = document.getElementById('celeb-calories')?.textContent || '~190 kcal';
+  const streakStats = window.appStorage ? window.appStorage.getStreakStats() : { currentStreak: 1 };
+  const activeProf = window.appStorage ? window.appStorage.getActiveProfile() : null;
+  const userName = activeProf ? activeProf.name : 'Athlète';
+  const userAvatar = activeProf ? activeProf.avatar : '🦁';
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 1080;
+  canvas.height = 1080;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    if (typeof showToast === 'function') showToast("⚠️ Impossible de générer l'image.", true);
+    return;
+  }
+
+  // Fond sombre premium dégradé
+  const bgGrad = ctx.createLinearGradient(0, 0, 1080, 1080);
+  bgGrad.addColorStop(0, '#0a0f1d');
+  bgGrad.addColorStop(0.5, '#0f172a');
+  bgGrad.addColorStop(1, '#1e1b4b');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, 1080, 1080);
+
+  // Halos lumineux d'ambiance
+  const halo1 = ctx.createRadialGradient(250, 200, 10, 250, 200, 450);
+  halo1.addColorStop(0, 'rgba(255, 94, 0, 0.25)');
+  halo1.addColorStop(1, 'rgba(255, 94, 0, 0)');
+  ctx.fillStyle = halo1;
+  ctx.beginPath();
+  ctx.arc(250, 200, 450, 0, Math.PI * 2);
+  ctx.fill();
+
+  const halo2 = ctx.createRadialGradient(850, 850, 10, 850, 850, 400);
+  halo2.addColorStop(0, 'rgba(0, 242, 254, 0.2)');
+  halo2.addColorStop(1, 'rgba(0, 242, 254, 0)');
+  ctx.fillStyle = halo2;
+  ctx.beginPath();
+  ctx.arc(850, 850, 400, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Bordure élégante
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(40, 40, 1000, 1000);
+
+  // En-tête : Titre PWA & Profil
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 36px "Segoe UI", Roboto, sans-serif';
+  ctx.fillStyle = '#ff5e00';
+  ctx.fillText('⚡ FULL BODY 17', 90, 120);
+
+  ctx.textAlign = 'right';
+  ctx.font = '600 28px "Segoe UI", Roboto, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+  ctx.fillText(`${userAvatar} ${userName}`, 990, 120);
+
+  // Date du jour
+  const now = new Date();
+  const dateFormatted = now.toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  }).toUpperCase();
+  ctx.textAlign = 'center';
+  ctx.font = '600 22px "Segoe UI", Roboto, sans-serif';
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillText(dateFormatted, 540, 230);
+
+  // Titre principal
+  ctx.font = '900 68px "Segoe UI", Roboto, sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('SÉANCE ACCOMPLIE !', 540, 315);
+
+  // Badge Flamme Série
+  const streakCount = streakStats.currentStreak || 1;
+  const streakText = `🔥 SÉRIE DE ${streakCount} JOUR${streakCount > 1 ? 'S' : ''} CONSÉCUTIF${streakCount > 1 ? 'S' : ''}`;
+  ctx.font = 'bold 26px "Segoe UI", Roboto, sans-serif';
+  const streakWidth = ctx.measureText(streakText).width + 60;
+  ctx.fillStyle = 'rgba(255, 94, 0, 0.18)';
+  drawRoundedRectPolyfill(ctx, 540 - streakWidth / 2, 360, streakWidth, 60, 30);
+  ctx.fill();
+  ctx.strokeStyle = '#ff5e00';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = '#ff9248';
+  ctx.fillText(streakText, 540, 400);
+
+  // Cartes de statistiques (3 colonnes)
+  const stats = [
+    { label: 'DURÉE TOTALE', value: celebTime, icon: '⏱️' },
+    { label: 'SÉRIES', value: celebRounds, icon: '🔁' },
+    { label: 'CALORIES', value: celebCalories, icon: '🔥' }
+  ];
+
+  const cardWidth = 260;
+  const cardHeight = 220;
+  const startX = 90;
+  const gap = 110;
+  const cardY = 480;
+
+  stats.forEach((s, idx) => {
+    const x = startX + idx * (cardWidth + gap);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+    drawRoundedRectPolyfill(ctx, x, cardY, cardWidth, cardHeight, 24);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.textAlign = 'center';
+    ctx.font = '42px sans-serif';
+    ctx.fillText(s.icon, x + cardWidth / 2, cardY + 65);
+
+    ctx.font = '900 38px "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(s.value, x + cardWidth / 2, cardY + 130);
+
+    ctx.font = 'bold 18px "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(s.label, x + cardWidth / 2, cardY + 180);
+  });
+
+  // Message de motivation
+  ctx.textAlign = 'center';
+  ctx.font = 'italic 28px "Segoe UI", Roboto, sans-serif';
+  ctx.fillStyle = '#e2e8f0';
+  ctx.fillText('« La régularité forge les champions de demain. »', 540, 810);
+
+  // Séparateur
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(340, 870);
+  ctx.lineTo(740, 870);
+  ctx.stroke();
+
+  // Footer PWA
+  ctx.font = '600 24px "Segoe UI", Roboto, sans-serif';
+  ctx.fillStyle = '#00f2fe';
+  ctx.fillText('fullbody17.app • Entraînement Quotidien PWA', 540, 930);
+
+  // Conversion en Blob PNG et Partage / Téléchargement
+  canvas.toBlob(async (blob) => {
+    if (!blob) {
+      if (typeof showToast === 'function') showToast("⚠️ Échec d'exportation de l'image.", true);
+      return;
+    }
+
+    const fileName = `fullbody17-victoire-${now.toISOString().slice(0, 10)}.png`;
+    const file = new File([blob], fileName, { type: 'image/png' });
+
+    // Web Share API (Android & iOS)
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          title: 'Full Body 17 — Victoire du jour',
+          text: `Séance Full Body 17 accomplie ! ${celebTime}, ${celebRounds} • ${streakText}`,
+          files: [file]
+        });
+        if (typeof showToast === 'function') showToast("🎉 Carte de victoire partagée !");
+        return;
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.warn('Share error fallback to download:', err);
+        } else {
+          return;
+        }
+      }
+    }
+
+    // Fallback Téléchargement direct
+    const downloadUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(downloadUrl), 5000);
+    if (typeof showToast === 'function') showToast("📸 Carte de victoire téléchargée !");
+  }, 'image/png');
+}
+
+// --------------------------------------------------------------------------
+// GESTIONNAIRE DE VIDÉOS HORS-LIGNE (CACHE STORAGE)
+// --------------------------------------------------------------------------
+const VIDEOS_CACHE_NAME = 'fullbody17-videos-v1';
+
+async function checkVideosCacheStatus() {
+  if (typeof window === 'undefined' || !('caches' in window)) return;
+  const statusEl = document.getElementById('offline-videos-status');
+  const btnPreload = document.getElementById('btn-preload-videos');
+  if (!statusEl) return;
+
+  try {
+    const exercises = window.EXERCISES_DATA || [];
+    const videoUrls = exercises.map(e => e.video).filter(Boolean);
+    if (videoUrls.length === 0) return;
+
+    const cache = await caches.open(VIDEOS_CACHE_NAME);
+    let cachedCount = 0;
+    for (const url of videoUrls) {
+      const match = await cache.match(url);
+      if (match) cachedCount++;
+    }
+
+    if (cachedCount === videoUrls.length) {
+      statusEl.textContent = `✅ 100% Hors-ligne disponible (${cachedCount}/${videoUrls.length} vidéos)`;
+      statusEl.style.color = 'var(--accent-rest, #10b981)';
+      if (btnPreload) btnPreload.textContent = "🔄 Vérifier / Rafraîchir";
+    } else if (cachedCount > 0) {
+      statusEl.textContent = `⚠️ Partiel (${cachedCount}/${videoUrls.length} vidéos en cache)`;
+      statusEl.style.color = '#f59e0b';
+      if (btnPreload) btnPreload.textContent = `📥 Télécharger (${videoUrls.length - cachedCount} restantes)`;
+    } else {
+      statusEl.textContent = `☁️ Non téléchargé (0/${videoUrls.length} vidéos)`;
+      statusEl.style.color = 'var(--text-secondary)';
+      if (btnPreload) btnPreload.textContent = "📥 Télécharger les 20 vidéos (~40 Mo)";
+    }
+  } catch (err) {
+    console.warn('Check videos cache status error:', err);
+  }
+}
+
+async function preloadAllWorkoutVideos() {
+  if (!('caches' in window)) {
+    if (typeof showToast === 'function') showToast("⚠️ Votre navigateur ne supporte pas le cache hors-ligne.", true);
+    return;
+  }
+
+  const statusEl = document.getElementById('offline-videos-status');
+  const btnPreload = document.getElementById('btn-preload-videos');
+  const progressContainer = document.getElementById('offline-videos-progress-bar-container');
+  const progressFill = document.getElementById('offline-videos-progress-fill');
+
+  const exercises = window.EXERCISES_DATA || [];
+  const videoUrls = exercises.map(e => e.video).filter(Boolean);
+  if (videoUrls.length === 0) {
+    if (typeof showToast === 'function') showToast("⚠️ Aucune vidéo à mettre en cache.", true);
+    return;
+  }
+
+  if (btnPreload) {
+    btnPreload.disabled = true;
+    btnPreload.textContent = "⏳ Téléchargement en cours...";
+  }
+  if (progressContainer) progressContainer.style.display = 'block';
+  if (progressFill) progressFill.style.width = '0%';
+
+  try {
+    const cache = await caches.open(VIDEOS_CACHE_NAME);
+    let successCount = 0;
+
+    for (let i = 0; i < videoUrls.length; i++) {
+      const url = videoUrls[i];
+      if (statusEl) statusEl.textContent = `Téléchargement ${i + 1}/${videoUrls.length}...`;
+      try {
+        const response = await fetch(url, { cache: 'reload' });
+        if (response.ok) {
+          await cache.put(url, response);
+          successCount++;
+        }
+      } catch (e) {
+        console.warn(`Failed to preload video ${url}:`, e);
+      }
+
+      const pct = Math.round(((i + 1) / videoUrls.length) * 100);
+      if (progressFill) progressFill.style.width = `${pct}%`;
+    }
+
+    if (successCount === videoUrls.length) {
+      if (typeof showToast === 'function') showToast("🎉 Les 20 vidéos sont sauvegardées hors-ligne !");
+    } else {
+      if (typeof showToast === 'function') showToast(`⚠️ ${successCount}/${videoUrls.length} vidéos téléchargées.`);
+    }
+  } catch (err) {
+    console.error('Preload videos error:', err);
+    if (typeof showToast === 'function') showToast("⚠️ Erreur lors du téléchargement des vidéos.", true);
+  } finally {
+    if (btnPreload) btnPreload.disabled = false;
+    setTimeout(() => {
+      if (progressContainer) progressContainer.style.display = 'none';
+    }, 2000);
+    checkVideosCacheStatus();
+  }
+}
+
+// --------------------------------------------------------------------------
+// ERGONOMIE CLAVIER & RACCOURCIS PHYSIQUES
+// --------------------------------------------------------------------------
+let _keyboardShortcutsAttached = false;
+function initKeyboardShortcuts() {
+  if (_keyboardShortcutsAttached) return;
+
+  window.addEventListener('keydown', (e) => {
+    const tag = e.target ? e.target.tagName : '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target && e.target.isContentEditable)) {
+      return;
+    }
+
+    const overlay = document.getElementById('workout-overlay');
+    const isWorkoutActive = overlay && overlay.classList.contains('active');
+
+    if (!isWorkoutActive) return;
+
+    if (e.code === 'Space') {
+      e.preventDefault();
+      toggleWorkoutPause();
+    } else if (e.code === 'ArrowRight') {
+      e.preventDefault();
+      jumpToNextExercise();
+    } else if (e.code === 'ArrowLeft') {
+      e.preventDefault();
+      prevWorkoutExercise();
+    } else if (e.code === 'KeyM') {
+      e.preventDefault();
+      toggleWorkoutMusic();
+    } else if (e.code === 'KeyN') {
+      e.preventDefault();
+      skipWorkoutMusicTrack();
+    } else if (e.code === 'Escape') {
+      e.preventDefault();
+      confirmQuitWorkout();
+    }
+  });
+
+  _keyboardShortcutsAttached = true;
+}
+
 // Exports globaux
 window.openProfileDrawer = openProfileDrawer;
 window.closeProfileDrawer = closeProfileDrawer;
@@ -1884,6 +2363,12 @@ window.toggleCurrentExerciseInWorkout = toggleCurrentExerciseInWorkout;
 window.resetRoutineToActiveLevel = resetRoutineToActiveLevel;
 window.saveCustomWorkoutSelection = saveCustomWorkoutSelection;
 window.reInitAppState = reInitAppState;
+window.applyWorkoutPreset = applyWorkoutPreset;
+window.shareWorkoutVictory = shareWorkoutVictory;
+window.checkVideosCacheStatus = checkVideosCacheStatus;
+window.preloadAllWorkoutVideos = preloadAllWorkoutVideos;
+window.initKeyboardShortcuts = initKeyboardShortcuts;
+
 
 
 

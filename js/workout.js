@@ -98,6 +98,10 @@ class WorkoutEngine {
     this.timeRemaining = duration;
     this.totalPhaseDuration = duration;
     this.phaseEndTime = Date.now() + duration * 1000;
+    this.lastBeepSec = null;
+    this.halfTimeTriggered = false;
+    this.halfTimeMotivTriggered = false;
+    this.tenSecMotivTriggered = false;
 
     // Mise à jour de la phase musicale (rythme d'effort vs repos)
     if (window.audioEngine && window.audioEngine.musicEngine) {
@@ -118,59 +122,79 @@ class WorkoutEngine {
     }
   }
 
+  processTimerTick(now = Date.now(), updateRemaining = true) {
+    if (this.state === WORKOUT_STATES.PAUSED || this.state === WORKOUT_STATES.IDLE) return;
+
+    if (updateRemaining) {
+      this.timeRemaining = Math.max(0, (this.phaseEndTime - now) / 1000);
+      this.elapsedSeconds = (now - this.workoutStartTime) / 1000;
+    }
+
+    const ceilSec = Math.ceil(this.timeRemaining);
+
+    // Signaux sonores à 3s, 2s, 1s
+    if (this.timeRemaining <= 3.05 && this.timeRemaining > 0) {
+      const checkSec = Math.ceil(this.timeRemaining);
+      if (checkSec !== this.lastBeepSec && checkSec >= 1 && checkSec <= 3) {
+        window.audioEngine.playCountdownBeep(checkSec);
+        this.lastBeepSec = checkSec;
+      }
+    }
+
+    // Signal de mi-temps à 20s pour les exercices unilatéraux
+    const currentList = this.getExercises();
+    const currentEx = currentList[this.currentExerciseIndex];
+    const isUnilateral = currentEx && (currentEx.id === 7 || currentEx.id === 15);
+    if (this.state === WORKOUT_STATES.WORK && isUnilateral) {
+      if (Math.abs(this.timeRemaining - 20) < 0.25 && !this.halfTimeTriggered) {
+        window.audioEngine.playHalfTimeTone();
+        window.audioEngine.speak("Mi-temps, changez de côté");
+        this.halfTimeTriggered = true;
+      }
+    }
+
+    // Encouragements vocaux dynamiques (mi-parcours & 10s restantes)
+    const prefs = (window.appStorage && window.appStorage.prefs) ? window.appStorage.prefs : {};
+    const allowEncouragements = (prefs.coachEncouragements !== false);
+    if (this.state === WORKOUT_STATES.WORK && allowEncouragements && this.totalPhaseDuration >= 20) {
+      const halfTimeSec = this.totalPhaseDuration / 2;
+      if (!isUnilateral && !this.halfTimeMotivTriggered && Math.abs(this.timeRemaining - halfTimeSec) < 0.25) {
+        window.audioEngine.speak("À mi-parcours, gardez le rythme !");
+        this.halfTimeMotivTriggered = true;
+      }
+      if (this.totalPhaseDuration >= 25 && !this.tenSecMotivTriggered && Math.abs(this.timeRemaining - 10) < 0.25) {
+        window.audioEngine.speak("Plus que 10 secondes, tenez bon !");
+        this.tenSecMotivTriggered = true;
+      }
+    }
+
+    // Diffusion d'état toutes les secondes pour l'écran TV (si supporté)
+    if (ceilSec !== this._lastBroadcastSec) {
+      this._lastBroadcastSec = ceilSec;
+      if (typeof this.broadcastCastState === 'function') {
+        this.broadcastCastState();
+      }
+    }
+
+    // Fin de la phase actuelle
+    if (this.timeRemaining <= 0) {
+      this.lastBeepSec = null;
+      this.halfTimeTriggered = false;
+      this.advanceStep();
+    }
+
+    if (this.onTick) {
+      this.onTick(this.timeRemaining, this.totalPhaseDuration, this.getCurrentInfo());
+    }
+  }
+
   // Boucle de chronométrage robuste (résistant au throttle en arrière-plan)
   startTimerLoop() {
     if (this.timerInterval) clearInterval(this.timerInterval);
     this.phaseEndTime = Date.now() + this.timeRemaining * 1000;
 
     this.timerInterval = setInterval(() => {
-      if (this.state === WORKOUT_STATES.PAUSED || this.state === WORKOUT_STATES.IDLE) return;
-
-      const now = Date.now();
-      this.timeRemaining = Math.max(0, (this.phaseEndTime - now) / 1000);
-      this.elapsedSeconds = (now - this.workoutStartTime) / 1000;
-
-      const ceilSec = Math.ceil(this.timeRemaining);
-
-      // Signaux sonores à 3s, 2s, 1s
-      if (this.timeRemaining <= 3.05 && this.timeRemaining > 0) {
-        const checkSec = Math.ceil(this.timeRemaining);
-        if (checkSec !== this.lastBeepSec && checkSec >= 1 && checkSec <= 3) {
-          window.audioEngine.playCountdownBeep(checkSec);
-          this.lastBeepSec = checkSec;
-        }
-      }
-
-      // Signal de mi-temps à 20s pour les exercices unilatéraux
-      const currentList = this.getExercises();
-      const currentEx = currentList[this.currentExerciseIndex];
-      const isUnilateral = currentEx && (currentEx.id === 7 || currentEx.id === 15);
-      if (this.state === WORKOUT_STATES.WORK && isUnilateral) {
-        if (Math.abs(this.timeRemaining - 20) < 0.15 && !this.halfTimeTriggered) {
-          window.audioEngine.playHalfTimeTone();
-          window.audioEngine.speak("Mi-temps, changez de côté");
-          this.halfTimeTriggered = true;
-        }
-      }
-
-      // Diffusion d'état toutes les secondes pour l'écran TV (si supporté)
-      if (ceilSec !== this._lastBroadcastSec) {
-        this._lastBroadcastSec = ceilSec;
-        if (typeof this.broadcastCastState === 'function') {
-          this.broadcastCastState();
-        }
-      }
-
-      // Fin de la phase actuelle
-      if (this.timeRemaining <= 0) {
-        this.lastBeepSec = null;
-        this.halfTimeTriggered = false;
-        this.advanceStep();
-      }
-
-      if (this.onTick) {
-        this.onTick(this.timeRemaining, this.totalPhaseDuration, this.getCurrentInfo());
-      }
+      this.processTimerTick(Date.now(), true);
     }, 100);
   }
 
