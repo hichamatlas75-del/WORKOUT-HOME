@@ -40,6 +40,13 @@ document.addEventListener('DOMContentLoaded', () => {
   try { window.dashboardManager.renderDashboard(); } catch (e) { console.warn('Dashboard init error:', e); }
   try { window.motivationManager.renderBadgesView(); } catch (e) { console.warn('Badges init error:', e); }
 
+  // 8b. Initialiser le podomètre & le widget d'activité
+  try {
+    if (window.pedometerManager) {
+      window.pedometerManager.init();
+    }
+  } catch (e) { console.warn('Pedometer init error:', e); }
+
   // 9. Vérifier les paramètres URL (ex: ?action=start ou ?tab=...)
   try {
     const urlParams = new URLSearchParams(window.location.search);
@@ -381,12 +388,19 @@ function switchTab(tabName) {
   // Mettre à jour les données si nécessaire
   if (tabName === 'dashboard') {
     window.dashboardManager.renderDashboard();
+  } else if (tabName === 'activity') {
+    if (window.pedometerManager) {
+      window.pedometerManager.renderActivityView();
+    }
   } else if (tabName === 'badges') {
     window.motivationManager.renderBadgesView();
   } else if (tabName === 'settings') {
     loadSettingsForm();
   } else if (tabName === 'home') {
     renderHomeExercisesList();
+    if (window.pedometerManager) {
+      window.pedometerManager.updateHomeActivityWidget();
+    }
   }
 }
 
@@ -520,6 +534,11 @@ function initWorkoutUI() {
     const celebModal = document.getElementById('celebration-modal');
     if (celebModal) celebModal.classList.add('active');
     window.motivationManager.launchConfetti();
+
+    // Actualiser le widget d'activité et podomètre
+    if (window.pedometerManager) {
+      window.pedometerManager.updateHomeActivityWidget();
+    }
   };
 
   // Intercepter le bouton Retour Android pour fermer la séance proprement
@@ -600,6 +619,9 @@ function initSettingsAutoSave() {
     'setting-coach-voice',
     'setting-coach-speed',
     'setting-coach-encouragements',
+    'setting-step-goal',
+    'setting-calorie-goal',
+    'setting-stride-length',
     'sync-user-id',
     'sync-user-pin',
     'sync-auto-enabled'
@@ -645,6 +667,9 @@ function loadSettingsForm() {
   const initWeightInput = document.getElementById('setting-initial-weight');
   const targetWeightInput = document.getElementById('setting-target-weight');
   const heightInput = document.getElementById('setting-height-cm');
+  const stepGoalSelect = document.getElementById('setting-step-goal');
+  const calGoalSelect = document.getElementById('setting-calorie-goal');
+  const strideInput = document.getElementById('setting-stride-length');
   const firebaseUrlInput = document.getElementById('setting-firebase-url');
   const coachVoiceSelect = document.getElementById('setting-coach-voice');
   const coachSpeedSelect = document.getElementById('setting-coach-speed');
@@ -681,6 +706,9 @@ function loadSettingsForm() {
   if (initWeightInput && activeEl !== initWeightInput) initWeightInput.value = prefs.initialWeight || "";
   if (targetWeightInput && activeEl !== targetWeightInput) targetWeightInput.value = prefs.targetWeight || "";
   if (heightInput && activeEl !== heightInput) heightInput.value = prefs.heightCm || "";
+  if (stepGoalSelect && activeEl !== stepGoalSelect) stepGoalSelect.value = String(prefs.dailyStepGoal || 8000);
+  if (calGoalSelect && activeEl !== calGoalSelect) calGoalSelect.value = String(prefs.dailyCalorieGoal || 500);
+  if (strideInput && activeEl !== strideInput) strideInput.value = prefs.strideLengthCm || "";
   if (firebaseUrlInput && activeEl !== firebaseUrlInput) firebaseUrlInput.value = prefs.firebaseUrl || "";
   if (syncIdInput && activeEl !== syncIdInput) syncIdInput.value = prefs.syncUserId || "";
   if (syncPinInput && activeEl !== syncPinInput) syncPinInput.value = prefs.syncUserPin || "";
@@ -724,6 +752,9 @@ function saveSettings(options = {}) {
   const initWeightInput = document.getElementById('setting-initial-weight');
   const targetWeightInput = document.getElementById('setting-target-weight');
   const heightInput = document.getElementById('setting-height-cm');
+  const stepGoalSelect = document.getElementById('setting-step-goal');
+  const calGoalSelect = document.getElementById('setting-calorie-goal');
+  const strideInput = document.getElementById('setting-stride-length');
   const firebaseUrlInput = document.getElementById('setting-firebase-url');
   const coachVoiceSelect = document.getElementById('setting-coach-voice');
   const coachSpeedSelect = document.getElementById('setting-coach-speed');
@@ -758,6 +789,9 @@ function saveSettings(options = {}) {
     initialWeight: initWeightInput && initWeightInput.value ? parseFloat(initWeightInput.value) : null,
     targetWeight: targetWeightInput && targetWeightInput.value ? parseFloat(targetWeightInput.value) : null,
     heightCm: heightInput && heightInput.value ? parseInt(heightInput.value, 10) : null,
+    dailyStepGoal: stepGoalSelect && stepGoalSelect.value ? parseInt(stepGoalSelect.value, 10) : (currentPrefs.dailyStepGoal || 8000),
+    dailyCalorieGoal: calGoalSelect && calGoalSelect.value ? parseInt(calGoalSelect.value, 10) : (currentPrefs.dailyCalorieGoal || 500),
+    strideLengthCm: strideInput && strideInput.value ? parseInt(strideInput.value, 10) : (currentPrefs.strideLengthCm || null),
     firebaseUrl: firebaseUrlInput ? firebaseUrlInput.value.trim() : (currentPrefs.firebaseUrl || ""),
     syncUserId: syncIdInput ? syncIdInput.value.trim().toLowerCase() : (currentPrefs.syncUserId || ""),
     syncUserPin: syncPinInput ? syncPinInput.value.trim() : (currentPrefs.syncUserPin || ""),
@@ -808,6 +842,10 @@ function saveSettings(options = {}) {
 
   renderHomeExercisesList();
   if (window.dashboardManager) window.dashboardManager.renderDashboard();
+  if (window.pedometerManager) {
+    window.pedometerManager.updateHomeActivityWidget();
+    window.pedometerManager.renderActivityView();
+  }
 
   if (!silent) {
     showToast("✅ Réglages enregistrés avec succès !");

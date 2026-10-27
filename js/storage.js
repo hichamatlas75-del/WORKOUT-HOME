@@ -9,7 +9,8 @@ const STORAGE_KEYS = {
   PREFS: 'fb17_preferences',
   HISTORY: 'fb17_workout_history',
   BADGES: 'fb17_unlocked_badges',
-  WEIGHT: 'fb17_weight_history'
+  WEIGHT: 'fb17_weight_history',
+  STEPS: 'fb17_steps_history'
 };
 
 const DEFAULT_PREFERENCES = {
@@ -25,6 +26,9 @@ const DEFAULT_PREFERENCES = {
   targetWeight: null, // Poids cible en kg
   initialWeight: null, // Poids de départ en kg
   heightCm: null, // Taille en cm pour calcul IMC
+  dailyStepGoal: 8000, // Objectif quotidien de pas (OMS recommande 7000-10000)
+  dailyCalorieGoal: 500, // Objectif quotidien combiné Workout + Pas en kcal
+  strideLengthCm: 74, // Longueur moyenne de foulée en cm (0.74m)
   soundEnabled: true,
   voiceEnabled: true,
   musicEnabled: true,
@@ -50,6 +54,7 @@ class AppStorage {
     this.history = this.loadHistory();
     this.badges = this.loadBadges();
     this.weightHistory = this.loadWeightHistory();
+    this.stepsHistory = this.loadStepsHistory();
   }
 
   // --- Gestion des Clés Multi-Profils ---
@@ -67,6 +72,10 @@ class AppStorage {
 
   getWeightKey(profileId = this.activeProfileId) {
     return (!profileId || profileId === 'default') ? STORAGE_KEYS.WEIGHT : `fb17_prof_${profileId}_weight`;
+  }
+
+  getStepsKey(profileId = this.activeProfileId) {
+    return (!profileId || profileId === 'default') ? STORAGE_KEYS.STEPS : `fb17_prof_${profileId}_steps`;
   }
 
   // --- Gestion Multi-Profils ---
@@ -160,6 +169,7 @@ class AppStorage {
       localStorage.setItem(this.getHistoryKey(id), JSON.stringify([]));
       localStorage.setItem(this.getBadgesKey(id), JSON.stringify([]));
       localStorage.setItem(this.getWeightKey(id), JSON.stringify([]));
+      localStorage.setItem(this.getStepsKey(id), JSON.stringify({}));
     } catch (e) {
       console.error('Erreur initialisation stockage profil:', e);
     }
@@ -181,6 +191,7 @@ class AppStorage {
     this.history = this.loadHistory();
     this.badges = this.loadBadges();
     this.weightHistory = this.loadWeightHistory();
+    this.stepsHistory = this.loadStepsHistory();
 
     return target;
   }
@@ -222,6 +233,7 @@ class AppStorage {
       localStorage.removeItem(this.getHistoryKey(profileId));
       localStorage.removeItem(this.getBadgesKey(profileId));
       localStorage.removeItem(this.getWeightKey(profileId));
+      localStorage.removeItem(this.getStepsKey(profileId));
     } catch (e) {}
 
     if (wasActive) {
@@ -594,18 +606,207 @@ class AppStorage {
     };
   }
 
+  // --- Podomètre & Compteur de Pas / Calories Combinées ---
+  loadStepsHistory() {
+    try {
+      const stored = localStorage.getItem(this.getStepsKey());
+      return stored ? JSON.parse(stored) : {};
+    } catch (e) {
+      console.warn('Erreur lecture historique des pas:', e);
+      return {};
+    }
+  }
+
+  saveStepsHistory() {
+    try {
+      localStorage.setItem(this.getStepsKey(), JSON.stringify(this.stepsHistory));
+    } catch (e) {
+      console.error('Erreur sauvegarde historique des pas:', e);
+    }
+  }
+
+  getDailySteps(dateStr = this.formatDateISO(new Date())) {
+    const entry = this.stepsHistory[dateStr];
+    if (!entry) return 0;
+    if (typeof entry === 'number') return entry;
+    return Number(entry.steps) || 0;
+  }
+
+  getDailyStepEntry(dateStr = this.formatDateISO(new Date())) {
+    const entry = this.stepsHistory[dateStr];
+    if (!entry) {
+      return {
+        steps: 0,
+        distanceKm: 0,
+        calories: 0,
+        manual: 0,
+        sensor: 0,
+        updatedAt: null
+      };
+    }
+    if (typeof entry === 'number') {
+      const dist = this.calculateDistanceKm(entry);
+      const cal = this.calculateWalkingCalories(entry);
+      return {
+        steps: entry,
+        distanceKm: dist,
+        calories: cal,
+        manual: 0,
+        sensor: entry,
+        updatedAt: null
+      };
+    }
+    return entry;
+  }
+
+  calculateStrideLengthM(heightCm = null) {
+    const h = heightCm || parseFloat(this.prefs.heightCm);
+    if (h && h >= 100 && h <= 250) {
+      return (h * 0.414) / 100;
+    }
+    if (this.prefs.strideLengthCm) {
+      return parseFloat(this.prefs.strideLengthCm) / 100;
+    }
+    return 0.74; // Longueur standard par défaut (74 cm)
+  }
+
+  calculateDistanceKm(steps, heightCm = null) {
+    const safeSteps = Math.max(0, parseInt(steps, 10) || 0);
+    const strideM = this.calculateStrideLengthM(heightCm);
+    const dist = (safeSteps * strideM) / 1000;
+    return Math.round(dist * 100) / 100;
+  }
+
+  calculateWalkingCalories(steps, weightKg = null, heightCm = null) {
+    const safeSteps = Math.max(0, parseInt(steps, 10) || 0);
+    const userWeight = weightKg
+      || (this.getWeightStats().currentWeight)
+      || (parseFloat(this.prefs.initialWeight))
+      || 70;
+    const distanceKm = this.calculateDistanceKm(safeSteps, heightCm);
+    // Formule validée en physiologie : ~0.75 kcal par kg et par km de marche active
+    return Math.round(distanceKm * userWeight * 0.75);
+  }
+
+  saveDailySteps(stepsCount, dateStr = this.formatDateISO(new Date()), metadata = {}) {
+    const safeCount = Math.max(0, parseInt(stepsCount, 10) || 0);
+    const dist = this.calculateDistanceKm(safeCount);
+    const cal = this.calculateWalkingCalories(safeCount);
+    const prev = this.getDailyStepEntry(dateStr);
+
+    this.stepsHistory[dateStr] = {
+      steps: safeCount,
+      distanceKm: dist,
+      calories: cal,
+      manual: metadata.manual !== undefined ? metadata.manual : (prev.manual || 0),
+      sensor: metadata.sensor !== undefined ? metadata.sensor : (prev.sensor || 0),
+      updatedAt: Date.now()
+    };
+
+    this.saveStepsHistory();
+    return this.stepsHistory[dateStr];
+  }
+
+  addSteps(count, dateStr = this.formatDateISO(new Date()), isManual = false) {
+    const delta = parseInt(count, 10) || 0;
+    if (delta <= 0) return this.getDailyStepEntry(dateStr);
+
+    const prev = this.getDailyStepEntry(dateStr);
+    const newSteps = prev.steps + delta;
+    const newManual = isManual ? ((prev.manual || 0) + delta) : (prev.manual || 0);
+    const newSensor = !isManual ? ((prev.sensor || 0) + delta) : (prev.sensor || 0);
+
+    return this.saveDailySteps(newSteps, dateStr, { manual: newManual, sensor: newSensor });
+  }
+
+  resetDailySteps(dateStr = this.formatDateISO(new Date())) {
+    this.stepsHistory[dateStr] = {
+      steps: 0,
+      distanceKm: 0,
+      calories: 0,
+      manual: 0,
+      sensor: 0,
+      updatedAt: Date.now()
+    };
+    this.saveStepsHistory();
+    return this.stepsHistory[dateStr];
+  }
+
+  getWorkoutsForDate(dateStr = this.formatDateISO(new Date())) {
+    return this.history.filter(s => s.date === dateStr && s.completed !== false);
+  }
+
+  getDailyWorkoutCalories(dateStr = this.formatDateISO(new Date())) {
+    const sessions = this.getWorkoutsForDate(dateStr);
+    return sessions.reduce((sum, s) => {
+      const cal = s.caloriesEstimated !== undefined
+        ? s.caloriesEstimated
+        : Math.round(((s.durationSeconds || 0) / 60) * 8.5);
+      return sum + cal;
+    }, 0);
+  }
+
+  getDailyActivitySummary(dateStr = this.formatDateISO(new Date())) {
+    const stepEntry = this.getDailyStepEntry(dateStr);
+    const steps = stepEntry.steps || 0;
+    const distanceKm = stepEntry.distanceKm !== undefined ? stepEntry.distanceKm : this.calculateDistanceKm(steps);
+    const stepCalories = stepEntry.calories !== undefined ? stepEntry.calories : this.calculateWalkingCalories(steps);
+
+    const workouts = this.getWorkoutsForDate(dateStr);
+    const workoutCount = workouts.length;
+    const workoutSeconds = workouts.reduce((acc, s) => acc + (s.durationSeconds || 0), 0);
+    const workoutMinutes = Math.round(workoutSeconds / 60);
+    const workoutCalories = this.getDailyWorkoutCalories(dateStr);
+
+    const totalCalories = workoutCalories + stepCalories;
+    const stepGoal = parseInt(this.prefs.dailyStepGoal, 10) || DEFAULT_PREFERENCES.dailyStepGoal;
+    const calorieGoal = parseInt(this.prefs.dailyCalorieGoal, 10) || DEFAULT_PREFERENCES.dailyCalorieGoal;
+
+    const stepPercent = stepGoal > 0 ? Math.min(Math.round((steps / stepGoal) * 100), 100) : 0;
+    const caloriePercent = calorieGoal > 0 ? Math.min(Math.round((totalCalories / calorieGoal) * 100), 100) : 0;
+
+    return {
+      date: dateStr,
+      steps,
+      distanceKm,
+      stepCalories,
+      stepGoal,
+      stepPercent,
+      workoutCount,
+      workoutMinutes,
+      workoutCalories,
+      totalCalories,
+      calorieGoal,
+      caloriePercent,
+      weightKg: this.getWeightStats().currentWeight || this.prefs.initialWeight || 70
+    };
+  }
+
+  getWeeklyActivitySummary(numDays = 7) {
+    const list = [];
+    const now = new Date();
+    for (let i = numDays - 1; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dateStr = this.formatDateISO(d);
+      list.push(this.getDailyActivitySummary(dateStr));
+    }
+    return list;
+  }
+
   // --- Exportation & Importation de données ---
   exportJSON() {
     const backup = {
       app: 'FULL_BODY_17',
-      version: '2.4.0',
+      version: '2.5.0',
       exportedAt: new Date().toISOString(),
       profiles: this.profiles,
       activeProfileId: this.activeProfileId,
       prefs: this.prefs,
       history: this.history,
       badges: this.badges,
-      weightHistory: this.weightHistory
+      weightHistory: this.weightHistory,
+      stepsHistory: this.stepsHistory
     };
     return JSON.stringify(backup, null, 2);
   }
@@ -660,10 +861,15 @@ class AppStorage {
         this.badges = data.badges.filter(b => typeof b === 'string');
       }
 
+      if (data.stepsHistory && typeof data.stepsHistory === 'object') {
+        this.stepsHistory = data.stepsHistory;
+      }
+
       localStorage.setItem(this.getPrefKey(), JSON.stringify(this.prefs));
       localStorage.setItem(this.getHistoryKey(), JSON.stringify(this.history));
       localStorage.setItem(this.getBadgesKey(), JSON.stringify(this.badges));
       localStorage.setItem(this.getWeightKey(), JSON.stringify(this.weightHistory));
+      localStorage.setItem(this.getStepsKey(), JSON.stringify(this.stepsHistory));
       return true;
     } catch (e) {
       console.error('Erreur importation JSON:', e);
@@ -739,6 +945,26 @@ class AppStorage {
       updated = true;
     }
 
+    // 5. Fusion des pas quotidiens
+    if (remoteData.stepsHistory && typeof remoteData.stepsHistory === 'object') {
+      Object.keys(remoteData.stepsHistory).forEach(date => {
+        const rem = remoteData.stepsHistory[date];
+        const loc = this.stepsHistory[date];
+        if (!loc) {
+          this.stepsHistory[date] = rem;
+          updated = true;
+        } else {
+          const remSteps = typeof rem === 'number' ? rem : (rem.steps || 0);
+          const locSteps = typeof loc === 'number' ? loc : (loc.steps || 0);
+          if (remSteps > locSteps) {
+            this.stepsHistory[date] = rem;
+            updated = true;
+          }
+        }
+      });
+      localStorage.setItem(this.getStepsKey(), JSON.stringify(this.stepsHistory));
+    }
+
     return updated;
   }
 
@@ -749,12 +975,14 @@ class AppStorage {
     localStorage.removeItem(STORAGE_KEYS.HISTORY);
     localStorage.removeItem(STORAGE_KEYS.BADGES);
     localStorage.removeItem(STORAGE_KEYS.WEIGHT);
+    localStorage.removeItem(STORAGE_KEYS.STEPS);
     this.profiles = [{ id: 'default', name: 'Moi', avatar: '🦁', level: 'intermediate', createdAt: Date.now() }];
     this.activeProfileId = 'default';
     this.prefs = { ...DEFAULT_PREFERENCES };
     this.history = [];
     this.badges = [];
     this.weightHistory = [];
+    this.stepsHistory = {};
   }
 }
 

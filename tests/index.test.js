@@ -4,4 +4,6 @@ import './motivation.test.js';
 import './sync.test.js';
 import './dashboard.test.js';
 import './audio_video_sync.test.js';
+import './pedometer_calories.test.js';
+
 

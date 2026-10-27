@@ -177,6 +177,48 @@
           COMMENCER LA SÉANCE
         </button>
 
+        <!-- Carte Widget Activité & Calories Combinées (Workout + Pas) -->
+        <div class="home-activity-card" onclick="switchTab('activity')" title="Ouvrir le Podomètre et le Suivi d'Activité">
+          <div class="home-activity-header">
+            <div class="home-activity-title-wrap">
+              <span class="home-activity-icon">🔥</span>
+              <div>
+                <span class="home-activity-title">Activité Quotidienne</span>
+                <span class="home-activity-sub">Workout + Podomètre</span>
+              </div>
+            </div>
+            <span class="home-activity-open-link">Détails &amp; Podomètre ➔</span>
+          </div>
+
+          <div class="home-activity-kpi-row">
+            <div class="home-activity-main-kpi">
+              <span class="home-activity-cal-val" id="home-activity-total-cal">0</span>
+              <span class="home-activity-cal-goal" id="home-activity-goal-cal">/ 500 kcal</span>
+            </div>
+            <div class="home-activity-percent-badge" id="home-activity-percent">0%</div>
+          </div>
+
+          <!-- Barre de progression -->
+          <div class="home-activity-progress-track">
+            <div class="home-activity-progress-fill" id="home-activity-progress-bar" style="width: 0%;"></div>
+          </div>
+
+          <!-- Décomposition Workout vs Pas -->
+          <div class="home-activity-breakdown-row">
+            <div class="breakdown-pill workout-pill">
+              <span class="breakdown-pill-icon">🏋️</span>
+              <span class="breakdown-pill-lbl">Séance :</span>
+              <strong id="home-activity-workout-cal">0 kcal</strong>
+            </div>
+            <div class="breakdown-pill step-pill">
+              <span class="breakdown-pill-icon">🚶</span>
+              <span class="breakdown-pill-lbl">Pas :</span>
+              <strong id="home-activity-step-cal">0 kcal</strong>
+              <span class="breakdown-pill-sub">(<span id="home-activity-steps">0</span> pas)</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Liste de la Routine du jour -->
         <div class="section-header" style="margin-top: 24px;">
           <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
@@ -203,7 +245,191 @@
       </section>
 
       <!-- ------------------------------------------------------------------
-           VUE 2 : TABLEAU DE BORD & STATISTIQUES
+           VUE 2 : ACTIVITÉ & PODOMÈTRE (CALCULATEUR DE PAS & CALORIES)
+           ------------------------------------------------------------------ -->
+      <section id="view-activity" class="view">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Activité &amp; Podomètre</h2>
+            <span class="section-subtitle">Pas, distance &amp; calories combinées</span>
+          </div>
+          <button class="btn-secondary" style="width: auto; padding: 6px 12px; font-size: 0.75rem;" onclick="window.pedometerManager.resetTodaySteps()" title="Remettre à zéro les pas du jour">
+            🔄 Réinitialiser
+          </button>
+        </div>
+
+        <!-- Grande Carte Jauges Circulaires Doubles (Pas + Calories) -->
+        <div class="activity-hero-card">
+          <div class="activity-gauge-container">
+            <svg class="activity-gauge-svg" viewBox="0 0 120 120">
+              <!-- Fond des cercles -->
+              <circle class="gauge-bg" cx="60" cy="60" r="54" />
+              <circle class="gauge-bg-inner" cx="60" cy="60" r="42" />
+              <!-- Anneau 1 : Pas (Extérieur, Teal/Turquoise) -->
+              <circle id="activity-step-circle" class="gauge-bar-steps" cx="60" cy="60" r="54" />
+              <!-- Anneau 2 : Calories (Intérieur, Orange flamme) -->
+              <circle id="activity-cal-circle" class="gauge-bar-calories" cx="60" cy="60" r="42" />
+            </svg>
+            <div class="activity-gauge-center">
+              <span class="activity-gauge-icon">🔥</span>
+              <span class="activity-gauge-percent" id="activity-gauge-percent">0%</span>
+              <span class="activity-gauge-sub">de l'objectif</span>
+            </div>
+          </div>
+
+          <!-- KPI Principaux -->
+          <div class="activity-kpi-summary">
+            <div class="activity-kpi-card step-card">
+              <div class="activity-kpi-header">
+                <span>🚶 Pas Quotidiens</span>
+                <span class="activity-kpi-badge" id="activity-distance-val">0.00 km</span>
+              </div>
+              <div class="activity-kpi-main">
+                <span class="activity-kpi-number" id="activity-steps-current">0</span>
+                <span class="activity-kpi-target" id="activity-steps-goal">/ 8 000 pas</span>
+              </div>
+            </div>
+
+            <div class="activity-kpi-card cal-card">
+              <div class="activity-kpi-header">
+                <span>🔥 Calories Brûlées</span>
+                <span class="activity-kpi-badge">Total Combiné</span>
+              </div>
+              <div class="activity-kpi-main">
+                <span class="activity-kpi-number" id="activity-total-cal">0</span>
+                <span class="activity-kpi-target" id="activity-cal-goal">/ 500 kcal</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Carte Décomposition Énergétique : Workout vs Marche -->
+        <div class="activity-breakdown-card">
+          <h3 class="card-inner-title">
+            <span>⚖️ Décomposition des Dépenses Énergétiques</span>
+          </h3>
+          <div class="breakdown-grid">
+            <div class="breakdown-detail-item workout-source">
+              <div class="b-detail-head">
+                <span class="b-detail-icon">🏋️</span>
+                <div>
+                  <span class="b-detail-title">Séance Workout HIIT</span>
+                  <span class="b-detail-sub" id="activity-workout-detail">0 séance (0 min)</span>
+                </div>
+              </div>
+              <div class="b-detail-val" id="activity-workout-cal">0 kcal</div>
+            </div>
+
+            <div class="breakdown-detail-item step-source">
+              <div class="b-detail-head">
+                <span class="b-detail-icon">🚶</span>
+                <div>
+                  <span class="b-detail-title">Marche &amp; Podomètre</span>
+                  <span class="b-detail-sub" id="activity-step-detail">0 pas (0.00 km)</span>
+                </div>
+              </div>
+              <div class="b-detail-val" id="activity-step-cal">0 kcal</div>
+            </div>
+          </div>
+          <p class="breakdown-footnote">
+            💡 Dépense calculée selon votre poids corporel et votre foulée pour une précision physiologique optimale.
+          </p>
+        </div>
+
+        <!-- Carte Podomètre Temps Réel (Accéléromètre Mobile) -->
+        <div class="pedometer-live-card">
+          <div class="pedometer-card-header">
+            <div class="p-card-title-wrap">
+              <span class="p-card-icon">⚡</span>
+              <div>
+                <h3 class="p-card-title">Podomètre Temps Réel</h3>
+                <span class="p-card-sub">Capteur accéléromètre du téléphone</span>
+              </div>
+            </div>
+            <div class="pedometer-status-pill idle" id="pedometer-status-pill">
+              <span class="status-dot"></span> En attente
+            </div>
+          </div>
+
+          <!-- Affichage dynamique de la session de marche en cours -->
+          <div class="pedometer-live-box" id="pedometer-live-box" style="display: none;">
+            <div class="live-stat-item">
+              <span class="live-stat-val" id="activity-live-session-steps">0</span>
+              <span class="live-stat-lbl">Pas de la session</span>
+            </div>
+            <div class="live-stat-divider"></div>
+            <div class="live-stat-item">
+              <span class="live-stat-val" id="activity-live-session-time">00:00</span>
+              <span class="live-stat-lbl">Durée active</span>
+            </div>
+          </div>
+
+          <!-- Boutons d'action du podomètre -->
+          <div class="pedometer-actions-row">
+            <button type="button" class="btn-primary pedometer-btn" id="btn-pedometer-start" onclick="window.pedometerManager.startTracking()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="5" r="2"/>
+                <path d="M10 22v-5l-2-2 1.5-4L14 13v9"/>
+                <path d="M7 13l3-2 3 2"/>
+              </svg>
+              Démarrer la marche
+            </button>
+            <button type="button" class="btn-secondary pedometer-btn-secondary" id="btn-pedometer-pause" style="display: none;" onclick="window.pedometerManager.pauseTracking()">
+              ⏸️ Pause
+            </button>
+            <button type="button" class="btn-secondary pedometer-btn-secondary" id="btn-pedometer-stop" style="display: none;" onclick="window.pedometerManager.stopTracking()">
+              ⏹️ Terminer
+            </button>
+          </div>
+          <span class="pedometer-tip">
+            📱 Fonctionne smartphone en main ou dans la poche. Sur iPhone, autorisez l'accès aux capteurs si demandé.
+          </span>
+        </div>
+
+        <!-- Carte Ajout Manuel / Synchronisation Montres -->
+        <div class="manual-steps-card">
+          <div class="section-header" style="margin-bottom: 6px;">
+            <h3 class="section-title" style="font-size: 0.95rem;">⌚ Montre Connectée &amp; Ajout Manuel</h3>
+          </div>
+          <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 12px;">
+            Ajoutez vos pas enregistrés avec une Apple Watch, Garmin, Fitbit, ou après un entraînement sur tapis :
+          </p>
+          <div class="quick-steps-grid">
+            <button type="button" class="quick-step-btn" onclick="window.pedometerManager.addManualSteps(500)">
+              +500
+            </button>
+            <button type="button" class="quick-step-btn" onclick="window.pedometerManager.addManualSteps(1000)">
+              +1 000
+            </button>
+            <button type="button" class="quick-step-btn" onclick="window.pedometerManager.addManualSteps(2500)">
+              +2 500
+            </button>
+            <button type="button" class="quick-step-btn" onclick="window.pedometerManager.addManualSteps(5000)">
+              +5 000
+            </button>
+            <button type="button" class="quick-step-btn custom-step-btn" onclick="window.pedometerManager.promptCustomSteps()">
+              ✏️ Saisie libre
+            </button>
+          </div>
+        </div>
+
+        <!-- Carte Graphique d'Activité sur 7 Jours -->
+        <div class="activity-chart-card">
+          <div class="section-header" style="margin-bottom: 4px;">
+            <h3 class="section-title" style="font-size: 0.95rem;">📊 Historique d'Activité (7 Derniers Jours)</h3>
+          </div>
+          <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 12px;">
+            Calories brûlées chaque jour (Workout HIIT vs Marche). L'étoile ★ signale l'objectif atteint.
+          </p>
+          <div id="activity-weekly-chart" class="activity-weekly-chart-box">
+            <!-- Rendu dynamiquement par js/pedometer.js -->
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ------------------------------------------------------------------
+           VUE 3 : TABLEAU DE BORD & STATISTIQUES
            ------------------------------------------------------------------ -->
       <section id="view-dashboard" class="view">
         
@@ -627,6 +853,54 @@
           </div>
         </div>
 
+        <!-- Activité Quotidienne & Objectifs Pas / Calories -->
+        <div class="settings-group">
+          <div class="section-header" style="margin-bottom: 8px;">
+            <h3 class="section-title" style="font-size: 0.95rem;">🚶 Activité, Pas &amp; Calories</h3>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Objectif quotidien de pas</span>
+              <span class="setting-desc">Recommandation OMS : 7 000 à 10 000 pas</span>
+            </div>
+            <label for="setting-step-goal" class="sr-only">Objectif de pas</label>
+            <select id="setting-step-goal" class="styled-input">
+              <option value="5000">5 000 pas (Reprise)</option>
+              <option value="7000">7 000 pas (Actif)</option>
+              <option value="8000" selected>8 000 pas (Standard)</option>
+              <option value="10000">10 000 pas (Forme +)</option>
+              <option value="12000">12 000 pas (Intense)</option>
+              <option value="15000">15 000 pas (Athlète)</option>
+            </select>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Objectif calorique combiné (kcal)</span>
+              <span class="setting-desc">Calories brûlées (Workout HIIT + Pas)</span>
+            </div>
+            <label for="setting-calorie-goal" class="sr-only">Objectif calorique combiné</label>
+            <select id="setting-calorie-goal" class="styled-input">
+              <option value="300">300 kcal (Modéré)</option>
+              <option value="400">400 kcal (Régulier)</option>
+              <option value="500" selected>500 kcal (Recommandé)</option>
+              <option value="600">600 kcal (Dynamique)</option>
+              <option value="750">750 kcal (Brûle-graisse)</option>
+              <option value="1000">1 000 kcal (Défi)</option>
+            </select>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-title">Longueur de foulée (cm)</span>
+              <span class="setting-desc">Calculée automatiquement à partir de votre taille si renseignée</span>
+            </div>
+            <label for="setting-stride-length" class="sr-only">Longueur de foulée</label>
+            <input type="number" id="setting-stride-length" class="styled-input" style="width: 85px;" min="40" max="130" placeholder="74">
+          </div>
+        </div>
+
         <!-- Bouton Sauvegarder Réglages -->
         <button class="btn-primary" style="margin-bottom: 18px;" onclick="saveSettings()">
           Enregistrer les modifications
@@ -804,6 +1078,16 @@
           <polyline points="9 22 9 12 15 12 15 22"/>
         </svg>
         Accueil
+      </button>
+
+      <button class="nav-item" data-tab="activity" onclick="switchTab('activity')" aria-label="Activité">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="13.5" cy="5.5" r="2.5"/>
+          <path d="M6 21v-4l4-3 2 3v4"/>
+          <path d="M9.5 9l3-2 3.5 2 2 4"/>
+          <path d="M6 13l3.5-4"/>
+        </svg>
+        Activité
       </button>
 
       <button class="nav-item" data-tab="dashboard" onclick="switchTab('dashboard')" aria-label="Progrès">
@@ -1418,6 +1702,7 @@
   <script src="js/exercises.js" defer></script>
   <script src="js/audio.js" defer></script>
   <script src="js/storage.js" defer></script>
+  <script src="js/pedometer.js" defer></script>
   <script src="js/workout.js" defer></script>
   <script src="js/dashboard.js" defer></script>
   <script src="js/motivation.js" defer></script>

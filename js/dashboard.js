@@ -14,6 +14,9 @@ class DashboardManager {
     this.renderCalendar();
     this.renderProgressionPlan();
     this.renderWeightTracker();
+    if (window.pedometerManager) {
+      window.pedometerManager.updateHomeActivityWidget();
+    }
   }
 
   // Cartes d'indicateurs de performance
