@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 3. Initialiser la liste des exercices sur la vue d'accueil
   try { renderHomeExercisesList(); } catch (e) { console.warn('Exercises init error:', e); }
+  try { checkFreshInstallBanner(); } catch (e) {}
 
   // 4. Initialiser la navigation par onglets
   try { initTabNavigation(); } catch (e) { console.warn('Navigation init error:', e); }
@@ -231,6 +232,8 @@ function renderHomeExercisesList() {
       </div>
     `;
   }).join('');
+
+  if (typeof checkFreshInstallBanner === 'function') checkFreshInstallBanner();
 }
 
 function setUserLevel(level) {
@@ -1418,17 +1421,25 @@ async function triggerProfileSync(mode = 'sync') {
     });
   }
 
-  if (mode === 'pull') {
+  if (mode === 'pull' || (window.appStorage && window.appStorage.history.length === 0)) {
     await window.syncManager.pullFromCloud();
   } else {
     await window.syncManager.sync();
   }
+
+  const activeProf = window.appStorage ? window.appStorage.getActiveProfile() : null;
+  if (activeProf && (activeProf.name === 'Moi' || !activeProf.name)) {
+    activeProf.name = window.appStorage.prefs.userName || (idInput ? idInput.value.trim().toLowerCase() : '');
+    window.appStorage.saveProfiles();
+  }
+
+  if (typeof checkFreshInstallBanner === 'function') checkFreshInstallBanner();
 }
 
 // --------------------------------------------------------------------------
 // GESTION DU MENU BURGER & DU TIROIR PROFIL AVATAR
 // --------------------------------------------------------------------------
-function openProfileDrawer() {
+function openProfileDrawer(focusLogin = false) {
   const overlay = document.getElementById('profile-drawer-overlay');
   if (overlay) {
     overlay.style.display = 'flex';
@@ -1437,6 +1448,17 @@ function openProfileDrawer() {
     });
   }
   updateProfileDrawerData();
+
+  if (focusLogin) {
+    setTimeout(() => {
+      const loginView = document.getElementById('drawer-login-view');
+      const inputUser = document.getElementById('drawer-input-user');
+      if (loginView && loginView.style.display !== 'none') {
+        loginView.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (inputUser) inputUser.focus();
+      }
+    }, 150);
+  }
 }
 
 function closeProfileDrawer() {
@@ -1579,10 +1601,19 @@ function disconnectProfile() {
         window.syncManager.updateStatusUI();
       }
       updateProfileDrawerData();
+      if (typeof checkFreshInstallBanner === 'function') checkFreshInstallBanner();
       if (typeof showToast === 'function') showToast('Profil déconnecté.');
     }
   );
 }
+
+function checkFreshInstallBanner() {
+  const banner = document.getElementById('fresh-install-restore-banner');
+  if (!banner || !window.appStorage) return;
+  const isFresh = (window.appStorage.history.length === 0 && !window.appStorage.prefs.syncUserId);
+  banner.style.display = isFresh ? 'flex' : 'none';
+}
+window.checkFreshInstallBanner = checkFreshInstallBanner;
 
 async function saveAndSyncFromDrawer() {
   const isConnected = !!(window.appStorage.prefs.syncUserId && window.appStorage.prefs.syncUserPin);
@@ -1630,8 +1661,23 @@ async function saveAndSyncFromDrawer() {
     if (setUserId) setUserId.value = userId;
     if (setUserPin) setUserPin.value = pin;
 
-    await window.syncManager.sync();
+    // Si l'historique local est vide (réinstallation ou nouvel appareil),
+    // privilégier d'abord la récupération (pull) pour restaurer l'intégralité du Cloud
+    if (window.appStorage.history.length === 0) {
+      await window.syncManager.pullFromCloud();
+    } else {
+      await window.syncManager.sync();
+    }
+
+    const activeProf = window.appStorage ? window.appStorage.getActiveProfile() : null;
+    if (activeProf && (activeProf.name === 'Moi' || !activeProf.name)) {
+      activeProf.name = window.appStorage.prefs.userName || userId;
+      window.appStorage.saveProfiles();
+    }
+
     updateProfileDrawerData();
+    if (typeof renderHomeExercisesList === 'function') renderHomeExercisesList();
+    if (typeof checkFreshInstallBanner === 'function') checkFreshInstallBanner();
   } finally {
     if (targetBtn) {
       targetBtn.disabled = false;
@@ -1660,7 +1706,16 @@ async function pullFromDrawer() {
   });
 
   await window.syncManager.pullFromCloud();
+
+  const activeProf = window.appStorage ? window.appStorage.getActiveProfile() : null;
+  if (activeProf && (activeProf.name === 'Moi' || !activeProf.name)) {
+    activeProf.name = window.appStorage.prefs.userName || userId;
+    window.appStorage.saveProfiles();
+  }
+
   updateProfileDrawerData();
+  if (typeof renderHomeExercisesList === 'function') renderHomeExercisesList();
+  if (typeof checkFreshInstallBanner === 'function') checkFreshInstallBanner();
 }
 
 // --------------------------------------------------------------------------
@@ -1694,6 +1749,8 @@ function renderDrawerProfilesList() {
       </div>
     `;
   }).join('');
+
+  if (typeof checkFreshInstallBanner === 'function') checkFreshInstallBanner();
 }
 
 let _newProfAvatar = '⚡';
@@ -1886,6 +1943,8 @@ function renderCustomExercisesPickerList() {
       </div>
     `;
   }).join('');
+
+  if (typeof checkFreshInstallBanner === 'function') checkFreshInstallBanner();
 }
 
 function toggleCustomExerciseSelection(exerciseId) {

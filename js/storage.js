@@ -887,6 +887,7 @@ class AppStorage {
     if (!remoteData || typeof remoteData !== 'object') return false;
 
     let updated = false;
+    const isLocalFreshInstall = (this.history.length === 0 && !this.prefs.updatedAt);
 
     // 1. Fusion des séances (par ID unique)
     if (Array.isArray(remoteData.history)) {
@@ -939,14 +940,40 @@ class AppStorage {
       const remoteUpdatedAt = Number(cleanRemotePrefs.updatedAt || remoteData.syncedAt || 0);
       const localUpdatedAt = Number(this.prefs.updatedAt || 0);
 
-      // Si preferLocalPrefs est actif ou si les réglages locaux sont plus récents, priorité au local
-      if (options.preferLocalPrefs || localUpdatedAt >= remoteUpdatedAt) {
+      // Si l'installation locale est neuve (réinstallation), priorité absolue aux données Cloud
+      if (!isLocalFreshInstall && (options.preferLocalPrefs || localUpdatedAt >= remoteUpdatedAt)) {
         this.prefs = { ...cleanRemotePrefs, ...this.prefs };
       } else {
         this.prefs = { ...this.prefs, ...cleanRemotePrefs };
       }
 
+      // Conserver les identifiants de synchro
+      if (syncUserId && !this.prefs.syncUserId) this.prefs.syncUserId = syncUserId;
+
       localStorage.setItem(this.getPrefKey(), JSON.stringify(this.prefs));
+
+      // Mettre à jour l'objet profil courant si nom, avatar ou niveau changent
+      const activeProf = this.getActiveProfile();
+      if (activeProf) {
+        let profChanged = false;
+        const restoredName = this.prefs.userName || (remoteData.prefs && remoteData.prefs.userName);
+        if (restoredName && activeProf.name !== restoredName) {
+          activeProf.name = restoredName;
+          profChanged = true;
+        }
+        const restoredAvatar = this.prefs.userAvatar || (remoteData.prefs && remoteData.prefs.userAvatar);
+        if (restoredAvatar && activeProf.avatar !== restoredAvatar) {
+          activeProf.avatar = restoredAvatar;
+          profChanged = true;
+        }
+        const restoredLevel = this.prefs.userLevel || (remoteData.prefs && remoteData.prefs.userLevel);
+        if (restoredLevel && activeProf.level !== restoredLevel) {
+          activeProf.level = restoredLevel;
+          profChanged = true;
+        }
+        if (profChanged) this.saveProfiles();
+      }
+
       updated = true;
     }
 

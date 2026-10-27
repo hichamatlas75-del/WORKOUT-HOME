@@ -258,4 +258,65 @@ describe('Gestionnaire de Stockage Local (storage.js)', () => {
     assert.equal(storage.prefs.plankDuration, 60);
     assert.equal(storage.prefs.rounds, 4);
   });
+
+  test('Restauration sur réinstallation vierge (isLocalFreshInstall) : priorité absolue aux données Cloud et mise à jour du profil actif', () => {
+    // 1. Simuler une réinstallation PWA toute neuve
+    const freshStorage = new AppStorage();
+    freshStorage.clearAllData();
+
+    assert.equal(freshStorage.history.length, 0);
+    assert.equal(freshStorage.getActiveProfile().name, 'Moi');
+    assert.equal(freshStorage.prefs.userName, 'Moi');
+
+    // 2. Données distantes complètes provenant du Cloud
+    const remoteCloudData = {
+      app: 'FULL_BODY_17',
+      syncedAt: Date.now() - 5000,
+      history: [
+        { id: 'w_1', date: '2026-10-27T17:00:00Z', durationSeconds: 1200, rounds: 3, completed: true }
+      ],
+      weightHistory: [
+        { date: '2026-10-27', weight: 77.5 }
+      ],
+      badges: ['first_step', 'streak_3'],
+      prefs: {
+        userName: 'hicham',
+        userAvatar: '👑',
+        userLevel: 'advanced',
+        workDuration: 45,
+        restDuration: 15,
+        plankDuration: 60,
+        rounds: 4,
+        updatedAt: Date.now() - 10000
+      },
+      stepsHistory: {
+        '2026-10-27': { steps: 8400, distanceKm: 6.2, calories: 320 }
+      }
+    };
+
+    // 3. Fusionner (même avec preferLocalPrefs: true par défaut)
+    const updated = freshStorage.mergeData(remoteCloudData, { preferLocalPrefs: true });
+    assert.equal(updated, true);
+
+    // 4. Vérifier que toutes les données distantes ont gagné contre les valeurs par défaut vierges
+    assert.equal(freshStorage.history.length, 1);
+    assert.equal(freshStorage.weightHistory.length, 1);
+    assert.equal(freshStorage.badges.length, 2);
+    assert.equal(freshStorage.getDailySteps('2026-10-27'), 8400);
+
+    // Les réglages personnalisés distants doivent être restaurés
+    assert.equal(freshStorage.prefs.userName, 'hicham');
+    assert.equal(freshStorage.prefs.userAvatar, '👑');
+    assert.equal(freshStorage.prefs.userLevel, 'advanced');
+    assert.equal(freshStorage.prefs.workDuration, 45);
+    assert.equal(freshStorage.prefs.restDuration, 15);
+    assert.equal(freshStorage.prefs.plankDuration, 60);
+    assert.equal(freshStorage.prefs.rounds, 4);
+
+    // L'objet profil actif doit immédiatement refléter le nom 'hicham' et l'avatar '👑'
+    const activeProf = freshStorage.getActiveProfile();
+    assert.equal(activeProf.name, 'hicham');
+    assert.equal(activeProf.avatar, '👑');
+    assert.equal(activeProf.level, 'advanced');
+  });
 });

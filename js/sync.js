@@ -259,9 +259,10 @@ class ProfileSyncManager {
         }
       }
 
-      // 2. Fusionner avec les données locales (les réglages locaux sont prioritaires lors d'une synchronisation automatique)
+      // 2. Fusionner avec les données locales (les réglages locaux sont prioritaires lors d'une synchronisation automatique sauf sur réinstallation vierge)
       if (remoteData) {
-        window.appStorage.mergeData(remoteData, { preferLocalPrefs: options.preferLocalPrefs !== false });
+        const isFresh = (window.appStorage.history.length === 0 && !window.appStorage.prefs.updatedAt);
+        window.appStorage.mergeData(remoteData, { preferLocalPrefs: isFresh ? false : (options.preferLocalPrefs !== false) });
       }
 
       // 3. Préparer le paquet complet
@@ -292,6 +293,15 @@ class ProfileSyncManager {
       if (typeof loadSettingsForm === 'function') loadSettingsForm();
       if (typeof updateAvatarDisplay === 'function') updateAvatarDisplay();
       if (typeof updateProfileDrawerData === 'function') updateProfileDrawerData();
+      if (typeof checkFreshInstallBanner === 'function') checkFreshInstallBanner();
+
+      const activeProf = window.appStorage ? window.appStorage.getActiveProfile() : null;
+      if (activeProf && (activeProf.name === 'Moi' || !activeProf.name)) {
+        activeProf.name = window.appStorage.prefs.userName || config.userId;
+        window.appStorage.saveProfiles();
+      }
+
+      if (typeof checkFreshInstallBanner === 'function') checkFreshInstallBanner();
 
       if (!silent && typeof showToast === 'function') {
         showToast(`🎉 Profil « ${config.userId} » synchronisé avec succès !`);
@@ -328,6 +338,13 @@ class ProfileSyncManager {
       const remoteData = await this.decryptPayload(remoteEnvelope, config.userId, config.password);
       const hasChanges = window.appStorage.mergeData(remoteData, { preferLocalPrefs: false });
 
+      // S'assurer que le profil actif porte le bon nom d'utilisateur restauré
+      const activeProf = window.appStorage ? window.appStorage.getActiveProfile() : null;
+      if (activeProf && (activeProf.name === 'Moi' || !activeProf.name)) {
+        activeProf.name = window.appStorage.prefs.userName || config.userId;
+        window.appStorage.saveProfiles();
+      }
+
       // Mettre à jour immédiatement la sauvegarde cloud si nécessaire
       try {
         const fullLocalData = {
@@ -357,6 +374,7 @@ class ProfileSyncManager {
       if (typeof loadSettingsForm === 'function') loadSettingsForm();
       if (typeof updateAvatarDisplay === 'function') updateAvatarDisplay();
       if (typeof updateProfileDrawerData === 'function') updateProfileDrawerData();
+      if (typeof checkFreshInstallBanner === 'function') checkFreshInstallBanner();
 
       showToast(hasChanges ? "✅ Données de votre profil récupérées avec succès !" : "✅ Vos données étaient déjà à jour.");
     } catch (err) {

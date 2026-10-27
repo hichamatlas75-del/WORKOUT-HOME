@@ -254,5 +254,6 @@ describe('Podomètre & Compteur de Calories Combinées (pedometer.js & storage.j
 
     pedometer.exitPocketMode();
     assert.equal(pedometer.pocketModeActive, false);
+    pedometer.stopTracking();
   });
 });
