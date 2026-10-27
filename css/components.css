@@ -3449,6 +3449,118 @@ input:checked + .slider:before {
   font-size: 0.85rem;
 }
 
+/* 7. Overlay Mode Poche AMOLED */
+.pocket-mode-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #000000 !important;
+  color: #ffffff;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.pocket-mode-container {
+  max-width: 360px;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 20px;
+  padding: 24px;
+}
+
+.pocket-mode-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.pocket-mode-counter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.pocket-steps-val {
+  font-size: 3.5rem;
+  font-weight: 900;
+  font-family: var(--font-mono, monospace);
+  color: #10b981;
+  line-height: 1;
+}
+
+.pocket-steps-lbl {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pocket-time-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 0.95rem;
+  color: #d1d5db;
+  font-family: var(--font-mono, monospace);
+}
+
+.pocket-mode-hint {
+  font-size: 0.76rem;
+  color: #6b7280;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.pocket-unlock-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  padding: 14px 24px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  border-radius: 30px;
+  margin-top: 10px;
+  cursor: pointer;
+  transition: transform var(--transition-fast), background var(--transition-fast);
+}
+
+.pocket-unlock-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+  transform: scale(1.03);
+}
+
+.pedometer-btn-pocket {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #10b981;
+  font-weight: 700;
+}
+
+.pedometer-btn-pocket:hover {
+  background: rgba(16, 185, 129, 0.22);
+  border-color: #10b981;
+}
+
 
 
 

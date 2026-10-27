@@ -26,6 +26,10 @@ class PedometerManager {
 
     this.motionHandler = this.handleDeviceMotion.bind(this);
     this._saveDebounceTimer = null;
+
+    // Mode Poche AMOLED & WakeLock
+    this.pocketModeActive = false;
+    this.wakeLock = null;
   }
 
   init() {
@@ -170,6 +174,76 @@ class PedometerManager {
     }
   }
 
+  // --- Mode Poche AMOLED (Anti-Mise en Veille & Écran Noir) ---
+  async requestWakeLock() {
+    if (typeof navigator !== 'undefined' && 'wakeLock' in navigator) {
+      try {
+        this.wakeLock = await navigator.wakeLock.request('screen');
+        this.wakeLock.addEventListener('release', () => {
+          this.wakeLock = null;
+        });
+      } catch (err) {
+        console.warn('Wake Lock non disponible ou refusé:', err);
+      }
+    }
+  }
+
+  releaseWakeLock() {
+    if (this.wakeLock) {
+      this.wakeLock.release().then(() => {
+        this.wakeLock = null;
+      }).catch(() => {});
+    }
+  }
+
+  async enterPocketMode() {
+    if (!this.isTracking) {
+      await this.startTracking();
+    }
+    await this.requestWakeLock();
+    this.pocketModeActive = true;
+
+    if (typeof document !== 'undefined') {
+      const overlay = document.getElementById('pocket-mode-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    }
+    this.updatePocketUI();
+    if (typeof showToast === 'function') {
+      showToast("🔒 Mode Poche AMOLED activé — Écran noir anti-mise en veille.");
+    }
+  }
+
+  exitPocketMode() {
+    this.pocketModeActive = false;
+    this.releaseWakeLock();
+    if (typeof document !== 'undefined') {
+      const overlay = document.getElementById('pocket-mode-overlay');
+      if (overlay) overlay.style.display = 'none';
+    }
+    this.renderActivityView();
+    this.updateHomeActivityWidget();
+  }
+
+  togglePocketMode() {
+    if (this.pocketModeActive) {
+      this.exitPocketMode();
+    } else {
+      this.enterPocketMode();
+    }
+  }
+
+  updatePocketUI() {
+    if (typeof document === 'undefined' || !this.pocketModeActive) return;
+    const pSteps = document.getElementById('pocket-steps-val');
+    const pTime = document.getElementById('pocket-time-val');
+    if (pSteps) pSteps.textContent = (this.sessionSteps || 0).toLocaleString();
+    if (pTime) {
+      const mins = Math.floor(this.sessionElapsedTime / 60);
+      const secs = this.sessionElapsedTime % 60;
+      pTime.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+  }
+
   // --- Traitement du flux d'accélération en temps réel ---
   handleDeviceMotion(event) {
     if (!this.isTracking || this.isPaused) return;
@@ -235,6 +309,49 @@ class PedometerManager {
 
     if (typeof showToast === 'function') {
       showToast(`✅ +${safeCount.toLocaleString()} pas ajoutés avec succès !`);
+    }
+  }
+
+  // --- Calibrage / Synchronisation directe Samsung Health ou Montres ---
+  setExactSteps(totalSteps) {
+    const safeCount = parseInt(totalSteps, 10);
+    if (isNaN(safeCount) || safeCount < 0) return;
+
+    if (typeof window !== 'undefined' && window.appStorage) {
+      window.appStorage.setDailySteps(safeCount);
+    }
+
+    this.renderActivityView();
+    this.updateHomeActivityWidget();
+
+    if (typeof window !== 'undefined' && window.syncManager && typeof window.syncManager.autoPush === 'function') {
+      window.syncManager.autoPush();
+    }
+
+    if (typeof showToast === 'function') {
+      showToast(`📱 Calibré sur Samsung Health : ${safeCount.toLocaleString()} pas enregistrés !`);
+    }
+  }
+
+  promptSamsungHealthSync() {
+    const currentSteps = (typeof window !== 'undefined' && window.appStorage)
+      ? window.appStorage.getDailySteps()
+      : 0;
+
+    const input = prompt(
+      `📱 SYNCHRONISATION SAMSUNG HEALTH / MONTRE\n\nEntrez le total de pas affiché actuellement sur Samsung Health ou Galaxy Watch :\n(Compteur actuel dans l'appli : ${currentSteps.toLocaleString()} pas)`,
+      currentSteps > 0 ? String(currentSteps) : ""
+    );
+
+    if (input === null) return;
+    const cleaned = input.trim().replace(/\s/g, '');
+    const count = parseInt(cleaned, 10);
+    if (!isNaN(count) && count >= 0) {
+      this.setExactSteps(count);
+    } else {
+      if (typeof showToast === 'function') {
+        showToast("⚠️ Nombre de pas invalide.", true);
+      }
     }
   }
 
@@ -384,6 +501,8 @@ class PedometerManager {
       const secs = this.sessionElapsedTime % 60;
       liveTimeEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     }
+
+    this.updatePocketUI();
   }
 
   // Mise à jour des boutons de contrôle du podomètre

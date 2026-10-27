@@ -719,6 +719,11 @@ class AppStorage {
     return this.saveDailySteps(newSteps, dateStr, { manual: newManual, sensor: newSensor });
   }
 
+  setDailySteps(totalSteps, dateStr = this.formatDateISO(new Date())) {
+    const safeTotal = Math.max(0, parseInt(totalSteps, 10) || 0);
+    return this.saveDailySteps(safeTotal, dateStr, { manual: safeTotal, sensor: 0 });
+  }
+
   resetDailySteps(dateStr = this.formatDateISO(new Date())) {
     this.stepsHistory[dateStr] = {
       steps: 0,

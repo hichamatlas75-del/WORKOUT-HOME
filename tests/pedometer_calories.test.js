@@ -227,4 +227,32 @@ describe('Podomètre & Compteur de Calories Combinées (pedometer.js & storage.j
     pedometer.stopTracking();
     assert.equal(pedometer.isTracking, false);
   });
+
+  test('Calibrage direct sur Samsung Health / Montre (setDailySteps & setExactSteps)', () => {
+    const today = storage.formatDateISO(new Date());
+
+    // Calibrer directement sur un total Samsung Health de 6 420 pas
+    pedometer.setExactSteps(6420);
+
+    assert.equal(storage.getDailySteps(today), 6420);
+    const entry = storage.getDailyStepEntry(today);
+    assert.equal(entry.steps, 6420);
+    assert.equal(entry.distanceKm, 4.75); // 6420 * 0.74 / 1000 = 4.75 km
+    assert.ok(entry.calories > 200);
+
+    // Ajustement ultérieur (nouvelle valeur Samsung Health en fin de journée : 9 850 pas)
+    pedometer.setExactSteps(9850);
+    assert.equal(storage.getDailySteps(today), 9850);
+  });
+
+  test('Mode Poche AMOLED (enterPocketMode & exitPocketMode)', async () => {
+    assert.equal(pedometer.pocketModeActive, false);
+
+    await pedometer.enterPocketMode();
+    assert.equal(pedometer.pocketModeActive, true);
+    assert.equal(pedometer.isTracking, true, 'Doit activer le suivi si non démarré');
+
+    pedometer.exitPocketMode();
+    assert.equal(pedometer.pocketModeActive, false);
+  });
 });

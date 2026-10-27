@@ -380,19 +380,28 @@
             <button type="button" class="btn-secondary pedometer-btn-secondary" id="btn-pedometer-stop" style="display: none;" onclick="window.pedometerManager.stopTracking()">
               ⏹️ Terminer
             </button>
+            <button type="button" class="btn-secondary pedometer-btn-secondary pedometer-btn-pocket" id="btn-pedometer-pocket" onclick="window.pedometerManager.togglePocketMode()" title="Garde le podomètre actif dans la poche avec écran noir anti-veille">
+              🔒 Mode Poche
+            </button>
           </div>
           <span class="pedometer-tip">
-            📱 Fonctionne smartphone en main ou dans la poche. Sur iPhone, autorisez l'accès aux capteurs si demandé.
+            📱 <strong>Astuce écran éteint :</strong> Utilisez le <strong>« Mode Poche »</strong> pour marcher avec l'écran noir Super AMOLED sans que le système n'endorme le capteur.
           </span>
         </div>
 
-        <!-- Carte Ajout Manuel / Synchronisation Montres -->
+        <!-- Carte Ajout Manuel / Synchronisation Samsung Health & Montres -->
         <div class="manual-steps-card">
-          <div class="section-header" style="margin-bottom: 6px;">
-            <h3 class="section-title" style="font-size: 0.95rem;">⌚ Montre Connectée &amp; Ajout Manuel</h3>
+          <div class="section-header" style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1.2rem;">📱</span>
+              <h3 class="section-title" style="font-size: 0.95rem; margin: 0;">Samsung Health &amp; Montres</h3>
+            </div>
+            <button type="button" class="btn-primary" style="width: auto; padding: 6px 14px; font-size: 0.78rem; font-weight: 800;" onclick="window.pedometerManager.promptSamsungHealthSync()">
+              ⚡ Calibrer Samsung Health
+            </button>
           </div>
-          <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 12px;">
-            Ajoutez vos pas enregistrés avec une Apple Watch, Garmin, Fitbit, ou après un entraînement sur tapis :
+          <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
+            💡 <strong>Relevé direct Samsung Health / Galaxy Watch :</strong> Cliquez sur « Calibrer » pour entrer directement le total exact affiché sur votre téléphone sans faire de calcul. Ou ajoutez des pas avec les boutons ci-dessous :
           </p>
           <div class="quick-steps-grid">
             <button type="button" class="quick-step-btn" onclick="window.pedometerManager.addManualSteps(500)">
@@ -1695,6 +1704,35 @@
           </button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       OVERLAY MODE POCHE AMOLED (ANTI-MISE EN VEILLE & ÉCRAN NOIR)
+       ==================================================================== -->
+  <div id="pocket-mode-overlay" class="pocket-mode-overlay" style="display: none;" role="dialog" aria-modal="true" aria-label="Mode Poche Podomètre">
+    <div class="pocket-mode-container">
+      <div class="pocket-mode-status">
+        <span class="status-dot pulse"></span>
+        <span>PODOMÈTRE ACTIF DANS LA POCHE</span>
+      </div>
+
+      <div class="pocket-mode-counter">
+        <span class="pocket-steps-val" id="pocket-steps-val">0</span>
+        <span class="pocket-steps-lbl">pas enregistrés</span>
+        <div class="pocket-time-wrap">
+          <span>⏱️</span>
+          <span class="pocket-time-val" id="pocket-time-val">00:00</span>
+        </div>
+      </div>
+
+      <p class="pocket-mode-hint">
+        🖤 Écran 100% noir Super AMOLED. Le capteur compte en continu sans être coupé par la mise en veille Android.
+      </p>
+
+      <button type="button" class="btn-primary pocket-unlock-btn" onclick="window.pedometerManager.exitPocketMode()">
+        🔓 Quitter le Mode Poche
+      </button>
     </div>
   </div>
 
