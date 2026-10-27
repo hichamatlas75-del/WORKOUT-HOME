@@ -1,0 +1,332 @@
+{
+  "app": "FULL_BODY_17",
+  "version": "2.5.0",
+  "restoredAt": "2026-10-27T23:55:59.187Z",
+  "profile": "hicham",
+  "history": [
+    {
+      "id": "ws_1790006895790",
+      "date": "2026-09-21",
+      "timestamp": 1790006895792,
+      "durationSeconds": 1427,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 9,
+      "level": "intermediate",
+      "caloriesEstimated": 202
+    },
+    {
+      "id": "ws_1789832625613",
+      "date": "2026-09-19",
+      "timestamp": 1789832625613,
+      "durationSeconds": 1043,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 9,
+      "level": "intermediate",
+      "caloriesEstimated": 148
+    },
+    {
+      "id": "ws_1789660831830",
+      "date": "2026-09-17",
+      "timestamp": 1789660831830,
+      "durationSeconds": 1043,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 9,
+      "level": "intermediate",
+      "caloriesEstimated": 148
+    },
+    {
+      "id": "ws_1789576211050",
+      "date": "2026-09-16",
+      "timestamp": 1789576211050,
+      "durationSeconds": 1041,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 9,
+      "level": "intermediate",
+      "caloriesEstimated": 147
+    },
+    {
+      "id": "ws_1789399862301",
+      "date": "2026-09-14",
+      "timestamp": 1789399862301,
+      "durationSeconds": 1043,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 9,
+      "level": "intermediate",
+      "caloriesEstimated": 148
+    },
+    {
+      "id": "ws_1789228842481",
+      "date": "2026-09-12",
+      "timestamp": 1789228842481,
+      "durationSeconds": 1043,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 9,
+      "level": "intermediate",
+      "caloriesEstimated": 148
+    },
+    {
+      "id": "ws_1789142063246",
+      "date": "2026-09-11",
+      "timestamp": 1789142063249,
+      "durationSeconds": 1078,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 9,
+      "level": "intermediate",
+      "caloriesEstimated": 153
+    },
+    {
+      "id": "ws_1789053359407",
+      "date": "2026-09-10",
+      "timestamp": 1789053359407,
+      "durationSeconds": 1043,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 9,
+      "level": "intermediate",
+      "caloriesEstimated": 148
+    },
+    {
+      "id": "ws_1788970526597",
+      "date": "2026-09-09",
+      "timestamp": 1788970526597,
+      "durationSeconds": 1042,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 9,
+      "level": "intermediate",
+      "caloriesEstimated": 148
+    },
+    {
+      "id": "ws_1788883240949",
+      "date": "2026-09-08",
+      "timestamp": 1788883240949,
+      "durationSeconds": 1043,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 9,
+      "level": "intermediate",
+      "caloriesEstimated": 148
+    },
+    {
+      "id": "ws_1788791028342",
+      "date": "2026-09-07",
+      "timestamp": 1788791028342,
+      "durationSeconds": 1132,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 9,
+      "level": "intermediate",
+      "caloriesEstimated": 160
+    },
+    {
+      "id": "ws_1788711978701",
+      "date": "2026-09-06",
+      "timestamp": 1788711978701,
+      "durationSeconds": 1126,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 9,
+      "level": "intermediate",
+      "caloriesEstimated": 160
+    },
+    {
+      "id": "ws_1788619730095",
+      "date": "2026-09-05",
+      "timestamp": 1788619730095,
+      "durationSeconds": 1042,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 9,
+      "level": "intermediate",
+      "caloriesEstimated": 148
+    },
+    {
+      "id": "ws_1788538625962",
+      "date": "2026-09-04",
+      "timestamp": 1788538625962,
+      "durationSeconds": 1502,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 9,
+      "level": "intermediate",
+      "caloriesEstimated": 213
+    },
+    {
+      "id": "ws_1788453807527",
+      "date": "2026-09-03",
+      "timestamp": 1788453807527,
+      "durationSeconds": 1287,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 9,
+      "level": "intermediate",
+      "caloriesEstimated": 182
+    },
+    {
+      "id": "ws_1788188431798",
+      "date": "2026-08-31",
+      "timestamp": 1788188431798,
+      "durationSeconds": 1401,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 9,
+      "level": "intermediate",
+      "caloriesEstimated": 198
+    },
+    {
+      "id": "ws_1788022785345",
+      "date": "2026-08-29",
+      "timestamp": 1788022785345,
+      "durationSeconds": 1503,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 9,
+      "level": "intermediate",
+      "caloriesEstimated": 213
+    },
+    {
+      "id": "ws_1787935866860",
+      "date": "2026-08-28",
+      "timestamp": 1787935866860,
+      "durationSeconds": 1503,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 9,
+      "level": "intermediate",
+      "caloriesEstimated": 213
+    },
+    {
+      "id": "ws_1787848325033",
+      "date": "2026-08-27",
+      "timestamp": 1787848325033,
+      "durationSeconds": 1502,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 9,
+      "level": "intermediate",
+      "caloriesEstimated": 213
+    },
+    {
+      "id": "ws_1787767657586",
+      "date": "2026-08-26",
+      "timestamp": 1787767657586,
+      "durationSeconds": 1545,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 9,
+      "level": "intermediate",
+      "caloriesEstimated": 219
+    },
+    {
+      "id": "ws_1787677174188",
+      "date": "2026-08-25",
+      "timestamp": 1787677174188,
+      "durationSeconds": 1627,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 9,
+      "caloriesEstimated": 230
+    },
+    {
+      "id": "ws_1787589450642",
+      "date": "2026-08-24",
+      "timestamp": 1787589450642,
+      "durationSeconds": 1322,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 8,
+      "caloriesEstimated": 187
+    },
+    {
+      "id": "ws_1787504524582",
+      "date": "2026-08-23",
+      "timestamp": 1787504524582,
+      "durationSeconds": 1322,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 8,
+      "caloriesEstimated": 187
+    },
+    {
+      "id": "ws_1787417942257",
+      "date": "2026-08-22",
+      "timestamp": 1787417942257,
+      "durationSeconds": 1321,
+      "rounds": 3,
+      "completed": true,
+      "exercisesCount": 8,
+      "caloriesEstimated": 187
+    }
+  ],
+  "weightHistory": [
+    {
+      "id": "w_1787490111736",
+      "date": "2026-08-23",
+      "weight": 88.8,
+      "note": "",
+      "timestamp": 1787504635923
+    },
+    {
+      "id": "w_1787574813411",
+      "date": "2026-08-24",
+      "weight": 87.2,
+      "note": "AU REVEI",
+      "timestamp": 1787574813411
+    },
+    {
+      "id": "w_1788559039908",
+      "date": "2026-09-04",
+      "weight": 86.7,
+      "note": "",
+      "timestamp": 1788559039908
+    },
+    {
+      "id": "w_1789246955499",
+      "date": "2026-09-12",
+      "weight": 85.7,
+      "note": "",
+      "timestamp": 1789246955499
+    }
+  ],
+  "badges": [
+    "first_step",
+    "streak_1",
+    "punctual_17",
+    "triple_round",
+    "streak_3",
+    "streak_7"
+  ],
+  "prefs": {
+    "userName": "hicham",
+    "userAvatar": "🦁",
+    "userLevel": "intermediate",
+    "rounds": 3,
+    "workDuration": 30,
+    "restDuration": 10,
+    "plankDuration": 45,
+    "targetTime": "17:00",
+    "initialWeight": 88,
+    "targetWeight": 83,
+    "heightCm": 183,
+    "dailyStepGoal": 8000,
+    "dailyCalorieGoal": 500,
+    "strideLengthCm": 74,
+    "soundEnabled": true,
+    "voiceEnabled": true,
+    "musicEnabled": true,
+    "musicVolume": 0.6,
+    "musicStyle": "synthwave",
+    "theme": "dark",
+    "reminderActive": true,
+    "syncUserId": "hicham",
+    "syncUserPin": "1234",
+    "syncAutoEnabled": true
+  }
+}

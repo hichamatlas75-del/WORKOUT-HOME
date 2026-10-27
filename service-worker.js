@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fullbody17-v2.3.8';
+const CACHE_NAME = 'fullbody17-v2.5.0';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -17,6 +17,7 @@ const ASSETS_TO_CACHE = [
   './js/pwa.js',
   './js/motion-player.js',
   './js/sync.js',
+  './js/pedometer.js',
   './icons/icon.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -86,8 +87,15 @@ self.addEventListener('activate', (event) => {
 
 // 3. Stratégie Cache-First avec repli réseau
 self.addEventListener('fetch', (event) => {
-  // Ne JAMAIS intercepter les requêtes vers Firebase ou non-GET
-  if (event.request.method !== 'GET' || event.request.url.includes('firebase')) return;
+  // Ne JAMAIS intercepter les requêtes vers Firebase, les passerelles API Cloudflare ou les requêtes non-GET
+  if (
+    event.request.method !== 'GET' ||
+    event.request.url.includes('firebase') ||
+    event.request.url.includes('/api/') ||
+    event.request.url.includes('api/sync')
+  ) {
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
