@@ -51,4 +51,26 @@ describe('Synchronisation Cloud et Passerelle API (sync.js & gateway)', () => {
     assert.equal(sanitizeUser('../../admin'), '______admin');
     assert.equal(sanitizeUser('normal-user_99'), 'normal-user_99');
   });
+
+  test('Chiffrement et déchiffrement Zero-Knowledge du paquet complet incluant les pas (stepsHistory)', async () => {
+    storage.addSteps(6500, '2026-10-27', true);
+
+    const fullLocalData = {
+      app: 'FULL_BODY_17',
+      version: '2.5.0',
+      syncedAt: Date.now(),
+      prefs: storage.prefs,
+      history: storage.history,
+      badges: storage.badges,
+      weightHistory: storage.weightHistory,
+      stepsHistory: storage.stepsHistory
+    };
+
+    const envelope = await sync.encryptPayload(fullLocalData, 'user_test', 'mon_secret_123');
+    assert.ok(envelope.payload || envelope.raw, 'Le paquet doit être chiffré');
+
+    const decrypted = await sync.decryptPayload(envelope, 'user_test', 'mon_secret_123');
+    assert.ok(decrypted.stepsHistory, 'Le paquet déchiffré doit contenir stepsHistory');
+    assert.equal(decrypted.stepsHistory['2026-10-27'].steps, 6500);
+  });
 });

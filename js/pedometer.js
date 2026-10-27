@@ -150,6 +150,10 @@ class PedometerManager {
     this.renderActivityView();
     this.updateHomeActivityWidget();
 
+    if (typeof window !== 'undefined' && window.syncManager && typeof window.syncManager.autoPush === 'function') {
+      window.syncManager.autoPush();
+    }
+
     if (typeof showToast === 'function') {
       const mins = Math.round(recordedSecs / 60);
       showToast(`🏁 Marche terminée : +${recordedSteps} pas (${mins} min)`);
@@ -225,6 +229,10 @@ class PedometerManager {
     this.renderActivityView();
     this.updateHomeActivityWidget();
 
+    if (typeof window !== 'undefined' && window.syncManager && typeof window.syncManager.autoPush === 'function') {
+      window.syncManager.autoPush();
+    }
+
     if (typeof showToast === 'function') {
       showToast(`✅ +${safeCount.toLocaleString()} pas ajoutés avec succès !`);
     }
@@ -261,6 +269,11 @@ class PedometerManager {
     this.sessionSteps = 0;
     this.renderActivityView();
     this.updateHomeActivityWidget();
+
+    if (typeof window !== 'undefined' && window.syncManager && typeof window.syncManager.autoPush === 'function') {
+      window.syncManager.autoPush();
+    }
+
     if (typeof showToast === 'function') {
       showToast("🔄 Compteur de pas réinitialisé pour aujourd'hui.");
     }

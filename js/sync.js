@@ -267,12 +267,13 @@ class ProfileSyncManager {
       // 3. Préparer le paquet complet
       const fullLocalData = {
         app: 'FULL_BODY_17',
-        version: '2.3.8',
+        version: '2.5.0',
         syncedAt: Date.now(),
         prefs: window.appStorage.prefs,
         history: window.appStorage.history,
         badges: window.appStorage.badges,
-        weightHistory: window.appStorage.weightHistory
+        weightHistory: window.appStorage.weightHistory,
+        stepsHistory: window.appStorage.stepsHistory || {}
       };
 
       // 4. Chiffrer et envoyer au Cloud (PUT)
@@ -331,12 +332,13 @@ class ProfileSyncManager {
       try {
         const fullLocalData = {
           app: 'FULL_BODY_17',
-          version: '2.3.8',
+          version: '2.5.0',
           syncedAt: Date.now(),
           prefs: window.appStorage.prefs,
           history: window.appStorage.history,
           badges: window.appStorage.badges,
-          weightHistory: window.appStorage.weightHistory
+          weightHistory: window.appStorage.weightHistory,
+          stepsHistory: window.appStorage.stepsHistory || {}
         };
         const envelope = await this.encryptPayload(fullLocalData, config.userId, config.password);
         await cloudSyncRequest(userHash, 'PUT', envelope);
