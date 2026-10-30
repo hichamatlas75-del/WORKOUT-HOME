@@ -122,6 +122,18 @@ class MotionPlayer {
       case 18: this.drawHighKnees(ctx, w, h, time, floorY); break;
       case 19: this.drawSuperman(ctx, w, h, time, floorY); break;
       case 20: this.drawWallSit(ctx, w, h, time, floorY); break;
+      // Programme spécial 2 Haltères (101 à 111)
+      case 101: this.drawPushup(ctx, w, h, time, floorY); break; // Développé couché
+      case 102: this.drawSuperman(ctx, w, h, time, floorY); break; // Rowing buste penché
+      case 103: this.drawChairDips(ctx, w, h, time, floorY); break; // Extension triceps
+      case 104: this.drawDiamondPushup(ctx, w, h, time, floorY); break; // Pompes diamant
+      case 105: this.drawJumpingJack(ctx, w, h, time, floorY); break; // Élévations épaules
+      case 106: this.drawLunges(ctx, w, h, time, floorY); break; // Fentes bulgares
+      case 107: this.drawSquat(ctx, w, h, time, floorY); break; // Squats haltères
+      case 108: this.drawChairDips(ctx, w, h, time, floorY); break; // Curl biceps
+      case 109: this.drawRussianTwist(ctx, w, h, time, floorY); break; // Russian twist
+      case 110: this.drawPlank(ctx, w, h, time, floorY); break; // Planche classique
+      case 111: this.drawDynamicStretching(ctx, w, h, time, floorY); break; // Étirements finaux
       default: this.drawSquat(ctx, w, h, time, floorY);
     }
   }

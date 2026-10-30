@@ -116,5 +116,54 @@ describe('Base de données des Exercices & Niveaux (exercises.js)', () => {
       assert.ok(block.desc, 'Le palier doit avoir une description');
     }
   });
+
+  test('Programme 2 Haltères pour séance interactive (Dumbbell Live Routine)', () => {
+    const projectRoot = path.resolve('.');
+    const dbList = getActiveWorkoutExercises({ workoutMode: 'dumbbells' });
+    assert.ok(Array.isArray(dbList), 'Doit retourner un tableau');
+    assert.equal(dbList.length, 11, '10 mouvements de musculation + 1 retour au calme');
+
+    // Vérification de chaque exercice du mode haltères
+    for (const ex of dbList) {
+      assert.ok(ex.id >= 101 && ex.id <= 111, `ID ${ex.id} doit être entre 101 et 111`);
+      assert.ok(ex.name && ex.name.length > 0, `Nom requis pour ${ex.id}`);
+      assert.ok(ex.code, `Code requis pour ${ex.id}`);
+      assert.ok(ex.cue && ex.cue.length > 10, `Conseil technique requis pour ${ex.id}`);
+      assert.ok(ex.breathing, `Consigne de respiration requise pour ${ex.id}`);
+      assert.ok(ex.description, `Description requise pour ${ex.id}`);
+      assert.ok(ex.targetMuscles, `Muscles ciblés requis pour ${ex.id}`);
+      assert.ok(ex.equipment, `Équipement requis pour ${ex.id}`);
+
+      // Vérification des fichiers images et vidéos sur le disque
+      const imgPath = path.join(projectRoot, ex.image);
+      const vidPath = path.join(projectRoot, ex.video);
+      assert.ok(fs.existsSync(imgPath), `L'image ${ex.image} doit exister sur le disque`);
+      assert.ok(fs.existsSync(vidPath), `La vidéo ${ex.video} doit exister sur le disque`);
+
+      // Vérification du composant média HTML (illustrationHtml)
+      const html = ex.illustrationHtml;
+      assert.ok(html.includes('<video'), `Doit contenir une balise vidéo pour ${ex.id}`);
+      assert.ok(html.includes(ex.video), `Doit faire référence à la vidéo ${ex.video}`);
+      assert.ok(html.includes(ex.image), `Doit faire référence au poster ${ex.image}`);
+      assert.ok(html.includes('motion-canvas-wrapper'), `Doit inclure le canvas de fallback pour ${ex.id}`);
+    }
+
+    // Propriétés spécifiques
+    const benchPress = getExerciseById(101);
+    assert.ok(benchPress, 'Développé couché (101) doit exister');
+    assert.equal(benchPress.name, 'DÉVELOPPÉ COUCHÉ ALTERNÉ');
+
+    const bulgarian = getExerciseById(106);
+    assert.ok(bulgarian, 'Fentes bulgares (106) doit exister');
+    assert.equal(bulgarian.isUnilateral, true, 'Doit être unilatéral pour déclencher la mi-temps');
+
+    const plank = getExerciseById(110);
+    assert.ok(plank, 'Planche haltères (110) doit exister');
+    assert.equal(plank.isPlank, true, 'Doit avoir isPlank true');
+
+    const coolDown = getExerciseById(111);
+    assert.ok(coolDown, 'Étirements (111) doit exister');
+    assert.equal(coolDown.isCoolDown, true, 'Doit avoir isCoolDown true');
+  });
 });
 

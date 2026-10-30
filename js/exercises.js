@@ -462,7 +462,314 @@ const EXERCISES_DATA = [
   }
 ];
 
-// Routines prédéfinies par niveau d'utilisateur
+// ==========================================================================
+// EXERCICES DU PROGRAMME SPÉCIAL 2 HALTÈRES (FULL BODY & CORE)
+// 10 mouvements (5 blocs supersets/combos + circuit abdos) + 1 retour au calme
+// ==========================================================================
+const DUMBBELL_LIVE_EXERCISES = [
+  {
+    id: 101,
+    number: "01",
+    code: "1A",
+    name: "DÉVELOPPÉ COUCHÉ ALTERNÉ",
+    subtitle: "Pectoraux & Triceps • 2 Haltères",
+    duration: 40,
+    level: "intermediate",
+    levelLabel: "2 Haltères",
+    category: "upper_body",
+    categoryTag: "Pectoraux & Triceps",
+    badgeClass: "badge-blue",
+    equipment: "2 Haltères + Tapis",
+    equipmentIcon: "🏋️‍♂️",
+    image: "images/ex_db_1_bench_press.jpg",
+    video: "videos/ex_db_1_bench_press.mp4",
+    targetMuscles: "Pectoraux, Deltoïdes antérieurs, Triceps, Gainage",
+    targetPrimary: "PECTORAUX & TRICEPS",
+    cue: "Omoplates serrées au sol, alternez la poussée bras droit puis bras gauche en contrôlant la descente à 45°.",
+    breathing: "Inspirez à la descente d'un haltère, expirez puissamment lors de la poussée vers le haut.",
+    description: "Allongé sur le dos au sol ou sur banc. Poussez les deux haltères vers le ciel. Tout en gardant un bras verrouillé au sommet, descendez l'autre haltère sous contrôle jusqu'à ce que le bras forme un angle de 45° avec le torse, puis remontez en poussant fort. Alternez immédiatement avec le côté opposé.",
+    adaptation: "Charge modérée à lourde (8 à 15 kg). Verrouillez les abdos pour éviter toute rotation du bassin.",
+    isDumbbell: true,
+    get illustrationHtml() {
+      return renderExerciseMediaHtml(this);
+    }
+  },
+  {
+    id: 102,
+    number: "02",
+    code: "1B",
+    name: "ROWING BUSTE PENCHÉ",
+    subtitle: "Grand Dorsal & Dos • 2 Haltères",
+    duration: 40,
+    level: "intermediate",
+    levelLabel: "2 Haltères",
+    category: "upper_body",
+    categoryTag: "Grand Dorsal & Dos",
+    badgeClass: "badge-cyan",
+    equipment: "2 Haltères",
+    equipmentIcon: "🏋️‍♂️",
+    image: "images/ex_db_2_rowing.jpg",
+    video: "videos/ex_db_2_rowing.mp4",
+    targetMuscles: "Grand Dorsal, Trapèzes, Rhomboïdes, Biceps",
+    targetPrimary: "GRAND DORSAL & DOS",
+    cue: "Buste penché à 45°, dos rigoureusement plat, tirez les coudes vers les hanches en resserrant les omoplates.",
+    breathing: "Expirez en tirant les haltères vers l'arrière, inspirez en redescendant sous contrôle.",
+    description: "Debout, pieds écartés largeur d'épaules, buste incliné en avant à 45°, genoux déverrouillés. Tirez simultanément les deux haltères vers vos hanches en resserrant les omoplates, marquez une contraction d'une seconde puis relâchez lentement.",
+    adaptation: "Ne donnez aucun à-coup de rein. Si le bas du dos fatigue, réduisez légèrement la charge.",
+    isDumbbell: true,
+    get illustrationHtml() {
+      return renderExerciseMediaHtml(this);
+    }
+  },
+  {
+    id: 103,
+    number: "03",
+    code: "2A",
+    name: "RELEVÉ TRICEPS AU-DESSUS TÊTE",
+    subtitle: "Triceps Chef Long • 1 ou 2 Haltères",
+    duration: 35,
+    level: "intermediate",
+    levelLabel: "1-2 Haltères",
+    category: "upper_body",
+    categoryTag: "Triceps (Chef Long)",
+    badgeClass: "badge-purple",
+    equipment: "1 ou 2 Haltères",
+    equipmentIcon: "🏋️",
+    image: "images/ex_db_3_overhead_triceps.jpg",
+    video: "videos/ex_db_3_overhead_triceps.mp4",
+    targetMuscles: "Triceps (faisceau long et latéral)",
+    targetPrimary: "TRICEPS",
+    cue: "Coudes serrés et pointés vers l'avant, descendez l'haltère derrière la tête sans écarter les coudes.",
+    breathing: "Inspirez lors de la descente derrière la nuque, expirez en tendant les avant-bras vers le plafond.",
+    description: "Debout ou assis, tenez un haltère lourd à deux mains bras tendus vers le ciel. Fléchissez les avant-bras pour étirer profondément les triceps puis remontez en poussant verticalement sans verrouiller brutalement.",
+    adaptation: "Maintenez le nombril aspiré pour éviter de cambrer le bas du dos.",
+    isDumbbell: true,
+    get illustrationHtml() {
+      return renderExerciseMediaHtml(this);
+    }
+  },
+  {
+    id: 104,
+    number: "04",
+    code: "2B",
+    name: "POMPES DIAMANT AU SOL",
+    subtitle: "Triceps & Centre Pectoraux • Poids du corps",
+    duration: 30,
+    level: "advanced",
+    levelLabel: "Poids du corps",
+    category: "upper_body",
+    categoryTag: "Triceps & Pectoraux",
+    badgeClass: "badge-indigo",
+    equipment: "Poids du corps / Tapis",
+    equipmentIcon: "🤸",
+    image: "images/ex_db_4_diamond_pushups.jpg",
+    video: "videos/ex_db_4_diamond_pushups.mp4",
+    targetMuscles: "Triceps, Pectoraux sternaux, Deltoïdes antérieurs, Gainage",
+    targetPrimary: "TRICEPS & POITRINE",
+    cue: "Mains en losange sous le sternum, coudes longeant les côtes, corps parfaitement aligné.",
+    breathing: "Inspirez en descendant la poitrine sur les mains, expirez vigoureusement en repoussant.",
+    description: "En appui facial, pouces et index formant un diamant. Descendez la poitrine au contact des mains puis repoussez avec force en ciblant les triceps.",
+    adaptation: "Possibilité de poser les genoux au sol tout en maintenant le bassin verrouillé pour compléter la série.",
+    isDumbbell: true,
+    get illustrationHtml() {
+      return renderExerciseMediaHtml(this);
+    }
+  },
+  {
+    id: 105,
+    number: "05",
+    code: "03",
+    name: "ÉLÉVATIONS LATÉRALES & FRONTALES",
+    subtitle: "Deltoïdes 3D • 2 Haltères",
+    duration: 40,
+    level: "intermediate",
+    levelLabel: "2 Haltères",
+    category: "upper_body",
+    categoryTag: "Deltoïdes Latéral & Antérieur",
+    badgeClass: "badge-pink",
+    equipment: "2 Haltères",
+    equipmentIcon: "🏋️‍♂️",
+    image: "images/ex_db_5_lateral_front_raises.jpg",
+    video: "videos/ex_db_5_lateral_front_raises.mp4",
+    targetMuscles: "Deltoïdes latéraux, Deltoïdes antérieurs, Trapèzes",
+    targetPrimary: "ÉPAULES 3D",
+    cue: "Élevez sur les côtés à hauteur d'épaules, redescendez doucement, puis élevez droit devant vous.",
+    breathing: "Expirez à chaque montée, inspirez lors des descentes freinées.",
+    description: "Combo sans temps mort associant une élévation latérale pour la largeur d'épaules et une élévation frontale pour le galbe avant. Gardez une posture rigide sans balancement.",
+    adaptation: "Charges modérées pour éviter les compensations et garder les trapèzes relâchés.",
+    isDumbbell: true,
+    get illustrationHtml() {
+      return renderExerciseMediaHtml(this);
+    }
+  },
+  {
+    id: 106,
+    number: "06",
+    code: "4A",
+    name: "FENTES BULGARES SURÉLEVÉES",
+    subtitle: "Quadriceps & Fessiers • 2 Haltères",
+    duration: 40,
+    level: "intermediate",
+    levelLabel: "2 Haltères + Chaise",
+    category: "lower_body",
+    categoryTag: "Quadriceps & Fessiers",
+    badgeClass: "badge-emerald",
+    equipment: "2 Haltères + Chaise ou Banc",
+    equipmentIcon: "🪑",
+    image: "images/ex_db_6_bulgarian_squats.jpg",
+    video: "videos/ex_db_6_bulgarian_squats.mp4",
+    targetMuscles: "Grand Fessier, Quadriceps, Ischios, Stabilité",
+    targetPrimary: "FESSIERS & CUISSES",
+    cue: "Pied arrière surélevé sur la chaise, descendez la cuisse avant parallèle au sol et repoussez fort sur le talon.",
+    breathing: "Inspirez en descendant dans la fente, expirez en remontant.",
+    description: "Travail unilatéral d'élite. 80% du poids repose sur la jambe avant. Mi-temps à 20s pour changer de jambe sous le signal sonore.",
+    adaptation: "Commencez sans haltères si l'équilibre est précaire, puis chargez progressivement.",
+    isDumbbell: true,
+    isUnilateral: true,
+    get illustrationHtml() {
+      return renderExerciseMediaHtml(this);
+    }
+  },
+  {
+    id: 107,
+    number: "07",
+    code: "4B",
+    name: "SQUATS COMPLETS AUX HALTÈRES",
+    subtitle: "Force globale Bas du corps • 2 Haltères",
+    duration: 40,
+    level: "intermediate",
+    levelLabel: "2 Haltères",
+    category: "lower_body",
+    categoryTag: "Quadriceps, Fessiers & Ischios",
+    badgeClass: "badge-green",
+    equipment: "2 Haltères",
+    equipmentIcon: "🏋️‍♂️",
+    image: "images/ex_db_7_dumbbell_squats.jpg",
+    video: "videos/ex_db_7_dumbbell_squats.mp4",
+    targetMuscles: "Quadriceps, Grand Fessier, Ischio-jambiers, Lombaires",
+    targetPrimary: "CUISSES & FESSIERS",
+    cue: "Pieds largeur d'épaules, poitrine bombée, descendez les hanches sous le niveau des genoux et poussez par les talons.",
+    breathing: "Inspirez à la descente en ouvrant les genoux, expirez énergiquement à la remontée.",
+    description: "Haltères calés sur les épaules en Front Rack ou le long du corps. Descente complète et contrôlée pour un recrutement musculaire profond.",
+    adaptation: "Maintenez les genoux alignés sur les pointes de pieds sans les laisser s'effondrer vers l'intérieur.",
+    isDumbbell: true,
+    get illustrationHtml() {
+      return renderExerciseMediaHtml(this);
+    }
+  },
+  {
+    id: 108,
+    number: "08",
+    code: "05",
+    name: "CURL BICEPS EN SUPINATION",
+    subtitle: "Isolation Biceps Brachial • 2 Haltères",
+    duration: 35,
+    level: "intermediate",
+    levelLabel: "2 Haltères",
+    category: "upper_body",
+    categoryTag: "Biceps Brachial & Avant-bras",
+    badgeClass: "badge-amber",
+    equipment: "2 Haltères",
+    equipmentIcon: "🏋️‍♂️",
+    image: "images/ex_db_8_biceps_curls.jpg",
+    video: "videos/ex_db_8_biceps_curls.mp4",
+    targetMuscles: "Biceps Brachial, Brachio-radial, Avant-bras",
+    targetPrimary: "BICEPS",
+    cue: "Coudes fixés aux côtes, pivotez les paumes vers l'extérieur au sommet pour un pic de contraction maximal.",
+    breathing: "Expirez en montant les haltères en rotation, inspirez lors de la descente freinée sur 2 secondes.",
+    description: "Prise neutre au départ le long des cuisses, rotation externe progressive des poignets durant la montée, puis descente lente et contrôlée.",
+    adaptation: "Bannissez tout balancement du dos : verrouillez les fessiers et le tronc.",
+    isDumbbell: true,
+    get illustrationHtml() {
+      return renderExerciseMediaHtml(this);
+    }
+  },
+  {
+    id: 109,
+    number: "09",
+    code: "06",
+    name: "RUSSIAN TWIST AVEC HALTÈRE",
+    subtitle: "Obliques & Rotation du buste • 1 Haltère",
+    duration: 35,
+    level: "intermediate",
+    levelLabel: "1 Haltère",
+    category: "core",
+    categoryTag: "Obliques & Grand Droit",
+    badgeClass: "badge-orange",
+    equipment: "1 Haltère + Tapis",
+    equipmentIcon: "🏋️",
+    image: "images/ex_db_9_russian_twist.jpg",
+    video: "videos/ex_db_9_russian_twist.mp4",
+    targetMuscles: "Obliques internes/externes, Grand Droit, Fléchisseurs de hanche",
+    targetPrimary: "OBLIQUES & CORE",
+    cue: "Buste incliné à 45°, faites pivoter l'haltère d'un côté à l'autre en tournant tout le torse.",
+    breathing: "Expirez à chaque rotation latérale, inspirez lors du passage rapide au centre.",
+    description: "Assis au sol, pieds au sol ou décollés de 5 cm. Tenez l'haltère à deux mains et pivotez le torse avec amplitude et retenue.",
+    adaptation: "Décollez les pieds pour augmenter la difficulté et le travail du droit de l'abdomen.",
+    isDumbbell: true,
+    get illustrationHtml() {
+      return renderExerciseMediaHtml(this);
+    }
+  },
+  {
+    id: 110,
+    number: "10",
+    code: "07",
+    name: "PLANCHE CLASSIQUE GAINAGE",
+    subtitle: "Transverse & Stabilité Profonde • Poids du corps",
+    duration: 45,
+    level: "intermediate",
+    levelLabel: "Poids du corps",
+    category: "core",
+    categoryTag: "Transverse & Stabilité",
+    badgeClass: "badge-teal",
+    equipment: "Poids du corps / Tapis",
+    equipmentIcon: "🤸",
+    image: "images/ex_db_10_plank.jpg",
+    video: "videos/ex_db_10_plank.mp4",
+    targetMuscles: "Transverse, Grand Droit, Érecteurs du rachis, Fessiers",
+    targetPrimary: "GAINAGE PROFOND",
+    cue: "Avant-bras au sol, nombril aspiré, corps droit comme une flèche, fessiers et abdos verrouillés.",
+    breathing: "Respiration ventrale lente et continue sans bloquer l'inspiration.",
+    description: "Maintien isométrique sur les avant-bras et les orteils pour verrouiller la colonne et affiner la taille.",
+    adaptation: "Rétroversez le bassin pour protéger le bas du dos.",
+    isDumbbell: true,
+    isPlank: true,
+    get illustrationHtml() {
+      return renderExerciseMediaHtml(this);
+    }
+  },
+  {
+    id: 111,
+    number: "11",
+    code: "FIN",
+    name: "ÉTIREMENTS & RETOUR AU CALME",
+    subtitle: "Décompression musculaire & Récupération",
+    duration: 45,
+    level: "beginner",
+    levelLabel: "Tous Niveaux",
+    category: "cooldown",
+    categoryTag: "Récupération Globale",
+    badgeClass: "badge-emerald",
+    equipment: "Tapis",
+    equipmentIcon: "🧘",
+    image: "images/ex_db_11_stretching.jpg",
+    video: "videos/ex_db_11_stretching.mp4",
+    targetMuscles: "Pectoraux, Dos, Cuisses, Fessiers, Épaules",
+    targetPrimary: "RÉCUPÉRATION",
+    cue: "Baissez le rythme cardiaque, allongez la colonne et respirez profondément par le nez.",
+    breathing: "Inspirations profondes et longues expirations relâchées.",
+    description: "Étirements complets pour soulager les tensions accumulées pendant la séance avec les haltères.",
+    adaptation: "Ne forcez jamais au-delà de la zone de confort articulaire.",
+    isDumbbell: true,
+    isCoolDown: true,
+    get illustrationHtml() {
+      return renderExerciseMediaHtml(this);
+    }
+  }
+];
+
+// Routines prédéfinies par niveau d'utilisateur (Programme Poids du Corps)
 const ROUTINES_BY_LEVEL = {
   beginner: [1, 2, 11, 6, 19, 20, 8, 9], // 7 exercices adaptés + étirements
   intermediate: [1, 2, 3, 4, 6, 5, 16, 8, 9], // 8 exercices équilibrés (Pont fessier inclus) + étirements
@@ -471,11 +778,14 @@ const ROUTINES_BY_LEVEL = {
 
 // Fonctions utilitaires d'accès aux exercices
 function getAllExercises() {
-  return EXERCISES_DATA;
+  return [...EXERCISES_DATA, ...DUMBBELL_LIVE_EXERCISES];
 }
 
 function getExerciseById(id) {
-  return EXERCISES_DATA.find(e => e.id === Number(id)) || null;
+  const numId = Number(id);
+  const found = EXERCISES_DATA.find(e => e.id === numId);
+  if (found) return found;
+  return DUMBBELL_LIVE_EXERCISES.find(e => e.id === numId) || null;
 }
 
 function getExercisesForLevel(level = 'intermediate') {
@@ -483,7 +793,16 @@ function getExercisesForLevel(level = 'intermediate') {
   return ids.map(id => getExerciseById(id)).filter(Boolean);
 }
 
+function getDumbbellWorkoutExercises() {
+  return DUMBBELL_LIVE_EXERCISES;
+}
+
 function getActiveWorkoutExercises(prefs = {}) {
+  const workoutMode = prefs.workoutMode || 'bodyweight';
+  if (workoutMode === 'dumbbells') {
+    return DUMBBELL_LIVE_EXERCISES;
+  }
+
   const userLevel = prefs.userLevel || 'intermediate';
   if (userLevel === 'custom' && Array.isArray(prefs.customExerciseIds) && prefs.customExerciseIds.length > 0) {
     const list = prefs.customExerciseIds.map(id => getExerciseById(id)).filter(Boolean);
@@ -510,10 +829,12 @@ const PROGRAM_WEEKS = [
 ];
 
 window.EXERCISES_DATA = EXERCISES_DATA;
+window.DUMBBELL_LIVE_EXERCISES = DUMBBELL_LIVE_EXERCISES;
 window.ROUTINES_BY_LEVEL = ROUTINES_BY_LEVEL;
 window.getAllExercises = getAllExercises;
 window.getExerciseById = getExerciseById;
 window.getExercisesForLevel = getExercisesForLevel;
+window.getDumbbellWorkoutExercises = getDumbbellWorkoutExercises;
 window.getActiveWorkoutExercises = getActiveWorkoutExercises;
 window.PROGRAM_WEEKS = PROGRAM_WEEKS;
 

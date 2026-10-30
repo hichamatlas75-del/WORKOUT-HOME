@@ -135,13 +135,35 @@ function startLiveClock() {
 }
 
 // --------------------------------------------------------------------------
-// LISTE DES EXERCICES SUR L'ACCUEIL & SÉLECTION DE NIVEAU
+// LISTE DES EXERCICES SUR L'ACCUEIL & SÉLECTION DE MODE / NIVEAU
 // --------------------------------------------------------------------------
 function renderHomeExercisesList() {
   const container = document.getElementById('home-exercise-list');
   if (!container) return;
 
   const prefs = window.appStorage ? window.appStorage.prefs : {};
+  const currentMode = prefs.workoutMode || 'bodyweight';
+
+  // 0. Synchronisation des boutons du mode d'entraînement (Sans Haltères vs Avec 2 Haltères)
+  const btnBw = document.getElementById('btn-mode-bodyweight');
+  const btnDb = document.getElementById('btn-mode-dumbbells');
+  if (btnBw) {
+    btnBw.classList.toggle('active', currentMode === 'bodyweight');
+    btnBw.setAttribute('aria-selected', currentMode === 'bodyweight' ? 'true' : 'false');
+  }
+  if (btnDb) {
+    btnDb.classList.toggle('active', currentMode === 'dumbbells');
+    btnDb.setAttribute('aria-selected', currentMode === 'dumbbells' ? 'true' : 'false');
+  }
+
+  // 0b. Visibilité des cartes de niveaux / options selon le mode
+  const levelCard = document.getElementById('home-level-card');
+  const presetCard = document.getElementById('home-preset-card');
+  const dbOptionsCard = document.getElementById('home-dumbbell-options-card');
+  if (levelCard) levelCard.style.display = (currentMode === 'bodyweight') ? 'block' : 'none';
+  if (presetCard) presetCard.style.display = (currentMode === 'bodyweight') ? 'block' : 'none';
+  if (dbOptionsCard) dbOptionsCard.style.display = (currentMode === 'dumbbells') ? 'block' : 'none';
+
   const activeExercises = typeof window.getActiveWorkoutExercises === 'function'
     ? window.getActiveWorkoutExercises(prefs)
     : (window.EXERCISES_DATA || []);
@@ -157,14 +179,18 @@ function renderHomeExercisesList() {
   if (userAvatarEl && activeProf) userAvatarEl.textContent = activeProf.avatar || '🦁';
   if (userNameEl && activeProf) userNameEl.textContent = activeProf.name || 'Moi';
   if (userLevelBadge) {
-    const level = prefs.userLevel || 'intermediate';
-    const levelNames = {
-      beginner: '🟢 Débutant',
-      intermediate: '🟡 Intermédiaire',
-      advanced: '🔴 Avancé',
-      custom: `✨ Sur-mesure (${mainCount} ex)`
-    };
-    userLevelBadge.textContent = levelNames[level] || 'Intermédiaire';
+    if (currentMode === 'dumbbells') {
+      userLevelBadge.textContent = '🏋️‍♂️ 2 Haltères';
+    } else {
+      const level = prefs.userLevel || 'intermediate';
+      const levelNames = {
+        beginner: '🟢 Débutant',
+        intermediate: '🟡 Intermédiaire',
+        advanced: '🔴 Avancé',
+        custom: `✨ Sur-mesure (${mainCount} ex)`
+      };
+      userLevelBadge.textContent = levelNames[level] || 'Intermédiaire';
+    }
   }
 
   // 2. Mettre à jour les specs hero
@@ -173,49 +199,98 @@ function renderHomeExercisesList() {
   const specWorkRest = document.getElementById('home-spec-workrest');
   const durationPill = document.getElementById('home-duration-pill');
   const routineSubtitle = document.getElementById('home-routine-subtitle');
+  const streakPill = document.getElementById('home-streak-pill');
+  const startBtnLabel = document.getElementById('home-start-btn-label');
 
-  const rounds = prefs.rounds || 3;
-  const workSec = prefs.workDuration !== undefined ? prefs.workDuration : 30;
-  const restSec = prefs.restDuration !== undefined ? prefs.restDuration : 10;
-  const estMinutes = Math.round((rounds * mainCount * (workSec + restSec) + 60) / 60);
+  if (currentMode === 'dumbbells') {
+    const dbRounds = prefs.dumbbellRounds || 3;
+    const workSec = prefs.dumbbellWorkDuration || 40;
+    const restSec = prefs.dumbbellRestDuration || 20;
+    const estMinutes = (dbRounds === 3) ? "35-40 min" : "45-50 min";
 
-  if (specCount) specCount.textContent = activeExercises.length;
-  if (specRounds) specRounds.textContent = `${rounds} Séries`;
-  if (specWorkRest) specWorkRest.textContent = `${workSec}s / ${restSec}s`;
-  if (durationPill) durationPill.textContent = `${estMinutes - 2}-${estMinutes + 2} min`;
-  if (routineSubtitle) {
-    const customPrefix = (prefs.userLevel === 'custom') ? '✨ ' : '';
-    const customSuffix = (prefs.userLevel === 'custom') ? ' sur-mesure' : '';
-    routineSubtitle.textContent = `${customPrefix}${mainCount} exercices${customSuffix} (${rounds} séries) + Étirements (1 série finale)`;
+    if (specCount) specCount.textContent = activeExercises.length;
+    if (specRounds) specRounds.textContent = `${dbRounds} Séries`;
+    if (specWorkRest) specWorkRest.textContent = `${workSec}s / ${restSec}s`;
+    if (durationPill) durationPill.textContent = estMinutes;
+    if (routineSubtitle) {
+      routineSubtitle.textContent = `5 Blocs Supersets + Circuit Abdos (${dbRounds} séries) + Étirements`;
+    }
+    if (streakPill) {
+      streakPill.innerHTML = '<span class="pulse-dot"></span> 🏋️‍♂️ 2 Haltères (Full Body &amp; Core)';
+    }
+    if (startBtnLabel) {
+      startBtnLabel.textContent = "COMMENCER (2 HALTÈRES)";
+    }
+
+    // Pilules de séries 3 vs 4 pour haltères
+    const pill3 = document.getElementById('db-pill-3rounds');
+    const pill4 = document.getElementById('db-pill-4rounds');
+    if (pill3) pill3.classList.toggle('active', dbRounds === 3);
+    if (pill4) pill4.classList.toggle('active', dbRounds === 4);
+
+  } else {
+    // Mode Bodyweight classique
+    const rounds = prefs.rounds || 3;
+    const workSec = prefs.workDuration !== undefined ? prefs.workDuration : 30;
+    const restSec = prefs.restDuration !== undefined ? prefs.restDuration : 10;
+    const estMinutes = Math.round((rounds * mainCount * (workSec + restSec) + 60) / 60);
+
+    if (specCount) specCount.textContent = activeExercises.length;
+    if (specRounds) specRounds.textContent = `${rounds} Séries`;
+    if (specWorkRest) specWorkRest.textContent = `${workSec}s / ${restSec}s`;
+    if (durationPill) durationPill.textContent = `${estMinutes - 2}-${estMinutes + 2} min`;
+    if (routineSubtitle) {
+      const customPrefix = (prefs.userLevel === 'custom') ? '✨ ' : '';
+      const customSuffix = (prefs.userLevel === 'custom') ? ' sur-mesure' : '';
+      routineSubtitle.textContent = `${customPrefix}${mainCount} exercices${customSuffix} (${rounds} séries) + Étirements (1 série finale)`;
+    }
+    if (streakPill) {
+      const streakStats = window.appStorage ? window.appStorage.getStreakStats() : { currentStreak: 0, bestStreak: 0 };
+      streakPill.innerHTML = streakStats.currentStreak > 0
+        ? `<span class="pulse-dot"></span> 🔥 ${streakStats.currentStreak} jour(s) de série`
+        : '<span class="pulse-dot"></span> 🤸 Prêt pour la séance';
+    }
+    if (startBtnLabel) {
+      startBtnLabel.textContent = "COMMENCER LA SÉANCE";
+    }
+
+    // 3. Mettre à jour les boutons de niveau actif
+    const levelBtns = document.querySelectorAll('#home-level-pills .level-pill-btn');
+    levelBtns.forEach(btn => {
+      const btnLevel = btn.getAttribute('data-level');
+      btn.classList.toggle('active', btnLevel === (prefs.userLevel || 'intermediate'));
+    });
+
+    // 3b. Mettre à jour les boutons de formats rapides (presets)
+    const presetPills = document.querySelectorAll('#home-preset-pills .level-pill-btn');
+    presetPills.forEach(btn => {
+      const pKey = btn.getAttribute('data-preset');
+      let isMatch = false;
+      if (pKey === 'express' && rounds === 2 && workSec === 30 && restSec === 10) isMatch = true;
+      else if (pKey === 'standard' && rounds === 3 && workSec === 30 && restSec === 10) isMatch = true;
+      else if (pKey === 'intense' && rounds === 4 && workSec === 40 && restSec === 15) isMatch = true;
+      else if (pKey === 'gentle' && rounds === 2 && workSec === 25 && restSec === 20) isMatch = true;
+      btn.classList.toggle('active', isMatch);
+    });
   }
-
-  // 3. Mettre à jour les boutons de niveau actif
-  const levelBtns = document.querySelectorAll('#home-level-pills .level-pill-btn');
-  levelBtns.forEach(btn => {
-    const btnLevel = btn.getAttribute('data-level');
-    btn.classList.toggle('active', btnLevel === (prefs.userLevel || 'intermediate'));
-  });
-
-  // 3b. Mettre à jour les boutons de formats rapides (presets)
-  const presetPills = document.querySelectorAll('#home-preset-pills .level-pill-btn');
-  presetPills.forEach(btn => {
-    const pKey = btn.getAttribute('data-preset');
-    let isMatch = false;
-    if (pKey === 'express' && rounds === 2 && workSec === 30 && restSec === 10) isMatch = true;
-    else if (pKey === 'standard' && rounds === 3 && workSec === 30 && restSec === 10) isMatch = true;
-    else if (pKey === 'intense' && rounds === 4 && workSec === 40 && restSec === 15) isMatch = true;
-    else if (pKey === 'gentle' && rounds === 2 && workSec === 25 && restSec === 20) isMatch = true;
-    btn.classList.toggle('active', isMatch);
-  });
 
   // 4. Rendu de la liste d'exercices
   container.innerHTML = activeExercises.map((ex, index) => {
-    const durationDisplay = ex.isPlank 
-      ? (prefs.plankDuration == 120 ? '2 min' : `${prefs.plankDuration || 45}s`)
-      : `${prefs.workDuration !== undefined ? prefs.workDuration : (ex.duration || 30)}s`;
+    let durationDisplay;
+    if (ex.isPlank) {
+      durationDisplay = (prefs.plankDuration == 120 ? '2 min' : `${prefs.plankDuration || 45}s`);
+    } else if (currentMode === 'dumbbells') {
+      durationDisplay = `${ex.duration || 40}s`;
+    } else {
+      durationDisplay = `${prefs.workDuration !== undefined ? prefs.workDuration : (ex.duration || 30)}s`;
+    }
 
     const numDisplay = String(index + 1).padStart(2, '0');
     const levelClass = ex.level || 'intermediate';
+
+    const badgeLabel = ex.isDumbbell
+      ? `<span class="badge-tag-level intermediate" style="font-size: 0.6rem; color: #60a5fa; border-color: rgba(96, 165, 250, 0.4);">${ex.equipmentIcon || '🏋️‍♂️'} ${ex.categoryTag || ex.levelLabel}</span>`
+      : `<span class="badge-tag-level ${levelClass}" style="font-size: 0.6rem;">${ex.levelLabel || 'Standard'}</span>`;
 
     return `
       <div class="exercise-item-card" onclick="openExerciseModal(${ex.id})">
@@ -224,9 +299,9 @@ function renderHomeExercisesList() {
           <span class="ex-thumb-badge">${numDisplay}</span>
         </div>
         <div class="ex-info">
-          <div class="ex-name" style="display: flex; align-items: center; gap: 6px;">
+          <div class="ex-name" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
             <span>${ex.name}</span>
-            <span class="badge-tag-level ${levelClass}" style="font-size: 0.6rem;">${ex.levelLabel || 'Standard'}</span>
+            ${badgeLabel}
           </div>
           <div class="ex-desc">${ex.subtitle}</div>
         </div>
@@ -242,6 +317,41 @@ function renderHomeExercisesList() {
 
   if (typeof checkFreshInstallBanner === 'function') checkFreshInstallBanner();
 }
+
+function setWorkoutMode(mode) {
+  if (!window.appStorage) return;
+  const targetMode = (mode === 'dumbbells') ? 'dumbbells' : 'bodyweight';
+  window.appStorage.savePreferences({
+    workoutMode: targetMode
+  });
+  renderHomeExercisesList();
+
+  if (typeof showToast === 'function') {
+    if (targetMode === 'dumbbells') {
+      showToast("🏋️‍♂️ Mode 2 Haltères activé (Full Body & Core)");
+    } else {
+      showToast("🤸 Mode Sans Haltères activé (Poids du corps)");
+    }
+  }
+}
+
+function setDumbbellLiveRounds(rounds) {
+  if (!window.appStorage) return;
+  const r = Number(rounds) || 3;
+  window.appStorage.savePreferences({
+    dumbbellRounds: r
+  });
+  if (window.dumbbellsManager) {
+    window.dumbbellsManager.setTargetRounds(r);
+  }
+  renderHomeExercisesList();
+  if (typeof showToast === 'function') {
+    showToast(`Volume 2 Haltères : ${r} séries par bloc`);
+  }
+}
+
+window.setWorkoutMode = setWorkoutMode;
+window.setDumbbellLiveRounds = setDumbbellLiveRounds;
 
 function setUserLevel(level) {
   if (!window.appStorage) return;
@@ -267,7 +377,9 @@ let _activeModalExerciseId = null;
 
 function openExerciseModal(exerciseId) {
   const all = typeof window.getAllExercises === 'function' ? window.getAllExercises() : (window.EXERCISES_DATA || []);
-  const ex = all.find(e => e.id === Number(exerciseId));
+  const ex = (typeof window.getExerciseById === 'function')
+    ? window.getExerciseById(exerciseId)
+    : all.find(e => e.id === Number(exerciseId));
   if (!ex) return;
 
   _activeModalExerciseId = ex.id;
@@ -293,8 +405,10 @@ function openExerciseModal(exerciseId) {
   const toggleBtn = document.getElementById('modal-ex-toggle-btn');
 
   if (titleEl) titleEl.textContent = ex.name;
-  const totalExFormatted = String(EXERCISES_DATA.length).padStart(2, '0');
-  if (numberEl) numberEl.textContent = `Exercice ${ex.number}/${totalExFormatted} • ${durationDisplay}`;
+  const totalCount = ex.isDumbbell ? 11 : (window.EXERCISES_DATA ? window.EXERCISES_DATA.length : 20);
+  const totalExFormatted = String(totalCount).padStart(2, '0');
+  const equipLabel = ex.equipment ? ` • ${ex.equipment}` : '';
+  if (numberEl) numberEl.textContent = `Exercice ${ex.number}/${totalExFormatted} • ${durationDisplay}${equipLabel}`;
   if (musclesEl) musclesEl.textContent = ex.targetMuscles;
   if (descEl) descEl.textContent = ex.description;
   if (cueEl) cueEl.textContent = ex.cue;
@@ -303,7 +417,7 @@ function openExerciseModal(exerciseId) {
   if (svgEl) svgEl.innerHTML = ex.illustrationHtml;
 
   if (toggleBtn) {
-    if (ex.isCoolDown) {
+    if (ex.isCoolDown || ex.isDumbbell) {
       toggleBtn.style.display = 'none';
     } else {
       toggleBtn.style.display = 'block';
@@ -423,7 +537,7 @@ window.switchTab = switchTab;
 // --------------------------------------------------------------------------
 // MOTEUR D'ENTRAÎNEMENT & WORKOUT UI
 // --------------------------------------------------------------------------
-function startWorkoutSession() {
+function startWorkoutSession(options = {}) {
   window.audioEngine.initContext();
   updateWorkoutMusicBtnState();
   updateWorkoutMusicHUD();
@@ -434,12 +548,29 @@ function startWorkoutSession() {
   history.pushState({ workout: true }, '', '');
 
   const prefs = (window.appStorage && window.appStorage.prefs) ? window.appStorage.prefs : {};
+  const mode = options.mode || prefs.workoutMode || 'bodyweight';
+
+  const rounds = (mode === 'dumbbells')
+    ? (options.rounds || prefs.dumbbellRounds || 3)
+    : (parseInt(prefs.rounds, 10) || 3);
+
+  const workDuration = (mode === 'dumbbells')
+    ? (options.workDuration || prefs.dumbbellWorkDuration || 40)
+    : Math.min(300, Math.max(5, parseInt(prefs.workDuration, 10) || 30));
+
+  const restDuration = (mode === 'dumbbells')
+    ? (options.restDuration || prefs.dumbbellRestDuration || 20)
+    : Math.min(300, Math.max(0, parseInt(prefs.restDuration, 10) !== undefined && !isNaN(parseInt(prefs.restDuration, 10)) ? parseInt(prefs.restDuration, 10) : 10));
+
   window.workoutEngine.startWorkout({
-    rounds: parseInt(prefs.rounds, 10) || 3,
-    workDuration: Math.min(300, Math.max(5, parseInt(prefs.workDuration, 10) || 30)),
-    restDuration: Math.min(300, Math.max(0, parseInt(prefs.restDuration, 10) !== undefined && !isNaN(parseInt(prefs.restDuration, 10)) ? parseInt(prefs.restDuration, 10) : 10))
+    rounds: rounds,
+    workDuration: workDuration,
+    restDuration: restDuration,
+    mode: mode
   });
 }
+
+window.startWorkoutSession = startWorkoutSession;
 
 function initWorkoutUI() {
   const overlay = document.getElementById('workout-overlay');

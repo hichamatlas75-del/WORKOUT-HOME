@@ -17,6 +17,10 @@ const DEFAULT_PREFERENCES = {
   userName: "Moi",
   userAvatar: "🦁",
   userLevel: "intermediate", // "beginner" | "intermediate" | "advanced" | "custom"
+  workoutMode: "bodyweight", // "bodyweight" (sans haltères) | "dumbbells" (avec 2 haltères)
+  dumbbellRounds: 3, // Séries recommandées pour le mode 2 haltères (3 ou 4)
+  dumbbellWorkDuration: 40, // Effort recommandé haltères (secondes)
+  dumbbellRestDuration: 20, // Repos recommandé haltères (secondes)
   customExerciseIds: null, // Tableau d'IDs d'exercices si mode personnalisé
   rounds: 3,
   workDuration: 30,
@@ -318,6 +322,8 @@ class AppStorage {
 
   addWorkoutSession(sessionData) {
     const now = new Date();
+    const mode = sessionData.mode || this.prefs.workoutMode || 'bodyweight';
+    const calMultiplier = (mode === 'dumbbells') ? 9.5 : 8.5;
     const session = {
       id: 'ws_' + Date.now(),
       date: sessionData.date || this.formatDateISO(now),
@@ -327,7 +333,8 @@ class AppStorage {
       completed: sessionData.completed !== undefined ? sessionData.completed : true,
       exercisesCount: sessionData.exercisesCount || 8,
       level: sessionData.level || this.prefs.userLevel || 'intermediate',
-      caloriesEstimated: Math.round(((sessionData.durationSeconds || 960) / 60) * 8.5)
+      mode: mode,
+      caloriesEstimated: Math.round(((sessionData.durationSeconds || 960) / 60) * calMultiplier)
     };
 
     this.history.unshift(session);

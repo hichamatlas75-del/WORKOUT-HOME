@@ -99,6 +99,26 @@
           </button>
         </div>
 
+        <!-- Sélecteur de Mode de Séance : Sans Haltères vs Avec 2 Haltères -->
+        <div class="workout-mode-switcher-container">
+          <div class="workout-mode-segmented-control" role="tablist" aria-label="Mode d'entraînement">
+            <button type="button" class="workout-mode-btn active" id="btn-mode-bodyweight" onclick="setWorkoutMode('bodyweight')" role="tab" aria-selected="true" title="Séance au poids du corps sans matériel">
+              <span class="mode-btn-icon">🤸</span>
+              <div class="mode-btn-texts">
+                <span class="mode-btn-title">Sans Haltères</span>
+                <span class="mode-btn-desc">Poids du corps • HIIT Full Body</span>
+              </div>
+            </button>
+            <button type="button" class="workout-mode-btn" id="btn-mode-dumbbells" onclick="setWorkoutMode('dumbbells')" role="tab" aria-selected="false" title="Séance Full Body &amp; Core avec 2 Haltères">
+              <span class="mode-btn-icon">🏋️‍♂️</span>
+              <div class="mode-btn-texts">
+                <span class="mode-btn-title">Avec 2 Haltères</span>
+                <span class="mode-btn-desc">Full Body &amp; Core • 5 Supersets</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
         <!-- Carte Hero avec Heure Cible 17:00 -->
         <div class="hero-card">
           <div class="hero-status-row">
@@ -131,8 +151,8 @@
           </div>
         </div>
 
-        <!-- Sélecteur de Niveau de Difficulté -->
-        <div class="level-selector-card">
+        <!-- Sélecteur de Niveau de Difficulté (Mode Sans Haltères) -->
+        <div class="level-selector-card" id="home-level-card">
           <div class="level-selector-title">
             <span>🎯 Niveau de séance</span>
             <button class="btn-text-action" onclick="openCustomExercisesModal()">⚙️ Personnaliser</button>
@@ -157,8 +177,8 @@
           </div>
         </div>
 
-        <!-- Formats Rapides (Presets 1-Clic) -->
-        <div class="level-selector-card" style="margin-top: -6px;">
+        <!-- Formats Rapides Presets 1-Clic (Mode Sans Haltères) -->
+        <div class="level-selector-card" id="home-preset-card" style="margin-top: -6px;">
           <div class="level-selector-title">
             <span>⚡ Formats Rapides (1-Clic)</span>
             <span style="font-size: 0.72rem; color: var(--text-muted);">Ajuste temps &amp; séries</span>
@@ -183,12 +203,30 @@
           </div>
         </div>
 
+        <!-- Options Spécifiques 2 Haltères (Mode Avec 2 Haltères) -->
+        <div class="level-selector-card" id="home-dumbbell-options-card" style="display: none;">
+          <div class="level-selector-title">
+            <span>🏋️‍♂️ Séries Haltères</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">5 Supersets + Circuit Core</span>
+          </div>
+          <div class="level-pills-row" id="home-dumbbell-rounds-pills">
+            <button type="button" class="level-pill-btn active" id="db-pill-3rounds" onclick="setDumbbellLiveRounds(3)" title="3 séries par bloc (35-40 min)">
+              <span class="level-pill-icon">⚡</span>
+              <span class="level-pill-name">Standard (3 Séries)</span>
+            </button>
+            <button type="button" class="level-pill-btn" id="db-pill-4rounds" onclick="setDumbbellLiveRounds(4)" title="4 séries par bloc (45-50 min)">
+              <span class="level-pill-icon">🔥</span>
+              <span class="level-pill-name">Intensif (4 Séries)</span>
+            </button>
+          </div>
+        </div>
+
         <!-- Bouton Géant Tactile COMMENCER -->
-        <button class="btn-primary" onclick="startWorkoutSession()">
+        <button class="btn-primary" id="btn-home-start-workout" onclick="startWorkoutSession()">
           <svg viewBox="0 0 24 24">
             <path d="M8 5v14l11-7z"/>
           </svg>
-          COMMENCER LA SÉANCE
+          <span id="home-start-btn-label">COMMENCER LA SÉANCE</span>
         </button>
 
         <!-- Carte d'accès rapide : Séance Spéciale 2 Haltères -->

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fullbody17-v2.5.1';
+const CACHE_NAME = 'fullbody17-v2.6.0';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -41,7 +41,18 @@ const ASSETS_TO_CACHE = [
   './images/ex_17_bicycle_crunches.jpg',
   './images/ex_18_high_knees.jpg',
   './images/ex_19_superman.jpg',
-  './images/ex_20_wall_sit.jpg'
+  './images/ex_20_wall_sit.jpg',
+  './images/ex_db_1_bench_press.jpg',
+  './images/ex_db_2_rowing.jpg',
+  './images/ex_db_3_overhead_triceps.jpg',
+  './images/ex_db_4_diamond_pushups.jpg',
+  './images/ex_db_5_lateral_front_raises.jpg',
+  './images/ex_db_6_bulgarian_squats.jpg',
+  './images/ex_db_7_dumbbell_squats.jpg',
+  './images/ex_db_8_biceps_curls.jpg',
+  './images/ex_db_9_russian_twist.jpg',
+  './images/ex_db_10_plank.jpg',
+  './images/ex_db_11_stretching.jpg'
 ];
 
 // État mémoire synchronisé pour les rappels

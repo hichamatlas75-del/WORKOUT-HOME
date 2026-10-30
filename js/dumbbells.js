@@ -602,6 +602,14 @@ class DumbbellsManager {
           </div>
           <div class="db-progress-count" id="db-progress-count">0 / ${10 * this.targetRounds} séries validées</div>
         </div>
+
+        <!-- Bouton Démarrage Séance Interactive avec Chrono & Coach -->
+        <button class="btn-primary db-live-start-btn" onclick="startWorkoutSession({ mode: 'dumbbells' })" style="margin-top: 16px; width: 100%;">
+          <svg viewBox="0 0 24 24" style="width: 22px; height: 22px; fill: currentColor;">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+          LANCER LA SÉANCE INTERACTIVE (2 HALTÈRES)
+        </button>
       </div>
 
       <!-- Liste des 6 Blocs d'entraînement -->
@@ -662,6 +670,11 @@ class DumbbellsManager {
 
   renderExerciseCardHtml(ex, block, exIdx) {
     const isSupersetSecond = (block.type === 'superset' && exIdx > 0);
+    const liveIdMap = {
+      db_1a: 101, db_1b: 102, db_2a: 103, db_2b: 104, db_3: 105,
+      db_4a: 106, db_4b: 107, db_5: 108, db_6: 109, db_7: 110
+    };
+    const liveId = liveIdMap[ex.id] || null;
 
     return `
       ${isSupersetSecond ? `
@@ -680,6 +693,7 @@ class DumbbellsManager {
             <div class="db-ex-badges-row">
               <span class="db-muscle-badge ${ex.badgeClass}">${ex.categoryTag}</span>
               <span class="db-equip-badge">${ex.equipmentIcon} ${ex.equipment}</span>
+              ${liveId ? `<button type="button" class="db-preview-video-btn" onclick="openExerciseModal(${liveId})" title="Voir vidéo et démo">🎬 Démo &amp; Vidéo</button>` : ''}
             </div>
           </div>
           <span class="db-ex-main-icon">${ex.icon}</span>

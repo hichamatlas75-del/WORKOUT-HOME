@@ -141,5 +141,17 @@ describe('Entraînement 2 Haltères — Full Body & Core (dumbbells.js)', () => 
     assert.ok(blockHtml.includes('Développé Couché Alterné'));
     assert.ok(blockHtml.includes('Rowing Buste Penché'));
     assert.ok(blockHtml.includes('60s de repos'));
+    assert.ok(blockHtml.includes('db-preview-video-btn'), 'Doit inclure le bouton de démo vidéo');
+  });
+
+  test('La vue générale comprend le bouton de lancement live interactif', () => {
+    // Simuler le conteneur dans l'environnement de test
+    const fakeContainer = { innerHTML: '' };
+    env.context.document.getElementById = (id) => (id === 'view-dumbbells' ? fakeContainer : null);
+
+    manager.renderView();
+    assert.ok(fakeContainer.innerHTML.includes('db-live-start-btn'), 'Doit inclure le bouton de lancement interactif');
+    assert.ok(fakeContainer.innerHTML.includes('startWorkoutSession'), 'Doit appeler startWorkoutSession');
+    assert.ok(fakeContainer.innerHTML.includes('dumbbells'), 'Doit spécifier le mode dumbbells');
   });
 });

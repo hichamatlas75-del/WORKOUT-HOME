@@ -54,15 +54,16 @@ class WorkoutEngine {
   // Démarrer une nouvelle séance
   startWorkout(options = {}) {
     const prefs = window.appStorage ? window.appStorage.prefs : {};
-    this.totalRounds = options.rounds || prefs.rounds || 3;
-    this.workDuration = options.workDuration || prefs.workDuration || 30;
-    this.restDuration = options.restDuration || prefs.restDuration || 10;
+    this.workoutMode = options.mode || prefs.workoutMode || 'bodyweight';
+    this.totalRounds = options.rounds || (this.workoutMode === 'dumbbells' ? (prefs.dumbbellRounds || 3) : (prefs.rounds || 3));
+    this.workDuration = options.workDuration || prefs.workDuration || (this.workoutMode === 'dumbbells' ? 40 : 30);
+    this.restDuration = options.restDuration || (prefs.restDuration !== undefined ? prefs.restDuration : (this.workoutMode === 'dumbbells' ? 20 : 10));
 
     // Récupération des exercices de la séance selon le niveau ou la sélection
     if (options.exercises && Array.isArray(options.exercises) && options.exercises.length > 0) {
       this.exercises = options.exercises;
     } else if (typeof window.getActiveWorkoutExercises === 'function') {
-      this.exercises = window.getActiveWorkoutExercises(prefs);
+      this.exercises = window.getActiveWorkoutExercises({ ...prefs, workoutMode: this.workoutMode });
     } else {
       this.exercises = window.EXERCISES_DATA || [];
     }
@@ -89,7 +90,8 @@ class WorkoutEngine {
 
     const activeList = this.getExercises();
     const firstEx = activeList[0] || { name: "Exercice 1" };
-    window.audioEngine.speak(`Préparez-vous. Premier exercice : ${firstEx.name}`);
+    const introMode = (this.workoutMode === 'dumbbells') ? "Séance avec 2 Haltères. " : "";
+    window.audioEngine.speak(`Préparez-vous. ${introMode}Premier exercice : ${firstEx.name}`);
   }
 
   // Basculement d'état / de phase
@@ -144,7 +146,7 @@ class WorkoutEngine {
     // Signal de mi-temps à 20s pour les exercices unilatéraux
     const currentList = this.getExercises();
     const currentEx = currentList[this.currentExerciseIndex];
-    const isUnilateral = currentEx && (currentEx.id === 7 || currentEx.id === 15);
+    const isUnilateral = currentEx && (currentEx.id === 7 || currentEx.id === 15 || currentEx.id === 106 || currentEx.isUnilateral);
     if (this.state === WORKOUT_STATES.WORK && isUnilateral) {
       if (Math.abs(this.timeRemaining - 20) < 0.25 && !this.halfTimeTriggered) {
         window.audioEngine.playHalfTimeTone();
@@ -397,7 +399,8 @@ class WorkoutEngine {
       rounds: this.totalRounds,
       completed: true,
       exercisesCount: list.length,
-      level: prefs.userLevel || 'intermediate'
+      level: prefs.userLevel || 'intermediate',
+      mode: this.workoutMode || 'bodyweight'
     });
 
     // Sons & Voix de victoire
