@@ -191,6 +191,19 @@
           COMMENCER LA SÉANCE
         </button>
 
+        <!-- Carte d'accès rapide : Séance Spéciale 2 Haltères -->
+        <div class="dumbbell-promo-card" onclick="switchTab('dumbbells')" title="Ouvrir la séance 2 Haltères">
+          <div class="dumbbell-promo-left">
+            <span class="dumbbell-promo-badge">⚡ SPÉCIAL 2 HALTÈRES</span>
+            <div class="dumbbell-promo-title">Full Body &amp; Core avec 2 Haltères</div>
+            <div class="dumbbell-promo-subtitle">5 Blocs Supersets + Circuit Abdos • 35-45 min</div>
+          </div>
+          <button type="button" class="dumbbell-promo-btn" aria-label="Voir la séance haltères">
+            <span>Découvrir</span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+
         <!-- Carte Widget Activité & Calories Combinées (Workout + Pas) -->
         <div class="home-activity-card" onclick="switchTab('activity')" title="Ouvrir le Podomètre et le Suivi d'Activité">
           <div class="home-activity-header">
@@ -256,6 +269,13 @@
           <!-- Rempli dynamiquement par js/app.js -->
         </div>
 
+      </section>
+
+      <!-- ------------------------------------------------------------------
+           VUE 1 BIS : ENTRAÎNEMENT 2 HALTÈRES (FULL BODY & CORE)
+           ------------------------------------------------------------------ -->
+      <section id="view-dumbbells" class="view">
+        <!-- Rendu dynamique par js/dumbbells.js -->
       </section>
 
       <!-- ------------------------------------------------------------------
@@ -1103,6 +1123,13 @@
         Accueil
       </button>
 
+      <button class="nav-item" data-tab="dumbbells" onclick="switchTab('dumbbells')" aria-label="Haltères">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 5v14M18 5v14M2 9v6M22 9v6M6 12h12M4 9h2v6H4zM18 9h2v6h-2z"/>
+        </svg>
+        Haltères
+      </button>
+
       <button class="nav-item" data-tab="activity" onclick="switchTab('activity')" aria-label="Activité">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="13.5" cy="5.5" r="2.5"/>
@@ -1704,6 +1731,10 @@
 
         <!-- 4. Raccourcis rapides -->
         <div class="drawer-links">
+          <button class="drawer-nav-link" onclick="closeProfileDrawer(); switchTab('dumbbells');">
+            <span>🏋️ Routine 2 Haltères (Full Body &amp; Core)</span>
+            <span class="badge-tag-level beginner" style="font-size: 0.62rem; padding: 2px 6px;">Nouveau</span>
+          </button>
           <button class="drawer-nav-link" onclick="closeProfileDrawer(); switchTab('dashboard');">
             <span>📊 Tableau de bord &amp; Progrès</span>
             <span>➔</span>
@@ -1755,6 +1786,7 @@
   <script src="js/audio.js" defer></script>
   <script src="js/storage.js" defer></script>
   <script src="js/pedometer.js" defer></script>
+  <script src="js/dumbbells.js" defer></script>
   <script src="js/workout.js" defer></script>
   <script src="js/dashboard.js" defer></script>
   <script src="js/motivation.js" defer></script>

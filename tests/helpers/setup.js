@@ -68,6 +68,7 @@ export function createTestEnvironment() {
     window: {},
     document: {
       getElementById: () => null,
+      querySelector: () => null,
       createElement: () => ({ classList: { add: () => {}, remove: () => {} }, appendChild: () => {} }),
       querySelectorAll: () => [],
       documentElement: {

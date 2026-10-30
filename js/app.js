@@ -48,6 +48,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   } catch (e) { console.warn('Pedometer init error:', e); }
 
+  // 8c. Initialiser l'entraînement 2 Haltères (Full Body & Core)
+  try {
+    if (window.dumbbellsManager) {
+      window.dumbbellsManager.init();
+    }
+  } catch (e) { console.warn('Dumbbells init error:', e); }
+
   // 9. Vérifier les paramètres URL (ex: ?action=start ou ?tab=...)
   try {
     const urlParams = new URLSearchParams(window.location.search);
@@ -391,6 +398,10 @@ function switchTab(tabName) {
   // Mettre à jour les données si nécessaire
   if (tabName === 'dashboard') {
     window.dashboardManager.renderDashboard();
+  } else if (tabName === 'dumbbells') {
+    if (window.dumbbellsManager) {
+      window.dumbbellsManager.renderView();
+    }
   } else if (tabName === 'activity') {
     if (window.pedometerManager) {
       window.pedometerManager.renderActivityView();

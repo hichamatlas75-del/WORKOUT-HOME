@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fullbody17-v2.5.0';
+const CACHE_NAME = 'fullbody17-v2.5.1';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -18,6 +18,7 @@ const ASSETS_TO_CACHE = [
   './js/motion-player.js',
   './js/sync.js',
   './js/pedometer.js',
+  './js/dumbbells.js',
   './icons/icon.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',
