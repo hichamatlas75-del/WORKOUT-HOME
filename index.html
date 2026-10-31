@@ -42,7 +42,7 @@
         <div class="brand-info">
           <div class="brand-title-wrap">
             <span class="brand-title">FULL BODY 17</span>
-            <span class="version-tag">v2.5.0</span>
+            <span class="version-tag">v2.6.0</span>
           </div>
           <span class="brand-subtitle">Routine Quotidienne</span>
         </div>
@@ -519,6 +519,19 @@
           <span class="section-subtitle">Vos progrès quotidiens</span>
         </div>
 
+        <!-- Sélecteur Sous-Onglet : Statistiques vs Badges -->
+        <div class="stats-subtab-container">
+          <div class="stats-subtab-bar" role="tablist">
+            <button type="button" class="stats-subtab-btn active" id="subtab-btn-stats" onclick="switchDashboardSubTab('stats')" role="tab">
+              📊 Métriques &amp; Calendrier
+            </button>
+            <button type="button" class="stats-subtab-btn" id="subtab-btn-badges" onclick="switchDashboardSubTab('badges')" role="tab">
+              🏆 Trophées &amp; Badges
+            </button>
+          </div>
+        </div>
+
+        <div id="dashboard-panel-stats">
         <!-- Grille des Métriques -->
         <div class="stats-grid">
           <div class="stat-card">
@@ -651,28 +664,22 @@
           </div>
         </div>
 
+        </div><!-- fin dashboard-panel-stats -->
+
+        <!-- Sous-Panneau Trophées & Badges -->
+        <div id="dashboard-panel-badges" style="display: none;">
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 16px;">
+            Chaque séance accomplie renforce vos habitudes de santé. Débloquez vos succès au fil des jours.
+          </p>
+          <div class="badges-grid" id="badges-grid-container">
+            <!-- Rempli dynamiquement -->
+          </div>
+        </div>
+
       </section>
 
       <!-- ------------------------------------------------------------------
-           VUE 3 : SYSTÈME DE MOTIVATION & BADGES
-           ------------------------------------------------------------------ -->
-      <section id="view-badges" class="view">
-        <div class="section-header">
-          <h2 class="section-title">Badges & Motivation</h2>
-          <span class="section-subtitle">Système sobre & valorisant</span>
-        </div>
-
-        <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 16px;">
-          Chaque séance accomplie renforce vos habitudes de santé. Débloquez vos succès au fil des jours.
-        </p>
-
-        <div class="badges-grid" id="badges-grid-container">
-          <!-- Rempli dynamiquement -->
-        </div>
-      </section>
-
-      <!-- ------------------------------------------------------------------
-           VUE 4 : RÉGLAGES & PWA
+           VUE : RÉGLAGES & PWA
            ------------------------------------------------------------------ -->
       <section id="view-settings" class="view">
         <div class="section-header">
@@ -889,15 +896,50 @@
           <div class="setting-row">
             <div class="setting-info">
               <span class="setting-title">Thème visuel</span>
-              <span class="setting-desc">Mode sombre ou clair</span>
+              <span class="setting-desc">Mode sombre, clair ou noir pur OLED</span>
             </div>
             <label for="setting-theme" class="sr-only">Thème visuel</label>
             <select id="setting-theme" class="styled-input">
-              <option value="dark">Mode Sombre</option>
-              <option value="light">Mode Clair</option>
-              <option value="system">Automatique (Système)</option>
+              <option value="dark">🌙 Mode Sombre</option>
+              <option value="amoled">⚡ Pure AMOLED (Noir Absolu)</option>
+              <option value="light">☀️ Mode Clair</option>
+              <option value="system">📱 Automatique (Système)</option>
             </select>
           </div>
+
+          <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+            <div class="setting-info">
+              <span class="setting-title">Jours d'entraînement programmés</span>
+              <span class="setting-desc">Sélectionnez vos jours de séance (les jours non cochés indiquent un jour de repos)</span>
+            </div>
+            <div class="workout-days-chips" id="workout-days-selector">
+              <span class="workout-day-chip active" data-day="1" onclick="toggleWorkoutDayChip(this)">Lun</span>
+              <span class="workout-day-chip active" data-day="2" onclick="toggleWorkoutDayChip(this)">Mar</span>
+              <span class="workout-day-chip active" data-day="3" onclick="toggleWorkoutDayChip(this)">Mer</span>
+              <span class="workout-day-chip active" data-day="4" onclick="toggleWorkoutDayChip(this)">Jeu</span>
+              <span class="workout-day-chip active" data-day="5" onclick="toggleWorkoutDayChip(this)">Ven</span>
+              <span class="workout-day-chip active" data-day="6" onclick="toggleWorkoutDayChip(this)">Sam</span>
+              <span class="workout-day-chip active" data-day="0" onclick="toggleWorkoutDayChip(this)">Dim</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sauvegarde Locale (Fichier JSON) -->
+        <div class="settings-group">
+          <div class="section-header" style="margin-bottom: 8px;">
+            <h3 class="section-title" style="font-size: 0.95rem;">💾 Sauvegarde &amp; Restauration Hors-Ligne</h3>
+            <span class="section-subtitle">Exportez ou restaurez vos données sans compte ni connexion internet</span>
+          </div>
+
+          <div class="backup-actions-grid">
+            <button type="button" class="btn-backup-action" onclick="exportUserDataFile()">
+              📥 Exporter mes données (JSON)
+            </button>
+            <button type="button" class="btn-backup-action" onclick="triggerImportUserDataFile()">
+              📤 Restaurer mes données (JSON)
+            </button>
+          </div>
+          <input type="file" id="import-json-file-input" accept=".json" style="display: none;" onchange="handleImportUserDataFile(event)">
         </div>
 
         <!-- Profil Physique & Objectifs Poids -->
@@ -1178,19 +1220,11 @@
         Activité
       </button>
 
-      <button class="nav-item" data-tab="dashboard" onclick="switchTab('dashboard')" aria-label="Progrès">
+      <button class="nav-item" data-tab="dashboard" onclick="switchTab('dashboard')" aria-label="Progrès &amp; Badges">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 20V10M12 20V4M6 20v-6"/>
         </svg>
         Progrès
-      </button>
-
-      <button class="nav-item" data-tab="badges" onclick="switchTab('badges')" aria-label="Badges">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="8" r="7"/>
-          <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
-        </svg>
-        Badges
       </button>
 
       <button class="nav-item" data-tab="settings" onclick="switchTab('settings')" aria-label="Réglages">
@@ -1767,6 +1801,19 @@
           </div>
         </div>
 
+        <!-- 3b. Sauvegarde & Restauration Rapide JSON -->
+        <div class="drawer-section">
+          <div class="drawer-section-title">💾 Sauvegarde Locale Fichier JSON</div>
+          <div class="backup-actions-grid">
+            <button type="button" class="btn-backup-action" onclick="exportUserDataFile()">
+              📥 Exporter
+            </button>
+            <button type="button" class="btn-backup-action" onclick="triggerImportUserDataFile()">
+              📤 Restaurer
+            </button>
+          </div>
+        </div>
+
         <!-- 4. Raccourcis rapides -->
         <div class="drawer-links">
           <button class="drawer-nav-link" onclick="closeProfileDrawer(); switchTab('dumbbells');">
@@ -1832,17 +1879,26 @@
   <script src="js/pwa.js" defer></script>
   <script src="js/motion-player.js" defer></script>
   <script src="js/sync.js" defer></script>
+  <script src="js/a11y.js" defer></script>
+  <script src="js/i18n.js" defer></script>
   <script src="js/app.js" defer></script>
 
   <!-- Script inline pour le bouton de bascule rapide de thème -->
   <script>
     function toggleQuickTheme() {
       const current = document.documentElement.getAttribute('data-theme') || 'dark';
-      const nextTheme = current === 'dark' ? 'light' : 'dark';
+      let nextTheme = 'dark';
+      if (current === 'dark') nextTheme = 'amoled';
+      else if (current === 'amoled') nextTheme = 'light';
+      else nextTheme = 'dark';
       document.documentElement.setAttribute('data-theme', nextTheme);
       window.appStorage.savePreferences({ theme: nextTheme });
       const select = document.getElementById('setting-theme');
       if (select) select.value = nextTheme;
+      if (typeof showToast === 'function') {
+        const themeLabels = { dark: '🌙 Mode Sombre', amoled: '⚡ Mode Pure AMOLED (Noir Absolu)', light: '☀️ Mode Clair' };
+        showToast(themeLabels[nextTheme] || nextTheme);
+      }
     }
   </script>
 </body>

@@ -109,6 +109,12 @@ function startLiveClock() {
       return;
     }
 
+    // Vérifier si aujourd'hui est un jour de repos programmé
+    if (window.appStorage && typeof window.appStorage.isRestDayToday === 'function' && window.appStorage.isRestDayToday()) {
+      if (subLabel) subLabel.textContent = "💤 Jour de repos aujourd'hui - Récupération active !";
+      return;
+    }
+
     let diffMs = targetDate - now;
     if (diffMs < 0) {
       // 17h est déjà passée aujourd'hui
@@ -493,7 +499,32 @@ function initTabNavigation() {
   });
 }
 
+function switchDashboardSubTab(subTab = 'stats') {
+  const btnStats = document.getElementById('subtab-btn-stats');
+  const btnBadges = document.getElementById('subtab-btn-badges');
+  const panelStats = document.getElementById('dashboard-panel-stats');
+  const panelBadges = document.getElementById('dashboard-panel-badges');
+
+  if (btnStats) btnStats.classList.toggle('active', subTab === 'stats');
+  if (btnBadges) btnBadges.classList.toggle('active', subTab === 'badges');
+  if (panelStats) panelStats.style.display = (subTab === 'stats') ? 'block' : 'none';
+  if (panelBadges) {
+    panelBadges.style.display = (subTab === 'badges') ? 'block' : 'none';
+    if (subTab === 'badges' && window.motivationManager) {
+      window.motivationManager.renderBadgesView();
+    }
+  }
+}
+
 function switchTab(tabName) {
+  // Si l'utilisateur clique sur badges, basculer sur le sous-onglet badges du tableau de bord
+  if (tabName === 'badges') {
+    tabName = 'dashboard';
+    switchDashboardSubTab('badges');
+  } else if (tabName === 'dashboard') {
+    switchDashboardSubTab('stats');
+  }
+
   // Mettre à jour les boutons
   document.querySelectorAll('.nav-item').forEach(b => {
     b.classList.toggle('active', b.getAttribute('data-tab') === tabName);
@@ -512,6 +543,7 @@ function switchTab(tabName) {
   // Mettre à jour les données si nécessaire
   if (tabName === 'dashboard') {
     window.dashboardManager.renderDashboard();
+    window.motivationManager.renderBadgesView();
   } else if (tabName === 'dumbbells') {
     if (window.dumbbellsManager) {
       window.dumbbellsManager.renderView();
@@ -815,7 +847,6 @@ function loadSettingsForm() {
   const stepGoalSelect = document.getElementById('setting-step-goal');
   const calGoalSelect = document.getElementById('setting-calorie-goal');
   const strideInput = document.getElementById('setting-stride-length');
-  const firebaseUrlInput = document.getElementById('setting-firebase-url');
   const coachVoiceSelect = document.getElementById('setting-coach-voice');
   const coachSpeedSelect = document.getElementById('setting-coach-speed');
   const coachEncouragementsSwitch = document.getElementById('setting-coach-encouragements');
@@ -854,10 +885,15 @@ function loadSettingsForm() {
   if (stepGoalSelect && activeEl !== stepGoalSelect) stepGoalSelect.value = String(prefs.dailyStepGoal || 8000);
   if (calGoalSelect && activeEl !== calGoalSelect) calGoalSelect.value = String(prefs.dailyCalorieGoal || 500);
   if (strideInput && activeEl !== strideInput) strideInput.value = prefs.strideLengthCm || "";
-  if (firebaseUrlInput && activeEl !== firebaseUrlInput) firebaseUrlInput.value = prefs.firebaseUrl || "";
   if (syncIdInput && activeEl !== syncIdInput) syncIdInput.value = prefs.syncUserId || "";
   if (syncPinInput && activeEl !== syncPinInput) syncPinInput.value = prefs.syncUserPin || "";
   if (syncAutoSwitch && activeEl !== syncAutoSwitch) syncAutoSwitch.checked = prefs.syncAutoEnabled !== false;
+
+  const activeWorkoutDays = prefs.activeWorkoutDays || [1, 2, 3, 4, 5, 6, 0];
+  document.querySelectorAll('.workout-day-chip').forEach(chip => {
+    const d = parseInt(chip.getAttribute('data-day'), 10);
+    chip.classList.toggle('active', activeWorkoutDays.includes(d));
+  });
 
   window.audioEngine.soundEnabled = prefs.soundEnabled !== false;
   window.audioEngine.voiceEnabled = prefs.voiceEnabled !== false;
@@ -900,7 +936,6 @@ function saveSettings(options = {}) {
   const stepGoalSelect = document.getElementById('setting-step-goal');
   const calGoalSelect = document.getElementById('setting-calorie-goal');
   const strideInput = document.getElementById('setting-stride-length');
-  const firebaseUrlInput = document.getElementById('setting-firebase-url');
   const coachVoiceSelect = document.getElementById('setting-coach-voice');
   const coachSpeedSelect = document.getElementById('setting-coach-speed');
   const coachEncouragementsSwitch = document.getElementById('setting-coach-encouragements');
@@ -937,11 +972,21 @@ function saveSettings(options = {}) {
     dailyStepGoal: stepGoalSelect && stepGoalSelect.value ? parseInt(stepGoalSelect.value, 10) : (currentPrefs.dailyStepGoal || 8000),
     dailyCalorieGoal: calGoalSelect && calGoalSelect.value ? parseInt(calGoalSelect.value, 10) : (currentPrefs.dailyCalorieGoal || 500),
     strideLengthCm: strideInput && strideInput.value ? parseInt(strideInput.value, 10) : (currentPrefs.strideLengthCm || null),
-    firebaseUrl: firebaseUrlInput ? firebaseUrlInput.value.trim() : (currentPrefs.firebaseUrl || ""),
+    firebaseUrl: currentPrefs.firebaseUrl || "",
     syncUserId: syncIdInput ? syncIdInput.value.trim().toLowerCase() : (currentPrefs.syncUserId || ""),
     syncUserPin: syncPinInput ? syncPinInput.value.trim() : (currentPrefs.syncUserPin || ""),
     syncAutoEnabled: syncAutoSwitch ? syncAutoSwitch.checked : (currentPrefs.syncAutoEnabled !== false)
   };
+
+  // Récupérer les jours d'entraînement cochés
+  const selectedDays = [];
+  document.querySelectorAll('.workout-day-chip.active').forEach(chip => {
+    const d = parseInt(chip.getAttribute('data-day'), 10);
+    if (!isNaN(d)) selectedDays.push(d);
+  });
+  if (selectedDays.length > 0) {
+    newPrefs.activeWorkoutDays = selectedDays;
+  }
 
   window.appStorage.savePreferences(newPrefs);
   const resolvedTheme = newPrefs.theme === 'system'
@@ -995,6 +1040,73 @@ function saveSettings(options = {}) {
   if (!silent) {
     showToast("✅ Réglages enregistrés avec succès !");
   }
+}
+
+// --------------------------------------------------------------------------
+// GESTION DES JOURS D'ENTRAÎNEMENT & EXPORT/IMPORT JSON
+// --------------------------------------------------------------------------
+function toggleWorkoutDayChip(chipEl) {
+  if (!chipEl) return;
+  chipEl.classList.toggle('active');
+  saveSettings({ silent: true });
+  startLiveClock();
+}
+
+function exportUserDataFile() {
+  try {
+    const jsonStr = window.appStorage.exportDataAsJSON();
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dateStr = new Date().toISOString().split('T')[0];
+    a.href = url;
+    a.download = `fullbody17_backup_${dateStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 200);
+    if (typeof showToast === 'function') {
+      showToast('📥 Sauvegarde JSON téléchargée avec succès !');
+    }
+  } catch (err) {
+    console.error('Export error:', err);
+    if (typeof showToast === 'function') {
+      showToast('❌ Erreur lors de l\'exportation', true);
+    }
+  }
+}
+
+function triggerImportUserDataFile() {
+  const input = document.getElementById('import-json-file-input');
+  if (input) {
+    input.value = '';
+    input.click();
+  }
+}
+
+function handleImportUserDataFile(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const content = e.target.result;
+      window.appStorage.importDataFromJSON(content);
+      reInitApp();
+      if (typeof showToast === 'function') {
+        showToast('📤 Données restaurées avec succès !');
+      }
+    } catch (err) {
+      console.error('Import error:', err);
+      if (typeof showToast === 'function') {
+        showToast('❌ Fichier JSON invalide ou corrompu', true);
+      }
+    }
+  };
+  reader.readAsText(file);
 }
 
 // --------------------------------------------------------------------------

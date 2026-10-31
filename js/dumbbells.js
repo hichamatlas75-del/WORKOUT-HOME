@@ -330,6 +330,7 @@ class DumbbellsManager {
   constructor() {
     this.workout = DUMBBELL_WORKOUT_DATA;
     this.completedSets = this.loadCompletedSets();
+    this.weights = this.loadWeights();
     this.targetRounds = 3; // 3 ou 4 séries
     this.restTimer = null;
     this.restRemaining = 0;
@@ -340,6 +341,42 @@ class DumbbellsManager {
   init() {
     this.renderView();
     this.bindEvents();
+  }
+
+  loadWeights() {
+    try {
+      const saved = localStorage.getItem('fb17_dumbbells_weights');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  saveWeights() {
+    try {
+      localStorage.setItem('fb17_dumbbells_weights', JSON.stringify(this.weights));
+    } catch (e) {}
+  }
+
+  getExerciseWeight(exerciseId) {
+    if (this.weights && this.weights[exerciseId] !== undefined) {
+      return this.weights[exerciseId];
+    }
+    const defaultWeight = (window.appStorage && window.appStorage.prefs && window.appStorage.prefs.dumbbellWeightKg)
+      ? window.appStorage.prefs.dumbbellWeightKg
+      : 10;
+    return defaultWeight;
+  }
+
+  adjustWeight(exerciseId, delta) {
+    const current = this.getExerciseWeight(exerciseId);
+    const newWeight = Math.max(1, Math.min(60, current + delta));
+    this.weights[exerciseId] = newWeight;
+    this.saveWeights();
+    if (typeof document !== 'undefined') {
+      const el = document.getElementById(`weight-val-${exerciseId}`);
+      if (el) el.textContent = `${newWeight} kg`;
+    }
   }
 
   loadCompletedSets() {
@@ -714,6 +751,18 @@ class DumbbellsManager {
             <span class="db-spec-val">${ex.rest}</span>
           </div>
         </div>
+
+        ${ex.equipment && ex.equipment.includes('Haltère') ? `
+        <!-- Sélecteur de Charge / Poids par exercice -->
+        <div class="db-weight-row">
+          <span class="db-weight-label">🏋️ Charge par haltère :</span>
+          <div class="db-weight-stepper">
+            <button type="button" class="db-weight-btn" onclick="window.dumbbellsManager.adjustWeight('${ex.id}', -1)" aria-label="Diminuer charge">-</button>
+            <span class="db-weight-value" id="weight-val-${ex.id}">${this.getExerciseWeight(ex.id)} kg</span>
+            <button type="button" class="db-weight-btn" onclick="window.dumbbellsManager.adjustWeight('${ex.id}', 1)" aria-label="Augmenter charge">+</button>
+          </div>
+        </div>
+        ` : ''}
 
         <!-- Traqueur de séries interactif -->
         <div class="db-series-tracker">

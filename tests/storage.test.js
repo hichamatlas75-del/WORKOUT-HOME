@@ -319,4 +319,56 @@ describe('Gestionnaire de Stockage Local (storage.js)', () => {
     assert.equal(activeProf.avatar, '👑');
     assert.equal(activeProf.level, 'advanced');
   });
+
+  test('clearAllData() nettoie rigoureusement tous les profils multiples et clés fb17_*', () => {
+    // Créer un profil supplémentaire et des données
+    const prof2 = storage.createProfile({ name: 'Second Profil' });
+    storage.switchProfile(prof2.id);
+    storage.savePreferences({ theme: 'light' });
+    storage.addWorkoutSession({ durationSeconds: 600, completed: true });
+
+    // Vérifier que des clés personnalisées existent dans le localStorage
+    assert.ok(env.localStorage.getItem(`fb17_prof_${prof2.id}_preferences`));
+    assert.ok(env.localStorage.getItem(`fb17_prof_${prof2.id}_history`));
+
+    // Exécuter clearAllData
+    storage.clearAllData();
+
+    // Vérifier que toutes les clés profil ont été purgées
+    assert.equal(env.localStorage.getItem(`fb17_prof_${prof2.id}_preferences`), null);
+    assert.equal(env.localStorage.getItem(`fb17_prof_${prof2.id}_history`), null);
+    assert.equal(storage.profiles.length, 1);
+    assert.equal(storage.activeProfileId, 'default');
+  });
+
+  test('isRestDayToday() détecte correctement les jours de repos programmés', () => {
+    const today = new Date().getDay(); // 0-6
+    // Activer seulement le jour d'aujourd'hui
+    storage.savePreferences({ activeWorkoutDays: [today] });
+    assert.equal(storage.isRestDayToday(), false);
+
+    // Exclure aujourd'hui
+    const otherDays = [0, 1, 2, 3, 4, 5, 6].filter(d => d !== today);
+    storage.savePreferences({ activeWorkoutDays: otherDays });
+    assert.equal(storage.isRestDayToday(), true);
+  });
+
+  test('exportDataAsJSON() et importDataFromJSON() fonctionnent en aller-retour complet', () => {
+    storage.savePreferences({ userName: 'Testeur Pro', dumbbellWeightKg: 14 });
+    storage.addWorkoutSession({ durationSeconds: 960, rounds: 3, completed: true });
+
+    const exported = storage.exportDataAsJSON();
+    assert.ok(exported.includes('Testeur Pro'));
+    assert.ok(exported.includes('FULL_BODY_17'));
+
+    const storage2 = new AppStorage();
+    storage2.clearAllData();
+    assert.equal(storage2.history.length, 0);
+
+    const ok = storage2.importDataFromJSON(exported);
+    assert.equal(ok, true);
+    assert.equal(storage2.history.length, 1);
+    assert.equal(storage2.prefs.userName, 'Testeur Pro');
+    assert.equal(storage2.prefs.dumbbellWeightKg, 14);
+  });
 });

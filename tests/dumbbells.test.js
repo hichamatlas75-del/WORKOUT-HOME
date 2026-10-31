@@ -154,4 +154,15 @@ describe('Entraînement 2 Haltères — Full Body & Core (dumbbells.js)', () => 
     assert.ok(fakeContainer.innerHTML.includes('startWorkoutSession'), 'Doit appeler startWorkoutSession');
     assert.ok(fakeContainer.innerHTML.includes('dumbbells'), 'Doit spécifier le mode dumbbells');
   });
+
+  test('Réglage et persistance de la charge par exercice (adjustWeight)', () => {
+    assert.equal(manager.getExerciseWeight('db_1a'), 10);
+    manager.adjustWeight('db_1a', 2);
+    assert.equal(manager.getExerciseWeight('db_1a'), 12);
+    manager.adjustWeight('db_1a', -1);
+    assert.equal(manager.getExerciseWeight('db_1a'), 11);
+
+    const savedWeights = JSON.parse(env.localStorage.getItem('fb17_dumbbells_weights'));
+    assert.equal(savedWeights['db_1a'], 11);
+  });
 });

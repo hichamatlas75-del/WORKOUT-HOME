@@ -22,7 +22,8 @@ class A11yManager {
    */
   detectAccessibilityNeeds() {
     // Check for user preference
-    return window.matchMedia('(prefers-reduced-motion: reduce)').matches === false ||
+    if (typeof window === 'undefined') return false;
+    return (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches === true) ||
            localStorage.getItem('a11y_enabled') === 'true';
   }
 
@@ -45,7 +46,15 @@ class A11yManager {
       height: 1px;
       overflow: hidden;
     `;
-    document.body.appendChild(announcer);
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.appendChild(announcer);
+    } else if (typeof document !== 'undefined') {
+      document.addEventListener('DOMContentLoaded', () => {
+        if (!document.getElementById('a11y-announcer') && document.body) {
+          document.body.appendChild(announcer);
+        }
+      });
+    }
     return announcer;
   }
 
@@ -55,6 +64,8 @@ class A11yManager {
    * @param {boolean} [polite=true] - Use polite (true) or assertive (false) priority
    */
   announce(message, polite = true) {
+    if (!this.announcer) this.announcer = (typeof document !== 'undefined') ? document.getElementById('a11y-announcer') : null;
+    if (!this.announcer) return;
     this.announcer.setAttribute('aria-live', polite ? 'polite' : 'assertive');
     this.announcer.textContent = message;
 
@@ -330,7 +341,9 @@ class A11yManager {
       skipLink.style.top = '-40px';
     });
 
-    document.body.insertBefore(skipLink, document.body.firstChild);
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.insertBefore(skipLink, document.body.firstChild);
+    }
   }
 
   /**

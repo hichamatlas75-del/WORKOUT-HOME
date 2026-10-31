@@ -41,7 +41,7 @@ class I18nManager {
 
     // Check browser language
     const browserLocale = navigator.language?.split('-')[0] || 'en';
-    return ['fr', 'en', 'es', 'de', 'it', 'pt'].includes(browserLocale) ? browserLocale : 'en';
+    return ['fr', 'en', 'es'].includes(browserLocale) ? browserLocale : 'fr';
   }
 
   /**

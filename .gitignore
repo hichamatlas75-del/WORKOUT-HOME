@@ -20,3 +20,7 @@ npm-debug.log*
 # Sub-repositories & Temporary Worktrees
 WORKOUT-HOME/
 copilot-worktrees/
+
+# Raw media captures
+videos/*.webm
+videos/z.mp4

@@ -19,6 +19,8 @@ const ASSETS_TO_CACHE = [
   './js/sync.js',
   './js/pedometer.js',
   './js/dumbbells.js',
+  './js/a11y.js',
+  './js/i18n.js',
   './icons/icon.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',

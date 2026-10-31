@@ -33,6 +33,8 @@ const DEFAULT_PREFERENCES = {
   dailyStepGoal: 8000, // Objectif quotidien de pas (OMS recommande 7000-10000)
   dailyCalorieGoal: 500, // Objectif quotidien combiné Workout + Pas en kcal
   strideLengthCm: 74, // Longueur moyenne de foulée en cm (0.74m)
+  activeWorkoutDays: [1, 2, 3, 4, 5, 6, 0], // Jours d'entraînement programmés (1=Lundi..0=Dimanche)
+  dumbbellWeightKg: 10, // Charge standard sélectionnée pour les haltères (kg)
   soundEnabled: true,
   voiceEnabled: true,
   musicEnabled: true,
@@ -1008,6 +1010,20 @@ class AppStorage {
   }
 
   clearAllData() {
+    // Nettoyer rigoureusement toutes les clés de l'application (y compris les profils additionnels fb17_prof_*)
+    try {
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('fb17_')) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+    } catch (e) {
+      console.warn('Erreur nettoyage total localStorage:', e);
+    }
+
     localStorage.removeItem(STORAGE_KEYS.PROFILES);
     localStorage.removeItem(STORAGE_KEYS.ACTIVE_PROFILE);
     localStorage.removeItem(STORAGE_KEYS.PREFS);
@@ -1015,6 +1031,7 @@ class AppStorage {
     localStorage.removeItem(STORAGE_KEYS.BADGES);
     localStorage.removeItem(STORAGE_KEYS.WEIGHT);
     localStorage.removeItem(STORAGE_KEYS.STEPS);
+
     this.profiles = [{ id: 'default', name: 'Moi', avatar: '🦁', level: 'intermediate', createdAt: Date.now() }];
     this.activeProfileId = 'default';
     this.prefs = { ...DEFAULT_PREFERENCES };
@@ -1022,6 +1039,48 @@ class AppStorage {
     this.badges = [];
     this.weightHistory = [];
     this.stepsHistory = {};
+  }
+
+  // --- Sauvegarde & Restauration Locale Fichier JSON ---
+  exportDataAsJSON() {
+    const fullBackup = {
+      app: 'FULL_BODY_17',
+      version: '2.6.0',
+      exportedAt: new Date().toISOString(),
+      profiles: this.profiles,
+      activeProfileId: this.activeProfileId,
+      prefs: this.prefs,
+      history: this.history,
+      badges: this.badges,
+      weightHistory: this.weightHistory,
+      stepsHistory: this.stepsHistory
+    };
+    return JSON.stringify(fullBackup, null, 2);
+  }
+
+  importDataFromJSON(jsonStr) {
+    try {
+      const data = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
+      if (!data || typeof data !== 'object') {
+        throw new Error("Format de fichier JSON invalide");
+      }
+      this.mergeData(data, { preferLocalPrefs: false });
+      if (Array.isArray(data.profiles) && data.profiles.length > 0) {
+        this.profiles = data.profiles;
+        this.saveProfiles();
+      }
+      return true;
+    } catch (err) {
+      console.error('Erreur import JSON:', err);
+      throw err;
+    }
+  }
+
+  // Vérifier si aujourd'hui est un jour de repos programmé
+  isRestDayToday() {
+    const activeDays = this.prefs.activeWorkoutDays || [1, 2, 3, 4, 5, 6, 0];
+    const todayDay = new Date().getDay(); // 0 = Dimanche, 1 = Lundi, etc.
+    return !activeDays.includes(todayDay);
   }
 }
 
